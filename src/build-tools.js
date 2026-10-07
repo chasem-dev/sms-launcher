@@ -48,8 +48,10 @@ function rootFor(userData, platform = process.platform) {
   return `${legacy}-${expected.sha256.slice(0, 12)}`;
 }
 
+function toolsDirectory(userData) { return path.join(userData, 'build-tools'); }
+
 function legacyRootFor(userData, platform = process.platform) {
-  return path.join(userData, 'build-tools', platformId(platform));
+  return path.join(toolsDirectory(userData), platformId(platform));
 }
 
 // Files each private toolset must keep. Antivirus can delete an executable
@@ -458,5 +460,5 @@ async function prepare(userData, { platform = process.platform, run, progress = 
   }
 }
 
-module.exports = { TOOLSET, toolsetFor, platformId, rootFor, legacyRootFor, privateReady, missingTools, deletedToolsError, systemReady, status, environment, environmentAtRoot, check,
+module.exports = { TOOLSET, toolsetFor, platformId, toolsDirectory, rootFor, legacyRootFor, privateReady, missingTools, deletedToolsError, systemReady, status, environment, environmentAtRoot, check,
   fetchVerified, hashFile, assetFor, prepare, unpackNative, renameRetrying };

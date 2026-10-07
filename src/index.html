@@ -39,9 +39,9 @@
           <div class="setup-progress" role="group" aria-label="Setup progress"><span id="step-count">Step 1 of 3</span><div class="setup-progress-track" aria-hidden="true"><i></i><i></i><i></i></div></div>
           <section id="setup-step-1" class="panel setup-step" aria-label="Download setup files and tools">
             <h2 id="setup-download-title">Download setup files</h2><p id="setup-download-description">We'll get the files and tools needed to prepare your own disc. The game is not included.</p>
-            <div id="repo-location" class="setup-file"><span>Install location</span><strong id="repo-path"></strong></div>
-            <div class="actions"><button id="choose-location" class="subtle">Change location</button></div>
-            <p id="tool-location-note" class="helper">Any tools we download stay in the launcher's own folder.</p>
+            <div id="repo-location" class="setup-file"><span>Download folder</span><strong id="repo-path"></strong></div>
+            <div class="actions"><button id="choose-location" class="subtle">Change folder</button></div>
+            <p id="tool-location-note" class="helper"></p>
             <button id="mac-setup-help" class="subtle" hidden>Mac setup help</button>
           </section>
           <section id="setup-step-2" class="panel setup-step" aria-label="Choose disc image" hidden>
@@ -273,6 +273,7 @@
             <h2 class="group-title">Files</h2>
             <div class="settings-group">
               <div class="path-row"><div><strong>Setup files</strong><span class="small-path" id="settings-repo-path"></span></div><button class="subtle" id="choose-repo-settings">Change folder</button></div>
+              <div class="path-row"><div><strong>Data folder</strong><span class="small-path" id="settings-data-path"></span></div></div>
               <div class="path-row"><div><strong>Your disc file</strong><span class="small-path" id="settings-rom-path"></span></div><button class="subtle" id="choose-rom-settings">Choose file</button></div>
               <label class="field" id="arch-field"><span>Game build</span><select id="arch"></select></label>
               <label class="switch" id="appleSilicon-field" hidden><span><strong>Apple Silicon build</strong><small id="appleSilicon-note">Builds the game for Apple Silicon instead of running it through Rosetta, which is faster. Changing this builds the game again.</small></span><input id="appleSilicon" type="checkbox"><i></i></label>

@@ -20,6 +20,7 @@ const savestates = require('./savestates');
 const prompts = require('./prompts');
 const gameSource = require('./game-source');
 const portable = require('./portable');
+const dataFolders = require('./data-folder');
 const telemetry = require('./telemetry');
 const discord = require('./discord');
 const presence = require('./presence');
@@ -235,9 +236,19 @@ function loadConfig() {
     // Customize Mario: the colours the player chose and the Shine shirt.
     marioLook: marioColors.normalizeLook(saved.marioLook),
     // The Multiplayer window's fields, as last used.
-    multiplayer: savedMultiplayer(saved.multiplayer)
+    multiplayer: savedMultiplayer(saved.multiplayer),
+    dataFolder: dataFolders.savedDataFolder(saved, app.getPath('userData'))
   };
-  if (config.installId !== saved.installId) {
+  const firstDataFolder = !Object.hasOwn(saved, 'dataFolder');
+  if (firstDataFolder) {
+    // Saves used to stay where the game put them, and backups in the home folder.
+    const earlier = { folder: app.getPath('userData'), backups: saves.backupRoot(),
+      saves: (!process.env.SMS_SAVE_DIR && config.saveDirectory) || saves.saveDirectory(config.repo) };
+    if (config.saveDirectory && !saves.configuredSaveDirectory(config.repo) &&
+        !path.relative(config.saveDirectory, saves.saveDirectory(config.repo))) config.saveDirectory = null;
+    adoptEarlierData(earlier);
+  }
+  if (firstDataFolder || config.installId !== saved.installId) {
     try { saveConfig(); } catch (error) { log(`Could not save preferences: ${error.message}`); }
   }
   for (const root of [config.repo, config.previousInstall?.repo].filter(Boolean))
@@ -492,8 +503,32 @@ function requireRepo() {
   return config.repo;
 }
 
+function dataFolder() { return dataFolders.dataFolder(config, app.getPath('userData')); }
+
+function folders() { return dataFolders.locations(dataFolder()); }
+
 function currentSaveDirectory() {
-  return process.env.SMS_SAVE_DIR ? saves.saveDirectory(config.repo) : config.saveDirectory || saves.saveDirectory(config.repo);
+  if (process.env.SMS_SAVE_DIR) return saves.saveDirectory(config.repo);
+  return config.saveDirectory || saves.configuredSaveDirectory(config.repo) || folders().saves;
+}
+
+// Saves and backups from an earlier folder are copied in; the originals stay.
+// Tools stay too, since games built with them still use them.
+function adoptEarlierData(earlier) {
+  const card = currentSaveDirectory();
+  try {
+    const copied = saves.copyCard(earlier.saves, card);
+    if (copied) log(`Copied ${copied} memory card file(s) from ${earlier.saves} to ${card}. The originals are still there.`);
+    const backups = saves.copyBackups(earlier.backups, folders().backups, earlier.saves, card);
+    if (backups) log(`Copied ${backups} save backup(s) from ${earlier.backups} to ${folders().backups}.`);
+  } catch (error) {
+    config.saveDirectory = earlier.saves;
+    log(`Could not copy your saves to ${dataFolder()}: ${error.message} The game keeps using ${earlier.saves}.`);
+  }
+  const tools = buildTools.toolsDirectory(earlier.folder);
+  if (path.relative(earlier.folder, dataFolder()) && fs.existsSync(tools))
+    log(`Build tools now download to ${buildTools.toolsDirectory(dataFolder())}. Earlier ones stay in ${tools}; ` +
+      'once no game you play was set up with them, you can delete that folder to free space.');
 }
 
 // An older launcher's multiplayer guest save, inside the card folder, out of the way of backups.
@@ -506,7 +541,7 @@ function tidySaveDirectory() {
 function makeSaveBackup(reason) {
   if (active) throw new Error('Stop the running game or task before backing up saves.');
   tidySaveDirectory();
-  const result = saves.backupSaves(currentSaveDirectory(), saves.backupRoot(), reason);
+  const result = saves.backupSaves(currentSaveDirectory(), folders().backups, reason);
   log(result.empty ? result.message : `Saved ${result.count} memory card file(s) to ${result.directory}`);
   return result;
 }
@@ -578,7 +613,7 @@ async function capture(command, args, cwd, env = process.env) {
 }
 
 function toolEnv(base = process.env) {
-  return buildTools.environment(app.getPath('userData'), base);
+  return buildTools.environment(dataFolder(), base);
 }
 
 function toolOptions() {
@@ -587,11 +622,11 @@ function toolOptions() {
 }
 
 function toolsStatus() {
-  return buildTools.status(app.getPath('userData'), process.platform, process.env, toolOptions());
+  return buildTools.status(dataFolder(), process.platform, process.env, toolOptions());
 }
 
 async function checkTools(refresh = false) {
-  return buildTools.check(app.getPath('userData'), { ...toolOptions(), refresh });
+  return buildTools.check(dataFolder(), { ...toolOptions(), refresh });
 }
 
 // A Windows game folder or build tools too deep for the compiler fail deep
@@ -603,7 +638,7 @@ function pathProblem(root = config.repo && game.snapshotPath(config.installRoot 
   if (process.platform !== 'win32' || !root) return null;
   return port.longPathProblem(root, settings, { portable: Boolean(portableRoot),
     folder: portableRoot || path.dirname(config.installRoot || config.repo),
-    msys: process.env.SMS_MSYS2_ROOT || path.join(buildTools.rootFor(app.getPath('userData')), 'msys64') });
+    msys: process.env.SMS_MSYS2_ROOT || path.join(buildTools.rootFor(dataFolder()), 'msys64') });
 }
 
 // The last one that stopped a build, which the launcher shows in place of the
@@ -631,7 +666,7 @@ function shieldBuildTools() {
   if (process.platform !== 'win32') return;
   const own = toolsStatus().mode === 'own';
   if (own && ownToolsWarned) return;
-  const msys = own ? process.env.SMS_MSYS2_ROOT : path.join(buildTools.rootFor(app.getPath('userData')), 'msys64');
+  const msys = own ? process.env.SMS_MSYS2_ROOT : path.join(buildTools.rootFor(dataFolder()), 'msys64');
   const result = windowsDlls.shieldToolchain(msys, { place: !own });
   for (const error of result.errors) log(`Could not give the build tools their own DLL: ${error}`);
   if (!result.conflicts.length) return;
@@ -675,7 +710,7 @@ async function prepareBuildTools() {
   requireShortPaths();
   if (preparingTools) throw new Error('Wait for build tools to finish preparing.');
   if (active) throw new Error(`Wait for ${active.label} to finish, or stop it first.`);
-  const userData = app.getPath('userData');
+  const home = dataFolder();
   const forcePrivate = process.env.SMS_FORCE_PRIVATE_TOOLS === '1';
   if (process.platform === 'darwin') {
     preparingTools = true;
@@ -692,7 +727,7 @@ async function prepareBuildTools() {
   active = { label: 'Download build tools', child: null, detail: 'Checking download…', percent: null, startedAt };
   broadcast('activity', { label: active.label, detail: active.detail, percent: null, startedAt });
   try {
-    await buildTools.prepare(userData, {
+    await buildTools.prepare(home, {
       ...toolOptions(),
       forcePrivate,
       progress(percent, detail) {
@@ -862,8 +897,8 @@ async function build(forceFresh = false) {
   const result = await game.buildSafely(root, settings, saveDirectory,
     // A build that fails because antivirus deleted a tool says so instead of CMake's error.
     () => launch(cmd.command, cmd.args, { cwd: cmd.cwd, env: cmd.env }, settings.eclipse ? 'Build Eclipse port' : 'Build Sunshine port')
-      .catch(error => { throw buildTools.deletedToolsError(app.getPath('userData')) || error; }),
-    undefined, source);
+      .catch(error => { throw buildTools.deletedToolsError(dataFolder()) || error; }),
+    folders().backups, source);
   // Ready for sms-standalone.exe, which players can also start from Explorer.
   shieldGame(root, settings, env);
   // Preferences switch only after a successful build. Closing the app or a
@@ -948,7 +983,8 @@ async function play(installation = null, session = null) {
   shieldGame(root, settings, env);
   // Changed keys go to a file of the launcher's own, so a bindings.txt kept by hand in the game folder is left alone.
   if (Object.keys(settings.keyBindings || {}).length || Object.keys(settings.padBindings || {}).length) {
-    const file = path.join(app.getPath('userData'), 'bindings.txt');
+    const file = folders().bindings;
+    fs.mkdirSync(path.dirname(file), { recursive: true });
     fs.writeFileSync(file, bindings.fileText(settings.keyBindings, settings.padBindings));
     env.SMS_BINDINGS = file;
   }
@@ -1345,6 +1381,15 @@ async function clean(dryRun) {
   return launch(cmd.command, cmd.args, { cwd: cmd.cwd, env: cmd.env }, dryRun ? 'Preview cleanup' : 'Clean build output');
 }
 
+// Where setup downloads go, so the setup screen can say so.
+function dataLocations() {
+  const folder = path.dirname(config.repo);
+  let toolDownloadBytes = null;
+  try { toolDownloadBytes = buildTools.assetFor().size || null; } catch (_) { /* no tools for this computer */ }
+  return { folder, data: dataFolder(), tools: buildTools.toolsDirectory(dataFolder()), dataInFolder: !path.relative(folder, dataFolder()),
+    toolsDownloaded: buildTools.privateReady(dataFolder()), toolDownloadBytes };
+}
+
 function state() {
   const info = port.platformInfo();
   let romError = '';
@@ -1379,8 +1424,9 @@ function state() {
       toolVersion: buildTools.toolsetFor(), needsUpdate: repoReady && !game.isCurrent(config.repo, config.settings, currentSource()),
       previousReady: Boolean(config.previousInstall && binaryReady(config.previousInstall.repo, config.previousInstall.settings)) },
     active: activityState(), appUpdate, online, publicOnline, logs: activityLog.snapshot(), logResetSequence: activityLog.resetSequence(),
-    saveDirectory: currentSaveDirectory(), backupDirectory: saves.backupRoot(),
-    backups: saves.listBackups().filter(item => item.source === currentSaveDirectory())
+    locations: dataLocations(),
+    saveDirectory: currentSaveDirectory(), backupDirectory: folders().backups,
+    backups: saves.listBackups(folders().backups).filter(item => item.source === currentSaveDirectory())
   };
 }
 
@@ -1636,16 +1682,19 @@ function registerHandlers() {
   ipcMain.handle('choose-location', async () => {
     if (portableRoot) throw new Error('The portable launcher keeps its setup files in its own folder.');
     if (operation || active) throw new Error('Finish the current task before changing game files.');
-    const chosen = await dialog.showOpenDialog(window, { title: 'Choose where to download setup files', properties: ['openDirectory'] });
+    const chosen = await dialog.showOpenDialog(window, { title: 'Choose a folder for the game, its tools and your saves', properties: ['openDirectory'] });
     if (chosen.canceled) return state();
     const destination = path.join(chosen.filePaths[0], 'sms-pc-port');
     if (fs.existsSync(destination) && (!fs.statSync(destination).isDirectory() || fs.readdirSync(destination).length))
       throw new Error('That location already has a game setup folder. Choose another location.');
+    const earlier = { folder: dataFolder(), saves: currentSaveDirectory(), backups: folders().backups };
     config.repo = destination;
+    config.dataFolder = chosen.filePaths[0];
     config.installRoot = null;
     config.saveDirectory = null;
     config.previousInstall = null;
     config.completedSetup = fs.existsSync(port.binaryPath(config.repo, config.settings));
+    adoptEarlierData(earlier);
     saveConfig();
     return state();
   });
@@ -1718,7 +1767,7 @@ function registerHandlers() {
     if (answer.response !== 1) return { cancelled: true };
     const imported = [];
     for (const { file, converted } of found) {
-      const result = gciSave.importGci(converted, directory);
+      const result = gciSave.importGci(converted, directory, folders().backups);
       log(`Imported Dolphin ${converted.title} save into ${directory}.${result.previous ? ` Previous saves: ${result.previous}` : ''}`);
       imported.push({ ...result, game: converted.game, title: converted.title, shines: converted.shines, file: path.basename(file) });
     }
@@ -1726,7 +1775,7 @@ function registerHandlers() {
   }));
   ipcMain.handle('restore-saves', async (_event, id) => {
     if (operation || active) throw new Error('Stop the running game or task before restoring saves.');
-    if (!saves.listBackups().some(item => item.id === id && item.source === currentSaveDirectory()))
+    if (!saves.listBackups(folders().backups).some(item => item.id === id && item.source === currentSaveDirectory()))
       throw new Error('Choose a backup for this memory card.');
     const answer = await dialog.showMessageBox(window, {
       type: 'warning', buttons: ['Cancel', 'Restore memory card'], defaultId: 0, cancelId: 0,
@@ -1734,14 +1783,14 @@ function registerHandlers() {
       detail: "We'll back up your current saves first, then replace matching files."
     });
     if (answer.response !== 1) return { cancelled: true };
-    const result = saves.restoreBackup(id, currentSaveDirectory());
+    const result = saves.restoreBackup(id, currentSaveDirectory(), folders().backups);
     log(`Restored ${result.restored} memory card file(s) from ${id}.`);
     return result;
   });
   ipcMain.handle('show-path-folder', () => { const problem = blockedPath || pathProblem(); if (problem) shell.showItemInFolder(problem.folder); });
   ipcMain.handle('open-backups', () => {
-    fs.mkdirSync(saves.backupRoot(), { recursive: true, mode: 0o700 });
-    return shell.openPath(saves.backupRoot());
+    fs.mkdirSync(folders().backups, { recursive: true, mode: 0o700 });
+    return shell.openPath(folders().backups);
   });
   // Save states: files the game keeps in a savestates folder beside the memory card (src/savestates.js).
   const stateDirectory = () => savestates.stateDirectory(currentSaveDirectory());

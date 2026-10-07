@@ -14,7 +14,7 @@ Finder-launched apps prioritize the private archive. Existing tools in `/opt/hom
 
 Set a new independent version in `src/mac-tool-assets.json` and clear its `platforms` object. Run **Publish Mac build tool archives** on that branch. The workflow prepares both native conda-forge environments, excludes any SDK/sysroot package, collects corresponding sources and notices, packages them with conda-pack, and compiles the port using each relocated archive plus the runner's Apple toolchain. It publishes `mac-build-tools-<version>` as an immutable prerelease. Download its merged `mac-tool-assets.json` into `src/`, then bump the launcher version. Never reuse a published toolset version.
 
-The installer does not contain the toolchain. Each launcher release also attaches a copy of the pinned tool archives for direct download. Normal launcher updates reuse the installed toolset. Tools are extracted into the app's data folder, separate from game builds, disc images, saves, and backups. A tool replacement is staged, verified, and rolled back if it fails.
+The installer does not contain the toolchain. Each launcher release also attaches a copy of the pinned tool archives for direct download. Normal launcher updates reuse the installed toolset. Tools are extracted into `build-tools` in the launcher's data folder (the one chosen during setup), beside but separate from game builds, saves, and backups. Disc images stay wherever the player keeps them. A tool replacement is staged, verified, and rolled back if it fails.
 
 ## Publish a new toolset
 

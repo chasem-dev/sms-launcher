@@ -13,13 +13,24 @@ function state() {
     platform: port.platformInfo(), tools: { ready: true, appleReady: true }, features: { vulkan: true, appleSilicon: true },
     repoReady: true, romReady: true, binaryReady: true, hdVisualsReady: true,
     game: { needsUpdate: true, installedVersion: 'older', availableVersion: 'newer', launcherVersion: '0.1.39' },
-    appUpdate: { message: '' }, backups: [], logs: [], active: null
+    appUpdate: { message: '' }, backups: [], logs: [], active: null,
+    locations: { folder: '/installed', data: '/installed', tools: '/installed/build-tools', dataInFolder: true, toolsDownloaded: true, toolDownloadBytes: 766490376 }
   };
 }
 
 // The platform and processor a state's platformInfo describes, so saving settings in a test does not depend on the computer running it.
 function host(platform) {
   return [{ linux: 'linux', macos: 'darwin', windows: 'win32' }[platform.id], platform.arches.includes('arm64') ? 'arm64' : 'x64'];
+}
+
+function firstRun(locations) {
+  const data = state();
+  Object.assign(data, { repoReady: false, romReady: false, binaryReady: false, hdVisualsReady: false });
+  data.config = { ...data.config, repo: '/games/sms-pc-port', completedSetup: false };
+  data.tools = { ready: false, appleReady: true };
+  data.locations = { folder: '/games', data: '/games', tools: '/games/build-tools', dataInFolder: true, toolsDownloaded: false,
+    toolDownloadBytes: 766490376, ...locations };
+  return data;
 }
 
 async function renderer(data = state(), copyError = null, notes = { releases: [], unseen: [], current: '0.1.39' }, steam = {}) {
@@ -695,4 +706,17 @@ test('the Apple Silicon switch and the Renderer list wait for a game version tha
   const onUi = await renderer(on);
   assert.equal(onUi.elements.get('appleSilicon').disabled, false);
   assert.equal(onUi.elements.get('renderer').disabled, false);
+});
+
+test('setup names one folder for the game, tools, saves and backups, with the download size', async () => {
+  let ui = await renderer(firstRun());
+  assert.equal(ui.elements.get('repo-path').textContent, '/games');
+  assert.equal(ui.elements.get('tool-location-note').textContent,
+    'The game, its build tools (766 MB download), your saves and their backups all go in this folder.');
+  assert.match(ui.elements.get('settings-data-path').textContent, /^\/games\n/);
+  ui = await renderer(firstRun({ toolsDownloaded: true }));
+  assert.match(ui.elements.get('tool-location-note').textContent, /build tools \(already downloaded\)/);
+  ui = await renderer(firstRun({ dataInFolder: false, data: '/data', tools: '/data/build-tools', toolDownloadBytes: 1266171545 }));
+  assert.equal(ui.elements.get('tool-location-note').textContent,
+    'Game files go in this folder. Build tools (1.3 GB download), saves and backups go in /data.');
 });

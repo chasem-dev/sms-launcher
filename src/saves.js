@@ -21,9 +21,16 @@ function configuredSaveDir(root, env) {
   return '';
 }
 
-function saveDirectory(root, env = process.env, platform = process.platform) {
+// A memory card folder the player set in the game's settings.txt, if any.
+function configuredSaveDirectory(root, env = process.env) {
   const configured = configuredSaveDir(root, env);
-  if (configured) return path.resolve(root, configured);
+  return configured ? path.resolve(root, configured) : '';
+}
+
+// Where the game keeps its memory card when the launcher does not choose.
+function saveDirectory(root, env = process.env, platform = process.platform) {
+  const configured = configuredSaveDirectory(root, env);
+  if (configured) return configured;
   if (env.XDG_DATA_HOME) return path.resolve(env.XDG_DATA_HOME, 'sms-port', 'card-a');
   if (platform === 'win32' && env.APPDATA) return path.resolve(env.APPDATA, 'sms-port', 'card-a');
   return path.resolve(env.HOME || os.homedir(), '.local', 'share', 'sms-port', 'card-a');
@@ -128,6 +135,50 @@ function restoreBackup(id, saveDir, destination = backupRoot()) {
   return { restored: manifest.files.length, previous: current.directory || null };
 }
 
+function samePath(a, b) { return !path.relative(path.resolve(a), path.resolve(b)); }
+
+// Copies a memory card to a new folder that has none yet. The original is left as it was.
+function copyCard(from, to) {
+  if (samePath(from, to) || saveFiles(to).length) return 0;
+  const files = saveFiles(from);
+  if (!files.length) return 0;
+  fs.mkdirSync(to, { recursive: true });
+  for (const name of files) {
+    const temporary = path.join(to, `.${name}.copy-${process.pid}`);
+    try {
+      fs.copyFileSync(path.join(from, name), temporary);
+      if (digest(temporary) !== digest(path.join(from, name))) throw new Error(`Copy verification failed for ${name}`);
+      fs.renameSync(temporary, path.join(to, name));
+    } finally { fs.rmSync(temporary, { force: true }); }
+  }
+  return files.length;
+}
+
+// Copies backups to a new backup folder. Those of the card at fromCard are
+// recorded as backups of toCard, so they can be restored to it.
+function copyBackups(from, to, fromCard, toCard) {
+  if (samePath(from, to)) return 0;
+  let copied = 0;
+  for (const backup of listBackups(from)) {
+    const target = path.join(to, backup.id);
+    if (fs.existsSync(target)) continue;
+    const pending = path.join(to, `.${backup.id}.pending`);
+    fs.mkdirSync(to, { recursive: true, mode: 0o700 });
+    try {
+      fs.cpSync(path.join(from, backup.id), pending, { recursive: true, errorOnExist: true });
+      const manifestFile = path.join(pending, 'manifest.json');
+      const manifest = JSON.parse(fs.readFileSync(manifestFile, 'utf8'));
+      for (const file of manifest.files)
+        if (digest(path.join(pending, 'files', file.name)) !== file.hash) throw new Error(`Backup copy failed for ${file.name}`);
+      if (typeof manifest.source === 'string' && samePath(manifest.source, fromCard)) manifest.source = toCard;
+      fs.writeFileSync(manifestFile, JSON.stringify(manifest, null, 2));
+      fs.renameSync(pending, target);
+      copied++;
+    } finally { fs.rmSync(pending, { recursive: true, force: true }); }
+  }
+  return copied;
+}
+
 function moveBuildKeepingSaves(buildDirectory, destination, saveDir, backups = backupRoot()) {
   const relative = path.relative(path.resolve(buildDirectory), path.resolve(saveDir));
   const inside = relative === '' || (!path.isAbsolute(relative) && relative !== '..' && !relative.startsWith(`..${path.sep}`));
@@ -144,5 +195,5 @@ function moveBuildKeepingSaves(buildDirectory, destination, saveDir, backups = b
   return backup;
 }
 
-module.exports = { saveDirectory, gameSaveDirectory, prepareSaveDirectory, backupRoot, cleanupWouldRemoveSaves,
-  backupSaves, listBackups, restoreBackup, moveBuildKeepingSaves };
+module.exports = { configuredSaveDirectory, saveDirectory, gameSaveDirectory, prepareSaveDirectory, backupRoot, cleanupWouldRemoveSaves,
+  backupSaves, listBackups, restoreBackup, copyCard, copyBackups, moveBuildKeepingSaves };

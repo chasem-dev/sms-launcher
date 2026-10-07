@@ -117,3 +117,49 @@ test('corrupted backup does not replace current progress', () => {
     assert.equal(fs.readFileSync(path.join(card, 'GMSE01.dat'), 'utf8'), 'safe');
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });
+
+test('a memory card is copied to a new empty folder and the original stays', t => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'sms save copy-'));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  const from = path.join(root, 'old card'), to = path.join(root, 'data', 'saves');
+  fs.mkdirSync(from);
+  fs.writeFileSync(path.join(from, 'GMSE01.dat'), 'progress');
+  fs.writeFileSync(path.join(from, 'index.txt'), 'index');
+  assert.equal(saves.copyCard(from, to), 2);
+  assert.equal(fs.readFileSync(path.join(to, 'GMSE01.dat'), 'utf8'), 'progress');
+  assert.equal(fs.readFileSync(path.join(from, 'GMSE01.dat'), 'utf8'), 'progress');
+  fs.writeFileSync(path.join(from, 'GMSE01.dat'), 'older progress elsewhere');
+  assert.equal(saves.copyCard(from, to), 0, 'a card already in the new folder is never replaced');
+  assert.equal(fs.readFileSync(path.join(to, 'GMSE01.dat'), 'utf8'), 'progress');
+  assert.equal(saves.copyCard(to, to), 0);
+  assert.equal(saves.copyCard(path.join(root, 'missing'), path.join(root, 'other')), 0);
+  assert.equal(fs.existsSync(path.join(root, 'other')), false);
+});
+
+test('copied backups can be restored to the card in its new folder', t => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'sms backup copy-'));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  const oldCard = path.join(root, 'old card'), newCard = path.join(root, 'data', 'saves');
+  const oldBackups = path.join(root, 'old backups'), newBackups = path.join(root, 'data', 'save-backups');
+  fs.mkdirSync(oldCard);
+  fs.writeFileSync(path.join(oldCard, 'GMSE01.dat'), 'first progress');
+  const { id } = saves.backupSaves(oldCard, oldBackups, 'manual');
+  assert.equal(saves.copyBackups(oldBackups, newBackups, oldCard, newCard), 1);
+  assert.equal(saves.copyBackups(oldBackups, newBackups, oldCard, newCard), 0);
+  assert.deepEqual(saves.listBackups(newBackups).map(item => [item.id, item.source]), [[id, newCard]]);
+  assert.equal(saves.listBackups(oldBackups)[0].source, oldCard);
+  saves.restoreBackup(id, newCard, newBackups);
+  assert.equal(fs.readFileSync(path.join(newCard, 'GMSE01.dat'), 'utf8'), 'first progress');
+});
+
+test('a damaged backup is not copied', t => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'sms backup copy damaged-'));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  const card = path.join(root, 'card'), from = path.join(root, 'from'), to = path.join(root, 'to');
+  fs.mkdirSync(card);
+  fs.writeFileSync(path.join(card, 'GMSE01.dat'), 'progress');
+  const { directory } = saves.backupSaves(card, from, 'manual');
+  fs.writeFileSync(path.join(directory, 'files', 'GMSE01.dat'), 'damaged');
+  assert.throws(() => saves.copyBackups(from, to, card, card), /Backup copy failed/);
+  assert.deepEqual(fs.readdirSync(to), []);
+});

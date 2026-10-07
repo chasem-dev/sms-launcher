@@ -47,8 +47,10 @@ function rootFor(userData, platform = process.platform) {
   return `${legacy}-${expected.sha256.slice(0, 12)}`;
 }
 
+function toolsDirectory(userData) { return path.join(userData, 'build-tools'); }
+
 function legacyRootFor(userData, platform = process.platform) {
-  return path.join(userData, 'build-tools', platformId(platform));
+  return path.join(toolsDirectory(userData), platformId(platform));
 }
 
 function privateReady(userData, platform = process.platform) {
@@ -320,5 +322,5 @@ async function prepare(userData, { platform = process.platform, run, progress = 
   }
 }
 
-module.exports = { TOOLSET, toolsetFor, platformId, rootFor, legacyRootFor, privateReady, systemReady, status, environment, environmentAtRoot, check,
+module.exports = { TOOLSET, toolsetFor, platformId, toolsDirectory, rootFor, legacyRootFor, privateReady, systemReady, status, environment, environmentAtRoot, check,
   fetchVerified, hashFile, assetFor, prepare };

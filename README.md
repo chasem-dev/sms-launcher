@@ -115,7 +115,7 @@ In **Settings → Manage game → Saved games**, you can:
 - **Open backup folder** to find your backups.
 - Choose an earlier backup and select **Restore backup**. Your current saves are backed up before restoring.
 
-Backups are stored in **SMS Launcher Backups** in your home folder, separate from the launcher installation and game build folders. Copy that folder to another drive or cloud storage for extra protection.
+Saves are in the **saves** folder and backups in **save-backups**, both in the launcher's data folder, separate from the game build folders. Copy **save-backups** to another drive or cloud storage for extra protection.
 
 Export your North American Super Mario Sunshine save (`GMSE01`, `super_mario_sunshine`) from Dolphin's Memory Card Manager as a `.gci` file. The importer transfers the entire save, including all three slots. It installs the unchanged save data and the card metadata into the save folder shown in the launcher, including custom locations, on Windows, macOS, and Linux. A fresh card does not need to be created in-game first. Other games, regions, raw memory cards, and `.sav`/`.gcs` files are not supported.
 
@@ -161,6 +161,12 @@ workspace/
 
 Development runs detect a neighboring `sms-port/` automatically. Packaged installs use the launcher's data folder by default. Existing setup folders can be selected in **Settings → Game files**.
 
+### Where files go
+
+Everything the launcher downloads or creates goes in one data folder: the game (`sms-pc-port`) and its updates, build tools (`build-tools`), saves (`saves`), save backups (`save-backups`) and key bindings. It is the folder chosen with **Change folder** during setup, or by default the launcher's own data folder (`%APPDATA%\sms-launcher` on Windows, `~/Library/Application Support/sms-launcher` on macOS, `~/.config/sms-launcher` on Linux). The program itself goes wherever the installer put it. Only the launcher's preferences and Electron's cache stay in the default data folder, so it can find the chosen one.
+
+Earlier versions kept saves where the game puts them by default (`%APPDATA%\sms-port\card-a` on Windows) and backups in `~/SMS Launcher Backups`. The first start of this version copies them into the data folder and leaves the originals. A setup that chose a folder but has not built a game yet moves to that folder; build tools downloaded before stay where they are, and the activity log says where.
+
 ### Test and package
 
 ```sh
@@ -180,7 +186,7 @@ The separate **Smoke test build tools** workflow downloads checksum-verified too
 
 ### Build tools
 
-The launcher checks available tools and downloads prepared archives when needed. Downloads are checksum-verified and stay in its private data folder. Users do not need to install Git, Homebrew, or MSYS2 themselves.
+The launcher checks available tools and downloads prepared archives when needed. Downloads are checksum-verified and stay in its data folder. Users do not need to install Git, Homebrew, or MSYS2 themselves.
 
 | Host | Prepared tools |
 | --- | --- |
@@ -220,7 +226,7 @@ macOS automatic updates require signed builds. Mac releases are signed with a se
 
 ### Save storage and recovery
 
-The launcher honors `SMS_SAVE_DIR` or `save_dir` in the port's `settings.txt` and displays the resolved path. Verified backups live outside the launcher and port folders in `~/SMS Launcher Backups`.
+The launcher honors `SMS_SAVE_DIR` or `save_dir` in the port's `settings.txt` and displays the resolved path. Otherwise saves go in `saves` in the data folder. Verified backups live in `save-backups` there, outside the port folders.
 
 Source updates build in separate folders and switch preferences only after success. Rebuilds preserve the previous binary and metadata; a recovery journal restores interrupted builds on the next start. Cleanup refuses custom save folders inside removable build output. Restore verifies the backup and saves current progress first. Disc images and patched discs are not included in save backups. A single-instance lock prevents overlapping updates and save operations.
 

@@ -28,9 +28,9 @@
           <div class="setup-progress" role="group" aria-label="Setup progress"><span id="step-count">Step 1 of 3</span><div class="setup-progress-track" aria-hidden="true"><i></i><i></i><i></i></div></div>
           <section id="setup-step-1" class="panel setup-step" aria-label="Download setup files and tools">
             <h2 id="setup-download-title">Download setup files</h2><p id="setup-download-description">We'll get the files and tools needed to prepare your own disc. The game is not included.</p>
-            <div id="repo-location" class="setup-file"><span>Install location</span><strong id="repo-path"></strong></div>
-            <div class="actions"><button id="choose-location" class="subtle">Change location</button></div>
-            <p id="tool-location-note" class="helper">Any tools we download stay in the launcher's own folder.</p>
+            <div id="repo-location" class="setup-file"><span>Download folder</span><strong id="repo-path"></strong></div>
+            <div class="actions"><button id="choose-location" class="subtle">Change folder</button></div>
+            <p id="tool-location-note" class="helper"></p>
             <button id="mac-setup-help" class="subtle" hidden>Mac setup help</button>
           </section>
           <section id="setup-step-2" class="panel setup-step" aria-label="Choose disc image" hidden>
@@ -78,7 +78,7 @@
           </div>
           <div class="quick-note" id="eclipse-note"><span id="eclipse-platform-note"></span><button id="install-eclipse" class="text-button">Install Eclipse</button></div>
         </section>
-        <details class="installation-details"><summary><span><strong>Game files</strong><small>Setup folder and your disc file</small></span><span aria-hidden="true">⌄</span></summary><div class="installation-content"><div class="installation-row"><div><strong>Setup files</strong><span class="small-path" id="settings-repo-path"></span></div><button class="subtle" id="choose-repo-settings">Change folder</button></div><div class="installation-row"><div><strong>Your disc file</strong><span class="small-path" id="settings-rom-path"></span></div><button class="subtle" id="choose-rom-settings">Choose file</button></div></div></details>
+        <details class="installation-details"><summary><span><strong>Game files</strong><small>Data folder, setup files and your disc file</small></span><span aria-hidden="true">⌄</span></summary><div class="installation-content"><div class="installation-row"><div><strong>Setup files</strong><span class="small-path" id="settings-repo-path"></span></div><button class="subtle" id="choose-repo-settings">Change folder</button></div><div class="installation-row"><div><strong>Data folder</strong><span class="small-path" id="settings-data-path"></span></div></div><div class="installation-row"><div><strong>Your disc file</strong><span class="small-path" id="settings-rom-path"></span></div><button class="subtle" id="choose-rom-settings">Choose file</button></div></div></details>
         <button id="open-maintenance" class="settings-entry"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 4h12M4 10h12M4 16h12"/><circle cx="8" cy="4" r="2"/><circle cx="13" cy="10" r="2"/><circle cx="7" cy="16" r="2"/></svg><span><strong>Manage game</strong><small>Rebuild, update, back up, or free up space</small></span><span class="settings-entry-arrow" aria-hidden="true">→</span></button>
         <button id="open-controls" class="settings-entry"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="2.5" y="5" width="15" height="10" rx="2"/><path d="M5.5 8h1M8.5 8h1M11.5 8h1M14.5 8h0M6 12h8"/></svg><span><strong>Controls</strong><small>Choose the keyboard keys for each button</small></span><span class="settings-entry-arrow" aria-hidden="true">→</span></button>
         <div class="detail-grid">

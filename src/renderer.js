@@ -168,6 +168,19 @@ function requiredStep(data) {
   return 0;
 }
 
+function sizeText(bytes) {
+  return bytes >= 1e9 ? `${(bytes / 1e9).toFixed(1)} GB` : `${Math.round(bytes / 1e6)} MB`;
+}
+
+// People choose a folder to keep a drive free, so say exactly what goes where.
+function toolLocationNote(data) {
+  const { data: folder, tools, dataInFolder, toolsDownloaded, toolDownloadBytes } = data.locations;
+  const download = toolsDownloaded ? ' (already downloaded)' : toolDownloadBytes ? ` (${sizeText(toolDownloadBytes)} download)` : '';
+  if (data.repoReady) return `Build tools${download} go in ${tools}.`;
+  if (!dataInFolder) return `Game files go in this folder. Build tools${download}, saves and backups go in ${folder}.`;
+  return `The game, its build tools${download}, your saves and their backups all go in this folder.`;
+}
+
 function showWizardStep(data) {
   const required = requiredStep(data);
   if (required === 0) wizardStep = 0;
@@ -196,9 +209,8 @@ function showWizardStep(data) {
   const needsMacTools = data.platform.id === 'macos' && !data.tools.appleReady;
   $('mac-setup-help').hidden = !needsMacTools;
   $('mac-tools-settings').hidden = data.platform.id !== 'macos';
-  $('tool-location-note').textContent = data.platform.id === 'macos'
-    ? data.tools.appleReady ? 'Build tools download to the launcher’s own folder.' : 'This Mac needs Apple’s tools first. Open Mac setup help to get started.'
-    : "Any tools we download stay in the launcher's own folder.";
+  $('tool-location-note').textContent = needsMacTools
+    ? 'This Mac needs Apple’s tools first. Open Mac setup help to get started.' : toolLocationNote(data);
   if (needsMacTools) {
     $('setup-download-title').textContent = 'Prepare this Mac';
     $('setup-download-description').textContent = 'Check the tools needed before downloading and preparing your game.';
@@ -254,10 +266,12 @@ function refresh(data) {
   current = data;
   const { config, platform } = data;
   $('platform').textContent = platform.name;
-  $('repo-path').textContent = config.repo;
-  $('repo-path').title = config.repo;
+  $('repo-path').textContent = data.locations.folder;
+  $('repo-path').title = data.locations.folder;
   $('settings-repo-path').textContent = config.repo;
   $('settings-repo-path').title = config.repo;
+  $('settings-data-path').textContent = `${data.locations.data}\nGame, build tools, saves and backups`;
+  $('settings-data-path').title = data.locations.data;
   $('choose-location').disabled = Boolean(data.active);
   $('update-port').disabled = !data.repoReady || Boolean(data.active);
   $('rom-path').textContent = data.romError || config.rom || 'No file selected';

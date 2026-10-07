@@ -12,6 +12,7 @@ const game = require('./game-version');
 const updateChannel = require('./update-channel');
 const bindings = require('./bindings');
 const gameSource = require('./game-source');
+const dataFolders = require('./data-folder');
 const { cleanOutputLine, crashReason, createActivityReader, createLineReader, failureReason } = require('./progress');
 
 const DISCORD_INVITE = 'https://discord.gg/NvUXmm8dB9';
@@ -122,8 +123,18 @@ function loadConfig() {
     saveDirectory: typeof saved.saveDirectory === 'string' ? saved.saveDirectory : null,
     previousInstall: saved.previousInstall || null,
     completedSetup: Boolean(saved.completedSetup),
-    gameSource: savedGameSource(saved.gameSource)
+    gameSource: savedGameSource(saved.gameSource),
+    dataFolder: dataFolders.savedDataFolder(saved, app.getPath('userData'))
   };
+  if (!Object.hasOwn(saved, 'dataFolder')) {
+    // Saves used to stay where the game put them, and backups in the home folder.
+    const earlier = { folder: app.getPath('userData'), backups: saves.backupRoot(),
+      saves: (!process.env.SMS_SAVE_DIR && config.saveDirectory) || saves.saveDirectory(config.repo) };
+    if (config.saveDirectory && !saves.configuredSaveDirectory(config.repo) &&
+        !path.relative(config.saveDirectory, saves.saveDirectory(config.repo))) config.saveDirectory = null;
+    adoptEarlierData(earlier);
+    try { saveConfig(); } catch (error) { log(`Could not save preferences: ${error.message}`); }
+  }
   for (const root of [config.repo, config.previousInstall?.repo].filter(Boolean))
     for (const arch of port.platformInfo().arches)
       for (const eclipse of [false, true]) {
@@ -146,13 +157,37 @@ function requireRepo() {
   return config.repo;
 }
 
+function dataFolder() { return dataFolders.dataFolder(config, app.getPath('userData')); }
+
+function folders() { return dataFolders.locations(dataFolder()); }
+
 function currentSaveDirectory() {
-  return process.env.SMS_SAVE_DIR ? saves.saveDirectory(config.repo) : config.saveDirectory || saves.saveDirectory(config.repo);
+  if (process.env.SMS_SAVE_DIR) return saves.saveDirectory(config.repo);
+  return config.saveDirectory || saves.configuredSaveDirectory(config.repo) || folders().saves;
+}
+
+// Saves and backups from an earlier folder are copied in; the originals stay.
+// Tools stay too, since games built with them still use them.
+function adoptEarlierData(earlier) {
+  const card = currentSaveDirectory();
+  try {
+    const copied = saves.copyCard(earlier.saves, card);
+    if (copied) log(`Copied ${copied} memory card file(s) from ${earlier.saves} to ${card}. The originals are still there.`);
+    const backups = saves.copyBackups(earlier.backups, folders().backups, earlier.saves, card);
+    if (backups) log(`Copied ${backups} save backup(s) from ${earlier.backups} to ${folders().backups}.`);
+  } catch (error) {
+    config.saveDirectory = earlier.saves;
+    log(`Could not copy your saves to ${dataFolder()}: ${error.message} The game keeps using ${earlier.saves}.`);
+  }
+  const tools = buildTools.toolsDirectory(earlier.folder);
+  if (path.relative(earlier.folder, dataFolder()) && fs.existsSync(tools))
+    log(`Build tools now download to ${buildTools.toolsDirectory(dataFolder())}. Earlier ones stay in ${tools}; ` +
+      'once no game you play was set up with them, you can delete that folder to free space.');
 }
 
 function makeSaveBackup(reason) {
   if (active) throw new Error('Stop the running game or task before backing up saves.');
-  const result = saves.backupSaves(currentSaveDirectory(), saves.backupRoot(), reason);
+  const result = saves.backupSaves(currentSaveDirectory(), folders().backups, reason);
   log(result.empty ? result.message : `Saved ${result.count} memory card file(s) to ${result.directory}`);
   return result;
 }
@@ -219,7 +254,7 @@ async function capture(command, args, cwd, env = process.env) {
 }
 
 function toolEnv(base = process.env) {
-  return buildTools.environment(app.getPath('userData'), base);
+  return buildTools.environment(dataFolder(), base);
 }
 
 function toolOptions() {
@@ -227,17 +262,17 @@ function toolOptions() {
 }
 
 function toolsStatus() {
-  return buildTools.status(app.getPath('userData'), process.platform, process.env, toolOptions());
+  return buildTools.status(dataFolder(), process.platform, process.env, toolOptions());
 }
 
 async function checkTools(refresh = false) {
-  return buildTools.check(app.getPath('userData'), { ...toolOptions(), refresh });
+  return buildTools.check(dataFolder(), { ...toolOptions(), refresh });
 }
 
 async function ensureBuildTools() {
   if (preparingTools) throw new Error('Wait for build tools to finish preparing.');
   if (active) throw new Error(`Wait for ${active.label} to finish, or stop it first.`);
-  const userData = app.getPath('userData');
+  const home = dataFolder();
   const forcePrivate = process.env.SMS_FORCE_PRIVATE_TOOLS === '1';
   if (process.platform === 'darwin') {
     preparingTools = true;
@@ -254,7 +289,7 @@ async function ensureBuildTools() {
   active = { label: 'Download build tools', child: null, detail: 'Checking download…', percent: null, startedAt };
   broadcast('activity', { label: active.label, detail: active.detail, percent: null, startedAt });
   try {
-    await buildTools.prepare(userData, {
+    await buildTools.prepare(home, {
       forcePrivate,
       progress(percent, detail) {
         if (!active || active.child) return;
@@ -367,7 +402,7 @@ async function build(forceFresh = false) {
     : port.commandFor(root, 'build', [disc], process.platform, env);
   const result = await game.buildSafely(root, settings, saveDirectory,
     () => launch(cmd.command, cmd.args, { cwd: cmd.cwd, env: cmd.env }, settings.eclipse ? 'Build Eclipse port' : 'Build Sunshine port'),
-    undefined, source);
+    folders().backups, source);
   // Preferences switch only after a successful build. Closing the app or a
   // failed download/build leaves the last installation selected and playable.
   const earlier = { ...config };
@@ -413,7 +448,8 @@ async function play(installation = null) {
     : toolEnv({ ...port.buildEnvironment(settings, disc, root), SMS_SAVE_DIR: saveDir });
   // Changed keys go to a file of the launcher's own, so a bindings.txt kept by hand in the game folder is left alone.
   if (Object.keys(settings.keyBindings || {}).length) {
-    const file = path.join(app.getPath('userData'), 'bindings.txt');
+    const file = folders().bindings;
+    fs.mkdirSync(path.dirname(file), { recursive: true });
     fs.writeFileSync(file, bindings.fileText(settings.keyBindings));
     env.SMS_BINDINGS = file;
   }
@@ -460,6 +496,15 @@ async function clean(dryRun) {
   return launch(cmd.command, cmd.args, { cwd: cmd.cwd, env: cmd.env }, dryRun ? 'Preview cleanup' : 'Clean build output');
 }
 
+// Where setup downloads go, so the setup screen can say so.
+function dataLocations() {
+  const folder = path.dirname(config.repo);
+  let toolDownloadBytes = null;
+  try { toolDownloadBytes = buildTools.assetFor().size || null; } catch (_) { /* no tools for this computer */ }
+  return { folder, data: dataFolder(), tools: buildTools.toolsDirectory(dataFolder()), dataInFolder: !path.relative(folder, dataFolder()),
+    toolsDownloaded: buildTools.privateReady(dataFolder()), toolDownloadBytes };
+}
+
 function state() {
   const info = port.platformInfo();
   let romError = '';
@@ -485,8 +530,9 @@ function state() {
       toolVersion: buildTools.toolsetFor(), needsUpdate: repoReady && !game.isCurrent(config.repo, config.settings, currentSource()),
       previousReady: Boolean(config.previousInstall && binaryReady(config.previousInstall.repo, config.previousInstall.settings)) },
     active: activityState(), appUpdate, logs: logLines,
-    saveDirectory: currentSaveDirectory(), backupDirectory: saves.backupRoot(),
-    backups: saves.listBackups().filter(item => item.source === currentSaveDirectory())
+    locations: dataLocations(),
+    saveDirectory: currentSaveDirectory(), backupDirectory: folders().backups,
+    backups: saves.listBackups(folders().backups).filter(item => item.source === currentSaveDirectory())
   };
 }
 
@@ -629,16 +675,19 @@ function registerHandlers() {
   });
   ipcMain.handle('choose-location', async () => {
     if (operation || active) throw new Error('Finish the current task before changing game files.');
-    const chosen = await dialog.showOpenDialog(window, { title: 'Choose where to download setup files', properties: ['openDirectory'] });
+    const chosen = await dialog.showOpenDialog(window, { title: 'Choose a folder for the game, its tools and your saves', properties: ['openDirectory'] });
     if (chosen.canceled) return state();
     const destination = path.join(chosen.filePaths[0], 'sms-pc-port');
     if (fs.existsSync(destination) && (!fs.statSync(destination).isDirectory() || fs.readdirSync(destination).length))
       throw new Error('That location already has a game setup folder. Choose another location.');
+    const earlier = { folder: dataFolder(), saves: currentSaveDirectory(), backups: folders().backups };
     config.repo = destination;
+    config.dataFolder = chosen.filePaths[0];
     config.installRoot = null;
     config.saveDirectory = null;
     config.previousInstall = null;
     config.completedSetup = fs.existsSync(port.binaryPath(config.repo, config.settings));
+    adoptEarlierData(earlier);
     saveConfig();
     return state();
   });
@@ -681,7 +730,7 @@ function registerHandlers() {
   }));
   ipcMain.handle('restore-saves', async (_event, id) => {
     if (operation || active) throw new Error('Stop the running game or task before restoring saves.');
-    if (!saves.listBackups().some(item => item.id === id && item.source === currentSaveDirectory()))
+    if (!saves.listBackups(folders().backups).some(item => item.id === id && item.source === currentSaveDirectory()))
       throw new Error('Choose a backup for this memory card.');
     const answer = await dialog.showMessageBox(window, {
       type: 'warning', buttons: ['Cancel', 'Restore memory card'], defaultId: 0, cancelId: 0,
@@ -689,13 +738,13 @@ function registerHandlers() {
       detail: "We'll back up your current saves first, then replace matching files."
     });
     if (answer.response !== 1) return { cancelled: true };
-    const result = saves.restoreBackup(id, currentSaveDirectory());
+    const result = saves.restoreBackup(id, currentSaveDirectory(), folders().backups);
     log(`Restored ${result.restored} memory card file(s) from ${id}.`);
     return result;
   });
   ipcMain.handle('open-backups', () => {
-    fs.mkdirSync(saves.backupRoot(), { recursive: true, mode: 0o700 });
-    return shell.openPath(saves.backupRoot());
+    fs.mkdirSync(folders().backups, { recursive: true, mode: 0o700 });
+    return shell.openPath(folders().backups);
   });
   ipcMain.handle('clean', () => exclusive('Clean build output', async () => {
     const answer = await dialog.showMessageBox(window, {

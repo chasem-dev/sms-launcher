@@ -962,7 +962,7 @@ const WINDOW_SIZE = { width: 1080, height: 760, minWidth: 900, minHeight: 600 };
 function createWindow() {
   // Only Windows display scaling is capped: a Mac's Retina 2x is its normal size.
   const windowsScaling = process.platform === 'win32';
-  const zoom = windowsScaling ? displayScale.zoomFor(screen.getPrimaryDisplay().scaleFactor) : 1;
+  const zoom = windowsScaling ? displayScale.displayZoom(screen.getPrimaryDisplay()) : 1;
   window = new BrowserWindow({
     ...displayScale.scaledSize(WINDOW_SIZE, zoom),
     frame: false, backgroundColor: '#0a3045', title: 'SMS Launcher',

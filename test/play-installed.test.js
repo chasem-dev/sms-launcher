@@ -10,11 +10,11 @@ const { createRequire } = require('node:module');
 const { EventEmitter } = require('node:events');
 const port = require('../src/port');
 
-function fixture(t, { metadata = true, textures = false, eclipse = false, discordPresence = true } = {}) {
+function fixture(t, { metadata = true, textures = false, eclipse = false, discordPresence = true, autoUpdate = true, exitCode = 0 } = {}) {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'sms installed game-'));
   t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
   const root = path.join(directory, 'port');
-  const settings = port.normalizeSettings({ textures: true, cutscenes: true, autoUpdate: true, eclipse, discordPresence });
+  const settings = port.normalizeSettings({ textures: true, cutscenes: true, autoUpdate, eclipse, discordPresence });
   for (const file of ['CMakeLists.txt', 'build.sh', 'run.sh', 'clean.sh', 'tools/mods/get.py']) {
     fs.mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
     fs.writeFileSync(path.join(root, file), 'installed source');
@@ -65,13 +65,15 @@ function fixture(t, { metadata = true, textures = false, eclipse = false, discor
         starts.push({ command, args, options });
         const child = new EventEmitter();
         child.stdout = new EventEmitter(); child.stderr = new EventEmitter();
-        setImmediate(() => child.emit('close', 0));
+        setImmediate(() => child.emit('close', exitCode));
         return child;
       } };
       return nativeRequire(name);
     }, fixtureConfig: config });
-  vm.runInContext(fs.readFileSync(sourcePath, 'utf8') + '\nconfig = fixtureConfig; registerHandlers();', context);
-  return { config, starts, backups, environments, activities, binary, record, toolRoot, root, play: () => handlers.get('play')() };
+  vm.runInContext(fs.readFileSync(sourcePath, 'utf8') + '\nconfig = fixtureConfig; registerHandlers();' +
+    '\nglobalThis.logText = () => JSON.stringify(activityLog.snapshot());', context);
+  return { config, starts, backups, environments, activities, binary, record, toolRoot, root, play: () => handlers.get('play')(),
+    playDirectly: () => context.playDirectly(), logText: () => context.logText() };
 }
 
 test('skip update launches the older installed game, keeps preferences and saves, and never builds or downloads', async t => {
@@ -131,4 +133,42 @@ test('skip update cannot start a missing executable or invalid disc', async t =>
   fs.writeFileSync(f.config.rom, 'bad disc');
   await assert.rejects(f.play(), /too small/);
   assert.equal(f.starts.length, 0);
+});
+
+// `--play`: a Steam shortcut starts the game without the launcher's window.
+test('--play starts the installed game with the launcher settings when nothing needs doing', async t => {
+  const f = fixture(t, { autoUpdate: false, textures: true });
+  f.config.settings.cutscenes = false;
+  assert.equal(await f.playDirectly(), true);
+  assert.equal(f.starts.length, 1);
+  assert.equal(f.starts[0].options.env.SMS_TEXTURE_PACKS, port.texturePackDirectory(f.root));
+  assert.equal(f.starts[0].options.env.SMS_SAVE_DIR, f.config.saveDirectory.replaceAll('\\', '/'));
+  assert.deepEqual(f.backups, ['before-play', 'after-play']);
+});
+
+test('--play opens the launcher instead when a game update is ready, without building', async t => {
+  const f = fixture(t, { textures: true });
+  f.config.settings.cutscenes = false;
+  assert.equal(await f.playDirectly(), false);
+  assert.equal(f.starts.length, 0);
+  assert.match(f.logText(), /instead of the game: a game update is ready/);
+});
+
+test('--play opens the launcher instead when setup or HD visuals are unfinished', async t => {
+  const missingVisuals = fixture(t, { autoUpdate: false });
+  assert.equal(await missingVisuals.playDirectly(), false);
+  assert.match(missingVisuals.logText(), /HD visuals need to be set up/);
+  const notBuilt = fixture(t, { autoUpdate: false });
+  fs.rmSync(notBuilt.binary);
+  assert.equal(await notBuilt.playDirectly(), false);
+  assert.match(notBuilt.logText(), /not set up yet/);
+  assert.equal(missingVisuals.starts.length + notBuilt.starts.length, 0);
+});
+
+test('--play opens the launcher after the game fails so its log is visible', async t => {
+  const f = fixture(t, { autoUpdate: false, exitCode: 3 });
+  f.config.settings.textures = false;
+  assert.equal(await f.playDirectly(), false);
+  assert.equal(f.starts.length, 1);
+  assert.deepEqual(f.backups, ['before-play', 'after-play']);
 });

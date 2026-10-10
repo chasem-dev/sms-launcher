@@ -112,6 +112,12 @@ To manage updates yourself, turn off **Update automatically** in **Settings → 
 
 After the launcher updates, its changelog opens once to show what changed in the launcher and the game since you last opened it. Open it any time with the changelog button beside the Settings cog.
 
+### Start the game from Steam
+
+To go straight into the game from Steam or another shortcut, add `--play` to the launcher's launch options (in Steam: Properties → Launch Options; on Linux keep `--no-sandbox` too, as in `--no-sandbox --play`). The game starts with your launcher settings, without the launcher's window, and Steam shows it running until you quit. Your saves are backed up before and after, as they are when you press Play.
+
+`--play` never downloads or builds anything. If the game needs setup, an update (with **Update automatically** on), or HD downloads, or if it closes with an error, the launcher opens instead so you can see why. Launcher updates are only checked while the launcher is open, so open it now and then.
+
 ### Saved games and backups
 
 The launcher keeps your save location when you update or rebuild the game. It makes dated backups before and after playing, and before game updates or cleanup.

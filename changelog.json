@@ -15,7 +15,8 @@
       "The arrow under Super Mario Eclipse's B button balloon is red again instead of black.",
       "Screen wipes, like the iris and warp transitions, run at their original speed at 60 and 120 fps, so warps no longer cut their sound short.",
       "Fixed white specks on the sea with the High and Ultra graphics presets.",
-      "The goop Piranha Plant's hit voice plays once at 120 fps instead of twice."
+      "The goop Piranha Plant's hit voice plays once at 120 fps instead of twice.",
+      "The game ignores the keyboard and controllers while another window has focus, such as the launcher or another game, so they no longer move Mario in the background."
     ]
   },
   "releases": [

@@ -20,7 +20,7 @@ Choose the launcher file for your computer:
 
 | Your computer | Download |
 | --- | --- |
-| Windows | The `.exe` installer |
+| Windows | The `.exe` installer, or `SMS-Launcher-<version>-win-portable.exe` for the portable version |
 | Mac — Intel or Apple Silicon | `SMS-Launcher-<version>-mac-universal.dmg` |
 | Linux | The `.AppImage` |
 
@@ -31,6 +31,8 @@ The launcher requires a **64-bit computer** and an internet connection for setup
 ### Windows
 
 Open the `.exe` installer and follow the steps, then open SMS Launcher.
+
+**Portable version:** put `SMS-Launcher-<version>-win-portable.exe` in any folder, such as on a USB drive, and open it. Nothing is installed. The first time it runs, it creates an `SMS-Launcher-Portable` folder next to the `.exe`, and keeps everything there: settings, setup files, build tools, the game, saves, and save backups. You can move the `.exe` and that folder together; after a move, the game may rebuild the next time you press Play. Portable versions don't update themselves. To update, download the new portable `.exe` and put it in place of the old one, next to the same `SMS-Launcher-Portable` folder. Each portable start takes a few seconds while the launcher unpacks itself.
 
 ### Mac
 

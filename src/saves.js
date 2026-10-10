@@ -4,6 +4,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const crypto = require('node:crypto');
+const portable = require('./portable');
 
 function configuredSaveDir(root, env) {
   if (env.SMS_SAVE_DIR) return env.SMS_SAVE_DIR;
@@ -24,6 +25,8 @@ function configuredSaveDir(root, env) {
 function saveDirectory(root, env = process.env, platform = process.platform) {
   const configured = configuredSaveDir(root, env);
   if (configured) return path.resolve(root, configured);
+  const portableRoot = portable.root(env, platform);
+  if (portableRoot) return path.join(portableRoot, 'saves', 'card-a');
   if (env.XDG_DATA_HOME) return path.resolve(env.XDG_DATA_HOME, 'sms-port', 'card-a');
   if (platform === 'win32' && env.APPDATA) return path.resolve(env.APPDATA, 'sms-port', 'card-a');
   return path.resolve(env.HOME || os.homedir(), '.local', 'share', 'sms-port', 'card-a');
@@ -40,7 +43,10 @@ function prepareSaveDirectory(dir, platform = process.platform) {
   return gameSaveDirectory(dir, platform);
 }
 
-function backupRoot(home = os.homedir()) { return path.join(home, 'SMS Launcher Backups'); }
+function backupRoot(env = process.env, platform = process.platform) {
+  const portableRoot = portable.root(env, platform);
+  return portableRoot ? path.join(portableRoot, 'Save Backups') : path.join(os.homedir(), 'SMS Launcher Backups');
+}
 
 function isCardFile(name) { return name === 'index.txt' || /\.(dat|stat)$/.test(name); }
 

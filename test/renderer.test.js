@@ -18,7 +18,7 @@ function state() {
 }
 
 async function renderer(data = state(), copyError = null, notes = { releases: [], unseen: [], current: '0.1.39' }) {
-  const changelogSeen = [], calls = [], elements = new Map(), droppedFiles = [], listeners = {};
+  const changelogSeen = [], calls = [], elements = new Map(), droppedFiles = [], listeners = {}, gamepad = {};
   let logCallback, resetCallback, activityCallback;
   function element(classes = '') {
     const names = new Set(classes.split(' ')), listeners = new Map();
@@ -37,6 +37,7 @@ async function renderer(data = state(), copyError = null, notes = { releases: []
   for (const match of html.matchAll(/<[^>]*\bid="([^"]+)"[^>]*>/g)) {
     const node = element(match[0].match(/class="([^"]+)"/)?.[1]);
     node.hidden = /\bhidden\b/.test(match[0]);
+    node.id = match[1];
     elements.set(match[1], node);
   }
   const sms = {
@@ -51,15 +52,17 @@ async function renderer(data = state(), copyError = null, notes = { releases: []
     play: async () => { calls.push('play'); }, launchGame: async () => { calls.push('launchGame'); }
   };
   const context = vm.createContext({ console, setInterval() {}, requestAnimationFrame: callback => setImmediate(callback),
-    window: { sms, smsActivityLog: require('../src/activity-log'), addEventListener() {} }, document: {
+    window: { sms, smsActivityLog: require('../src/activity-log'), smsGamepadNav: { start: options => Object.assign(gamepad, options) },
+      addEventListener() {} }, document: {
     getElementById(id) { assert.ok(elements.has(id), `Missing HTML element ${id}`); return elements.get(id); },
     querySelectorAll(selector) {
-      return selector === '.launcher-modal' ? ['page-settings', 'changelog', 'mac-tools-help'].map(id => elements.get(id)) : [];
+      const modals = ['page-settings', 'changelog', 'mac-tools-help'].map(id => elements.get(id));
+      return selector === '.launcher-modal' ? modals : selector === '.launcher-modal[open]' ? modals.filter(modal => modal.open) : [];
     }, createElement: () => element()
   } });
   vm.runInContext(fs.readFileSync(path.resolve(__dirname, '../src/renderer.js'), 'utf8'), context);
   await new Promise(setImmediate);
-  return { elements, calls, droppedFiles, listeners, changelogSeen,
+  return { elements, calls, droppedFiles, listeners, changelogSeen, gamepad,
     async emitLog(entry) { logCallback(entry); await new Promise(setImmediate); },
     async resetLog(sequence) { resetCallback(sequence); await new Promise(setImmediate); },
     async emitActivity(active) { activityCallback(active); await new Promise(setImmediate); },
@@ -296,4 +299,33 @@ test('Beta builds see new Beta notes first, and only Beta notes when no release 
   assert.equal(seen.elements.get('changelog').open, false);
   await seen.click('open-changelog');
   assert.equal(seen.elements.get('changelog-title').textContent, 'Changelog');
+});
+
+test('controller buttons open settings, step through its views, go back and pause while the game runs', async () => {
+  const view = await renderer(state());
+  const { elements, gamepad } = view;
+  const shown = () => ['settings', 'controls', 'maintenance'].filter(name => !elements.get(`${name}-view`).hidden);
+  assert.equal(gamepad.paused(), false);
+  gamepad.actions.menu();
+  assert.equal(elements.get('page-settings').open, true);
+  assert.deepEqual(shown(), ['settings']);
+  gamepad.actions.next();
+  assert.deepEqual(shown(), ['controls']);
+  gamepad.actions.next();
+  assert.deepEqual(shown(), ['maintenance']);
+  gamepad.actions.next();
+  assert.deepEqual(shown(), ['maintenance']);
+  gamepad.actions.previous();
+  assert.deepEqual(shown(), ['controls']);
+  gamepad.actions.back();
+  assert.deepEqual(shown(), ['settings']);
+  assert.equal(elements.get('page-settings').open, true);
+  gamepad.actions.back();
+  assert.equal(elements.get('page-settings').open, false);
+  gamepad.actions.view();
+  assert.equal(elements.get('console-body').hidden, false);
+  gamepad.actions.back();
+  assert.equal(elements.get('console-body').hidden, true);
+  await view.emitActivity({ label: 'Play Super Mario Sunshine', startedAt: Date.now() });
+  assert.equal(gamepad.paused(), true);
 });

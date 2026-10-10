@@ -119,6 +119,12 @@ function normalizeSettings(input = {}, platform = process.platform) {
     // Master volume in percent; 100 leaves the game's sound as it is.
     volume,
     textures: input.textures !== false,
+    // When HD textures load: while each level loads (stage), the whole pack over the first loading
+    // screens and kept (all, for graphics cards with plenty of memory), or each when first drawn (play).
+    textureLoading: choiceSetting(input.textureLoading, ['stage', 'all', 'play'], 'stage'),
+    // The game compiles each level's shaders while it loads, and the rest in the background, instead
+    // of when they are first drawn; on unless turned off.
+    shaderWarmup: input.shaderWarmup !== false,
     // HD cutscenes are a separate 5 GB download, off unless chosen.
     cutscenes: Boolean(input.cutscenes),
     eclipse: Boolean(input.eclipse),
@@ -283,6 +289,8 @@ function buildEnvironment(settings, disc, root) {
     SMS_VOLUME: String(settings.volume ?? 100),
     SMS_GX_SCALE: String(settings.resolution),
     SMS_TEXTURE_PACKS: settings.textures ? texturePackDirectory(root) : '0',
+    SMS_TEXTURE_PACK_PRELOAD: { all: 'all', play: '0' }[settings.textureLoading] || '1',
+    SMS_GX_SHADER_WARMUP: settings.shaderWarmup === false ? '0' : '1',
     SMS_MOD: 'none',
     SMS_HD_CUTSCENES: wantsCutscenes(settings) ? cutscenePackDirectory(root) : '0'
   };

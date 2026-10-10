@@ -32,7 +32,7 @@ The launcher requires a **64-bit computer** and an internet connection for setup
 
 Open the `.exe` installer and follow the steps, then open SMS Launcher.
 
-**Portable version:** put `SMS-Launcher-<version>-win-portable.exe` in any folder, such as on a USB drive, and open it. Nothing is installed. The first time it runs, it creates an `SMS-Launcher-Portable` folder next to the `.exe`, and keeps everything there: settings, setup files, build tools, the game, its shader cache, saves, and save backups. It doesn't ask where to set up. You can move the `.exe` and that folder together; after a move, the game may rebuild the next time you press Play. Portable versions don't update themselves. To update, download the new portable `.exe` and put it in place of the old one, next to the same `SMS-Launcher-Portable` folder. Each portable start takes a few seconds while the launcher unpacks itself.
+**Portable version:** put `SMS-Launcher-<version>-win-portable.exe` in any folder, such as on a USB drive, and open it. Nothing is installed. The first time it runs, it creates an `SMS-Launcher-Portable` folder next to the `.exe`, and keeps everything there: settings, setup files, build tools, the game, its shader and HD texture caches, saves, and save backups. It doesn't ask where to set up. You can move the `.exe` and that folder together; after a move, the game may rebuild the next time you press Play. Portable versions don't update themselves. To update, download the new portable `.exe` and put it in place of the old one, next to the same `SMS-Launcher-Portable` folder. Each portable start takes a few seconds while the launcher unpacks itself.
 
 ### Mac
 
@@ -101,6 +101,16 @@ Windows and Linux offer both 64-bit and 32-bit game builds. Keep the default **6
 HD textures are **on by default for first-time setup**. In Sunshine mode, this also installs all 21 enhanced cutscenes at 3× resolution, preserving their timing and original audio. Textures use about **1 GB to download** and **3 GB installed**; the movie patches add about **5.7 GB to download** and **5.8 GB installed**. Movie setup needs about **7.8 GB free**, plus room for textures if needed. You can turn HD visuals off in **Settings → Visuals**. Existing users keep their saved choice.
 
 If HD setup is incomplete, choose **Finish HD setup** to download and prepare the missing files. Previously installed textures and movies are reused. The launcher shows download progress and checks all movies before activating the pack. Failed or cancelled setup keeps the previous pack. Your original disc and saves stay intact. Eclipse keeps its own movies.
+
+**Settings → Visuals → HD texture loading** chooses when HD textures load:
+
+- **Before each level** (default): a level's textures load while it loads, so they don't appear late while you play.
+- **Whole pack**: the rest of the HD textures load during the first few loading screens and all of them stay loaded, so after that none load at all. This needs a graphics card with at least 6 GB of memory.
+- **While playing**: each texture loads the first time it appears, which uses the least memory. The original texture shows until the HD one is ready.
+
+The first time each HD texture is used, the game also builds its smaller versions for distant surfaces, in the background at low priority, and keeps them for later sessions (about 1 GB once you've seen the whole game).
+
+**Prepare shaders ahead** (on by default) builds the graphics effects each level is known to use while the level loads, instead of the first time they're drawn. Without it, the first moments in a new level stutter on the first play on each computer. Turn it off to load levels slightly faster on the first play.
 
 ### Updates
 

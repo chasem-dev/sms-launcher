@@ -44,4 +44,7 @@ function shaderCache(base, arch) {
   return path.join(base, 'cache', `gx-programs-${arch === '32' ? '32' : '64'}.bin`);
 }
 
-module.exports = { FOLDER, root, storedPaths, resolvedPaths, shaderCache };
+// The same for the mip levels the game makes for HD textures (texture-mips beside the shaders).
+function textureCache(base) { return path.join(base, 'cache', 'texture-mips'); }
+
+module.exports = { FOLDER, root, storedPaths, resolvedPaths, shaderCache, textureCache };

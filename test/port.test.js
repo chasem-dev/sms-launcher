@@ -184,6 +184,23 @@ test('HDR is off unless chosen; on, it follows Windows calibration or the chosen
   assert.deepEqual([clamped.hdrPaperWhite, clamped.hdrPeak, clamped.hdrSaturation, clamped.hdrHighlights], [80, 4000, 0, 100]);
 });
 
+test('HD textures load before each level unless another loading is chosen', () => {
+  const env = settings => port.buildEnvironment(port.normalizeSettings(settings), '/my/disc.iso', '/port');
+  assert.equal(port.normalizeSettings({}).textureLoading, 'stage');
+  assert.equal(port.normalizeSettings({ textureLoading: 'sometimes' }).textureLoading, 'stage');
+  assert.equal(env({}).SMS_TEXTURE_PACK_PRELOAD, '1');
+  assert.equal(env({ textureLoading: 'all' }).SMS_TEXTURE_PACK_PRELOAD, 'all');
+  assert.equal(env({ textureLoading: 'play' }).SMS_TEXTURE_PACK_PRELOAD, '0');
+});
+
+test('shader warm-up stays on unless turned off, and reaches the game as SMS_GX_SHADER_WARMUP', () => {
+  const env = settings => port.buildEnvironment(port.normalizeSettings(settings), '/my/disc.iso', '/port');
+  assert.equal(port.normalizeSettings({}).shaderWarmup, true);
+  assert.equal(port.normalizeSettings({ shaderWarmup: false }).shaderWarmup, false);
+  assert.equal(env({}).SMS_GX_SHADER_WARMUP, '1');
+  assert.equal(env({ shaderWarmup: false }).SMS_GX_SHADER_WARMUP, '0');
+});
+
 test('the heat-wave effect stays on unless turned off, and reaches the game as SMS_HEAT_HAZE', () => {
   assert.equal(port.normalizeSettings({}).heatHaze, true);
   assert.equal(port.normalizeSettings({}).buttonPrompts, 'gamecube');

@@ -1,18 +1,26 @@
 # Notes for AI agents
 
-## Update the changelog with every player-visible change
+## Update the changelog in every commit
 
-[`changelog.json`](changelog.json) is the changelog players read in the launcher: it opens by itself after an update, and from the button beside Settings. Installed launchers fetch it from `main`, so whatever you merge there is what players see. **If your change is something a player could notice, add a line for it in the same commit.** Don't leave it for later.
+[`changelog.json`](changelog.json) is the changelog players read in the launcher: it opens by itself after an update, and from the button beside Settings. Installed launchers fetch it from `main`, so whatever you merge there is what players see.
+
+**Every commit to this repo updates `changelog.json` in that same commit.** That covers features, fixes, settings, wording and layout tweaks, packaging and update-flow changes, one-line fixes, and follow-up commits that change what an earlier line describes (reword that line). It applies to every agent and every session, Claude Code and Codex included, however small the change. Don't leave it for a later commit or for whoever cuts the release.
+
+The only commits without a changelog edit are ones a player cannot notice at all: tests, CI, refactors, or docs and agent notes like this file. Say so in the commit message (`No changelog: tests only`) so a reviewer can see it was a decision, not an oversight. If you are unsure whether a player could notice, add the line.
+
+Game changes count too. When you change the game ([sms-pc-port](https://github.com/chasem-dev/sms-pc-port)), add its `beta.game` line here as well, in the launcher PR that goes with it or a small changelog PR. Merge it once the game PR is merged, since Beta builds the newest commit on the game's branch (`src/game-release.json`).
+
+Before you commit, check that `git diff --cached --stat` lists `changelog.json`, or that your commit message says why not.
 
 ### Where your line goes
 
 | Your change | Add it to |
 | --- | --- |
 | Launcher behaviour, UI, settings, fixes (`src/`, packaging, update flow) | `beta.launcher` |
-| Game changes that Beta now builds (new commits on the game's branch in `src/game-release.json`) | `beta.game` |
+| Game changes that Beta now builds (new commits on the game's branch in `src/game-release.json`), including game PRs you open alongside a launcher change | `beta.game` |
 | Selecting a new game pin | Run `npm run update:game` (below) |
 | Bumping the launcher version without a new game pin | Move `beta` into a new release entry yourself (below) |
-| Tests, CI, refactors, docs, tooling with no visible effect | Nothing |
+| Only tests, CI, refactors, or docs, with no visible effect | Nothing, and say `No changelog: …` in the commit message |
 
 `beta` holds what's on `main` and in Beta but not in a release yet. Only Beta builds show it, and they show it again whenever its wording changes, so keep it accurate as you go.
 

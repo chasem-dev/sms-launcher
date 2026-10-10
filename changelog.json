@@ -1,8 +1,20 @@
 {
   "_instructions": "Players see this file in the launcher. Add each player-visible change here in the same commit: launcher changes to beta.launcher, game changes Beta now builds to beta.game. Releases move beta into a new entry (npm run update:game does it). One plain sentence for players per line, no commit hashes or PR numbers. See AGENTS.md.",
   "beta": {
-    "launcher": [],
-    "game": []
+    "launcher": [
+      "On Full HD Windows displays scaled above 125%, the launcher is sized as it is at 125% so it fits on screen."
+    ],
+    "game": [
+      "Super Mario Eclipse now runs the code its v1.1.0 release ships, which removes the extra circle and blinking X button behind the FLUDD gauge in every stage.",
+      "Fixed Super Mario Eclipse crashing when you pick a character after unlocking Piantissimo.",
+      "Super Mario Eclipse's menus fill the widescreen frame properly, and its pause menu's Shine and blue coin counts are back on screen. Its own Aspect Ratio setting is hidden, since the game handles widescreen itself.",
+      "Fixed Super Mario Eclipse overwriting game memory at startup and while riding the green Yoshi.",
+      "Super Mario Eclipse's Delfino Plaza title card and pause menu no longer show \"(null)\" under the area's name.",
+      "The arrow under Super Mario Eclipse's B button balloon is red again instead of black.",
+      "Screen wipes, like the iris and warp transitions, run at their original speed at 60 and 120 fps, so warps no longer cut their sound short.",
+      "Fixed white specks on the sea with the High and Ultra graphics presets.",
+      "The goop Piranha Plant's hit voice plays once at 120 fps instead of twice."
+    ]
   },
   "releases": [
     {

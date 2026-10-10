@@ -1,6 +1,7 @@
 'use strict';
 
 const fs = require('node:fs');
+const os = require('node:os');
 const path = require('node:path');
 const { spawn } = require('node:child_process');
 
@@ -45,7 +46,38 @@ function probe(command, args, env) {
   });
 }
 
-async function inspect(base = process.env, { run = probe, exists = executable } = {}) {
+function listSdks(directory) {
+  try { return fs.readdirSync(directory); }
+  catch (_) { return []; }
+}
+
+function newerFirst(a, b) {
+  const left = a.split('.').map(Number), right = b.split('.').map(Number);
+  for (let index = 0; index < Math.max(left.length, right.length); index++)
+    if ((left[index] || 0) !== (right[index] || 0)) return (right[index] || 0) - (left[index] || 0);
+  return 0;
+}
+
+// Command Line Tools can install an SDK newer than their linker can read
+// (ld: tapi error: malformed file). Keep the default SDK when Apple's linker
+// accepts it; otherwise use the newest versioned SDK beside it that links.
+async function linkableSdk(defaultSdk, env, run, list) {
+  const directory = path.posix.dirname(defaultSdk);
+  const versioned = list(directory).map(name => name.match(/^MacOSX(\d+(?:\.\d+)*)\.sdk$/)).filter(Boolean)
+    .sort((a, b) => newerFirst(a[1], b[1])).map(match => path.posix.join(directory, match[0]));
+  const scratch = fs.mkdtempSync(path.join(os.tmpdir(), 'sms-sdk-'));
+  try {
+    for (const sdk of [...new Set([defaultSdk, ...versioned])]) {
+      // The game is x86_64 C++, so link libc++ and libSystem the same way.
+      const linked = await run('/usr/bin/clang++', ['-arch', 'x86_64', '-isysroot', sdk, '-dynamiclib',
+        '-x', 'c++', '/dev/null', '-o', path.join(scratch, 'probe.dylib')], { ...env, SDKROOT: sdk });
+      if (linked.ok) return sdk;
+    }
+  } finally { fs.rmSync(scratch, { recursive: true, force: true }); }
+  return defaultSdk;
+}
+
+async function inspect(base = process.env, { run = probe, exists = executable, list = listSdks } = {}) {
   const env = environment(base, exists);
   const runTool = (command, args) => run(find(command, env, exists), args, env);
   const [sdk, silicon, cmake, objcopy, brew] = await Promise.all([
@@ -65,11 +97,12 @@ async function inspect(base = process.env, { run = probe, exists = executable } 
     Promise.all(['clang', 'clang++'].map(command => sdk.ok || find(command, env, exists) !== `/usr/bin/${command}`
       ? runTool(command, ['--version']) : { ok: false }))
   ]);
+  const sdkPath = sdk.ok && sdk.stdout ? await linkableSdk(sdk.stdout, env, run, list) : '';
   const cmakeVersion = cmake.stdout.match(/cmake version (\d+)\.(\d+)/);
   const cmakeReady = cmake.ok && Boolean(cmakeVersion) &&
     (Number(cmakeVersion[1]) > 3 || Number(cmakeVersion[1]) === 3 && Number(cmakeVersion[2]) >= 20);
   return {
-    checked: true, homebrew: brew, sdkPath: sdk.ok ? sdk.stdout : '',
+    checked: true, homebrew: brew, sdkPath,
     requirements: [
       { id: 'apple', label: 'Apple Command Line Tools', ready: sdk.ok && Boolean(sdk.stdout) &&
         appleCommands.length === 3 && appleCommands.every(result => result.ok) &&

@@ -545,6 +545,11 @@ async function play(installation = null) {
   // The prompt images the Controls page drew from these bindings (save-prompts).
   if (settings.buttonPrompts && settings.buttonPrompts !== 'gamecube') env.SMS_BUTTON_PROMPT_DIR = promptDirectory();
   if (config.settings.discordPresence) env.SMS_PRESENCE = '1';
+  if (portableRoot && !env.SMS_GX_SHADER_CACHE) {
+    // The game only makes the folder for its default location.
+    env.SMS_GX_SHADER_CACHE = portable.shaderCache(portableRoot, settings.arch);
+    fs.mkdirSync(path.dirname(env.SMS_GX_SHADER_CACHE), { recursive: true });
+  }
   const cmd = settings.eclipse
     ? port.eclipseRunCommand(root, settings, disc, process.platform, env)
     : port.commandFor(root, 'run', [disc], process.platform, env);
@@ -893,6 +898,7 @@ function registerHandlers() {
     return state();
   });
   ipcMain.handle('choose-repo', async () => {
+    if (portableRoot) throw new Error('The portable launcher keeps its setup files in its own folder.');
     if (operation || active) throw new Error('Finish the current task before changing game files.');
     const chosen = await dialog.showOpenDialog(window, { title: 'Choose a folder with setup files', properties: ['openDirectory'] });
     if (chosen.canceled) return state();
@@ -906,6 +912,7 @@ function registerHandlers() {
     return state();
   });
   ipcMain.handle('choose-location', async () => {
+    if (portableRoot) throw new Error('The portable launcher keeps its setup files in its own folder.');
     if (operation || active) throw new Error('Finish the current task before changing game files.');
     const chosen = await dialog.showOpenDialog(window, { title: 'Choose where to download setup files', properties: ['openDirectory'] });
     if (chosen.canceled) return state();

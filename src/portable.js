@@ -38,4 +38,10 @@ function resolvedPaths(saved, base) {
   return mapPaths(saved, value => path.isAbsolute(value) ? value : path.resolve(base, value));
 }
 
-module.exports = { FOLDER, root, storedPaths, resolvedPaths };
+// The game keeps its compiled shaders in %LOCALAPPDATA%\sms-port unless told
+// otherwise; the portable build keeps them with everything else.
+function shaderCache(base, arch) {
+  return path.join(base, 'cache', `gx-programs-${arch === '32' ? '32' : '64'}.bin`);
+}
+
+module.exports = { FOLDER, root, storedPaths, resolvedPaths, shaderCache };

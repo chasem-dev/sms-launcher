@@ -45,6 +45,11 @@ test('paths inside the portable folder are saved relative and follow it when mov
   assert.equal(loaded.previousInstall.rom, path.join(moved, 'sms.iso'));
 });
 
+test('portable games keep their shader cache in the portable folder', () => {
+  assert.equal(portable.shaderCache(root, '64'), path.join(root, 'cache', 'gx-programs-64.bin'));
+  assert.equal(portable.shaderCache(root, '32'), path.join(root, 'cache', 'gx-programs-32.bin'));
+});
+
 test('a sibling folder with a similar name is not treated as inside', () => {
   const sibling = `${root}-old${path.sep}sms-pc-port`;
   assert.equal(portable.storedPaths({ repo: sibling }, root).repo, sibling);

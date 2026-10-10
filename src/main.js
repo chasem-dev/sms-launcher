@@ -53,6 +53,9 @@ let online = null;
 let discordPresence = null;
 // The running game's handler for its `[presence]` lines (src/presence.js).
 let onPresence = null;
+// `--play` (for a Steam shortcut's launch options) starts the game without the
+// launcher's window and quits when the game closes.
+const playOnStart = process.argv.includes('--play');
 const ownsInstance = app.requestSingleInstanceLock();
 if (!ownsInstance) app.quit();
 app.on('second-instance', () => {
@@ -593,6 +596,30 @@ async function launchGame() {
   return play();
 }
 
+// Why `--play` opens the launcher instead of the game, or null if the game can start as it is.
+function directPlayBlocker() {
+  if (!port.isPort(config.repo) || !binaryReady()) return 'the game is not set up yet.';
+  try { port.validateRom(config.rom); } catch (error) { return error.message; }
+  if (config.settings.autoUpdate && !game.isCurrent(config.repo, config.settings, currentSource()))
+    return 'a game update is ready.';
+  if (!port.hdVisualsInstalled(config.repo, config.settings)) return 'HD visuals need to be set up.';
+  return null;
+}
+
+// Plays with the launcher's settings, without downloading or building anything.
+// False when the launcher should open: the game needs setup or an update, or it
+// failed (the activity log shows why).
+async function playDirectly() {
+  const blocker = directPlayBlocker();
+  if (blocker) {
+    log(`Opened the launcher instead of the game: ${blocker}`);
+    return false;
+  }
+  try { await exclusive('Play Super Mario Sunshine', () => play(), true); }
+  catch (_) { return false; }
+  return true;
+}
+
 async function playInstalled() {
   const root = requireRepo();
   // Playing without setup uses only packs already on disk. Keep the player's
@@ -996,12 +1023,14 @@ function createWindow() {
   });
 }
 
-if (ownsInstance) app.whenReady().then(() => {
+if (ownsInstance) app.whenReady().then(async () => {
   loadConfig();
-  createWindow();
   registerHandlers();
-  setupAppUpdater();
   setupTelemetry();
+  if (playOnStart && await playDirectly()) return app.quit();
+  createWindow();
+  // Only with the window: a launcher update installs on quit, which `--play` does as the game closes.
+  setupAppUpdater();
   // The bundled manifest is the update check. Source downloads and builds
   // start with Update & play, so opening the launcher never changes a game.
 });

@@ -2,6 +2,7 @@
   "_instructions": "Players see this file in the launcher. Add each player-visible change here in the same commit: launcher changes to beta.launcher, game changes Beta now builds to beta.game. Releases move beta into a new entry (npm run update:game does it). One plain sentence for players per line, no commit hashes or PR numbers. See AGENTS.md.",
   "beta": {
     "launcher": [
+      "Start the game straight from Steam: add --play to the launcher's launch options and the game opens with your launcher settings, without the launcher's window. The launcher opens instead when the game needs setup or an update.",
       "On Full HD Windows displays scaled above 125%, the launcher is sized as it is at 125% so it fits on screen.",
       "Fixed the game failing to build on Macs whose newest macOS SDK is newer than their Command Line Tools can link (\"ld: tapi error: malformed file\"). The launcher now builds with the newest installed SDK that works."
     ],

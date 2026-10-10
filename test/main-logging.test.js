@@ -17,7 +17,7 @@ function main(t, { platform = process.platform, childProcess } = {}) {
     clipboard: { writeText: text => copied.push(text) },
     app: { requestSingleInstanceLock: () => true, on: (name, handler) => { appEvents[name] = handler; },
     whenReady: () => ({ then() {} }), getPath: () => root },
-    screen: { getPrimaryDisplay: () => ({ scaleFactor: 1 }), getDisplayMatching: () => ({ scaleFactor: 1 }), on() {} } };
+    screen: { getPrimaryDisplay: () => ({ scaleFactor: 1, bounds: { x: 0, y: 0, width: 1920, height: 1080 } }), getDisplayMatching: () => ({ scaleFactor: 1, bounds: { x: 0, y: 0, width: 1920, height: 1080 } }), on() {} } };
   electron.BrowserWindow = class {
     webContents = { send() {}, setWindowOpenHandler() {}, on: (name, handler) => { consoleEvents[name] = handler; } };
     isDestroyed() { return false; }

@@ -1,13 +1,27 @@
 'use strict';
 
-const SCALE_LIMIT = 1.55;
+const FULL_HD_HEIGHT = 1080, FULL_HD_SCALE_LIMIT = 1.25, SCALE_LIMIT = 1.55;
 const WM_DPICHANGED = 0x02E0, WM_ENTERSIZEMOVE = 0x0231, WM_EXITSIZEMOVE = 0x0232;
 const ZOOM_KEYS = new Set(['0', '-', '=', '+']);
 const ZOOM_CODES = new Set(['Digit0', 'Minus', 'Equal', 'Numpad0', 'NumpadSubtract', 'NumpadAdd']);
 
-// Above 155% Windows display scaling, the launcher zooms out to look as it does at 155%.
-function zoomFor(scaleFactor) {
-  return scaleFactor > SCALE_LIMIT ? SCALE_LIMIT / scaleFactor : 1;
+function physicalHeight({ bounds, scaleFactor }) {
+  return Math.min(bounds.width, bounds.height) * scaleFactor;
+}
+
+// DIP bounds are whole numbers, so the pixel height is only known to within one DIP.
+function scaleLimit(scaleFactor, pixelHeight) {
+  return pixelHeight <= FULL_HD_HEIGHT + scaleFactor ? FULL_HD_SCALE_LIMIT : SCALE_LIMIT;
+}
+
+// Above the limit for its display, Windows display scaling zooms the launcher out to look as it does at the limit.
+function zoomFor(scaleFactor, pixelHeight) {
+  const limit = scaleLimit(scaleFactor, pixelHeight);
+  return scaleFactor > limit ? limit / scaleFactor : 1;
+}
+
+function displayZoom(display) {
+  return zoomFor(display.scaleFactor, physicalHeight(display));
 }
 
 // AltGr arrives as Ctrl+Alt and types characters on some layouts.
@@ -41,7 +55,7 @@ function followDisplayScale(window, screen, size, zoom) {
   const applyZoom = () => window.webContents.setZoomFactor(zoom);
   const fit = () => {
     if (window.isDestroyed()) return;
-    const next = zoomFor(screen.getDisplayMatching(window.getBounds()).scaleFactor);
+    const next = displayZoom(screen.getDisplayMatching(window.getBounds()));
     if (next === zoom) return;
     zoom = next;
     applyZoom();
@@ -54,13 +68,14 @@ function followDisplayScale(window, screen, size, zoom) {
   window.webContents.on('before-input-event', (event, input) => { if (isManualZoomKey(input)) event.preventDefault(); });
   window.hookWindowMessage(WM_DPICHANGED, () => setImmediate(fit));
   window.hookWindowMessage(WM_ENTERSIZEMOVE, () => { dragging = true; });
-  window.hookWindowMessage(WM_EXITSIZEMOVE, () => { dragging = false; setImmediate(resize); });
+  // Displays with the same scale but a different cap send no WM_DPICHANGED.
+  window.hookWindowMessage(WM_EXITSIZEMOVE, () => { dragging = false; setImmediate(() => { fit(); resize(); }); });
   // leave-full-screen fires before the window reports that it has left fullscreen.
   for (const event of ['restore', 'unmaximize', 'leave-full-screen']) window.on(event, () => setImmediate(resize));
-  const displayChanged = (_event, _display, changed) => { if (changed.includes('scaleFactor')) fit(); };
+  const displayChanged = (_event, _display, changed) => { if (changed.includes('scaleFactor') || changed.includes('bounds')) fit(); };
   screen.on('display-metrics-changed', displayChanged);
   window.once('closed', () => screen.off('display-metrics-changed', displayChanged));
   fit();
 }
 
-module.exports = { zoomFor, scaledSize, followDisplayScale };
+module.exports = { zoomFor, displayZoom, scaledSize, followDisplayScale };

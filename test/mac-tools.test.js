@@ -6,7 +6,7 @@ const mac = require('../src/mac-tools');
 const tools = require('../src/build-tools');
 
 function fixture({ prefix = '/opt/homebrew', missing = [], sdk = true, silicon = true,
-  rosetta = true, cmakeVersion = '3.31.6' } = {}) {
+  rosetta = true, cmakeVersion = '3.31.6', sdks = [], unlinkable = [] } = {}) {
   const files = new Set([
     ...['git', 'make', 'patch', 'curl', 'hdiutil', 'clang', 'clang++', 'python3'].map(name => `/usr/bin/${name}`),
     ...['brew', 'cmake', 'python3', '7zz'].map(name => `${prefix}/bin/${name}`),
@@ -14,15 +14,17 @@ function fixture({ prefix = '/opt/homebrew', missing = [], sdk = true, silicon =
   ].filter(file => !missing.includes(file.split('/').pop())));
   const calls = [];
   const exists = file => files.has(file);
+  const list = directory => directory === '/SDK' ? sdks : [];
   const run = async (command, args, env) => {
     calls.push({ command, args, env });
     if (command === '/usr/bin/xcrun') return { ok: sdk, stdout: sdk ? '/SDK/MacOSX.sdk' : '' };
     if (command === '/usr/sbin/sysctl') return { ok: true, stdout: silicon ? '1' : '0' };
     if (command === '/usr/bin/arch') return { ok: rosetta, stdout: '' };
+    if (args.includes('-isysroot')) return { ok: !unlinkable.includes(args[args.indexOf('-isysroot') + 1]), stdout: '' };
     if (!command || !exists(command)) return { ok: false, stdout: '' };
     return { ok: true, stdout: command.endsWith('/cmake') ? `cmake version ${cmakeVersion}` : 'version' };
   };
-  return { exists, run, calls };
+  return { exists, list, run, calls };
 }
 
 test('Finder PATH resolves Homebrew tools on both Mac architectures without changing the parent environment', async () => {
@@ -81,4 +83,28 @@ test('private tools take priority and managed setup asks only for Apple installs
   assert.ok(!fake.calls.some(call => ['/usr/bin/git', '/usr/bin/python3', '/usr/bin/clang', '/usr/bin/clang++'].includes(call.command)));
   const env = mac.environment({ PATH: '/usr/bin:/bin', SMS_BUILD_TOOLS_BIN: '/Users/player/Library/Application Support/SMS Launcher/build-tools/macos-arm64/env/bin' }, fixture().exists);
   assert.equal(env.PATH.split(':')[0], '/Users/player/Library/Application Support/SMS Launcher/build-tools/macos-arm64/env/bin');
+});
+
+test('keeps the default SDK when Apple\'s linker accepts it', async () => {
+  const fake = fixture({ sdks: ['MacOSX.sdk', 'MacOSX26.5.sdk'] });
+  const inspection = await mac.inspect({}, fake);
+  assert.equal(inspection.sdkPath, '/SDK/MacOSX.sdk');
+  const probes = fake.calls.filter(call => call.args.includes('-isysroot'));
+  assert.deepEqual(probes.map(call => [call.command, call.env.SDKROOT]), [['/usr/bin/clang++', '/SDK/MacOSX.sdk']]);
+  assert.ok(probes[0].args.includes('x86_64'));
+});
+
+test('uses the newest installed SDK that links when the default is newer than the linker', async () => {
+  const fake = fixture({ sdks: ['MacOSX.sdk', 'MacOSX26.4.sdk', 'MacOSX26.5.sdk', 'MacOSX26.10.sdk', 'MacOSX27.0.sdk', 'notes.txt'],
+    unlinkable: ['/SDK/MacOSX.sdk', '/SDK/MacOSX27.0.sdk', '/SDK/MacOSX26.10.sdk'] });
+  const inspection = await mac.inspect({}, fake);
+  assert.equal(inspection.sdkPath, '/SDK/MacOSX26.5.sdk');
+  assert.deepEqual(fake.calls.filter(call => call.args.includes('-isysroot')).map(call => call.env.SDKROOT),
+    ['/SDK/MacOSX.sdk', '/SDK/MacOSX27.0.sdk', '/SDK/MacOSX26.10.sdk', '/SDK/MacOSX26.5.sdk']);
+  assert.equal(mac.report(inspection).ready, true);
+});
+
+test('falls back to the default SDK when no SDK links', async () => {
+  const fake = fixture({ sdks: ['MacOSX27.0.sdk'], unlinkable: ['/SDK/MacOSX.sdk', '/SDK/MacOSX27.0.sdk'] });
+  assert.equal((await mac.inspect({}, fake)).sdkPath, '/SDK/MacOSX.sdk');
 });

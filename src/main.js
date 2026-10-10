@@ -550,6 +550,7 @@ async function play(installation = null) {
     env.SMS_GX_SHADER_CACHE = portable.shaderCache(portableRoot, settings.arch);
     fs.mkdirSync(path.dirname(env.SMS_GX_SHADER_CACHE), { recursive: true });
   }
+  if (portableRoot && !env.SMS_TEXTURE_PACK_CACHE) env.SMS_TEXTURE_PACK_CACHE = portable.textureCache(portableRoot);
   const cmd = settings.eclipse
     ? port.eclipseRunCommand(root, settings, disc, process.platform, env)
     : port.commandFor(root, 'run', [disc], process.platform, env);

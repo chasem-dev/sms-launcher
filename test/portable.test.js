@@ -48,6 +48,7 @@ test('paths inside the portable folder are saved relative and follow it when mov
 test('portable games keep their shader cache in the portable folder', () => {
   assert.equal(portable.shaderCache(root, '64'), path.join(root, 'cache', 'gx-programs-64.bin'));
   assert.equal(portable.shaderCache(root, '32'), path.join(root, 'cache', 'gx-programs-32.bin'));
+  assert.equal(portable.textureCache(root), path.join(root, 'cache', 'texture-mips'));
 });
 
 test('a sibling folder with a similar name is not treated as inside', () => {

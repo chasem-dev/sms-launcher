@@ -14,6 +14,7 @@ const updateChannel = require('./update-channel');
 const bindings = require('./bindings');
 const prompts = require('./prompts');
 const gameSource = require('./game-source');
+const portable = require('./portable');
 const telemetry = require('./telemetry');
 const discord = require('./discord');
 const presence = require('./presence');
@@ -35,6 +36,14 @@ let preparingTools = false;
 let operation = null;
 let appUpdate = { state: 'idle', message: '' };
 let updater = null;
+// Before anything reads userData: the single-instance lock is keyed on it too,
+// so each portable folder runs independently of an installed launcher.
+const portableRoot = portable.root();
+if (portableRoot) {
+  fs.mkdirSync(portableRoot, { recursive: true });
+  app.setPath('userData', portableRoot);
+  app.setPath('sessionData', path.join(portableRoot, 'Electron'));
+}
 const activityLog = createActivityLog();
 const partialOutput = new Map();
 const sessionLog = createSessionLog(() => app.getPath('userData'), error =>
@@ -156,13 +165,13 @@ function saveConfig() {
   const file = configFile();
   fs.mkdirSync(path.dirname(file), { recursive: true });
   const temporary = `${file}.tmp`;
-  fs.writeFileSync(temporary, JSON.stringify(config, null, 2), { mode: 0o600 });
+  fs.writeFileSync(temporary, JSON.stringify(portable.storedPaths(config, portableRoot), null, 2), { mode: 0o600 });
   fs.renameSync(temporary, file);
 }
 
 function loadConfig() {
   let saved = {};
-  try { saved = JSON.parse(fs.readFileSync(configFile(), 'utf8')); } catch (_) { /* first run */ }
+  try { saved = portable.resolvedPaths(JSON.parse(fs.readFileSync(configFile(), 'utf8')), portableRoot); } catch (_) { /* first run */ }
   config = {
     repo: typeof saved.repo === 'string' ? saved.repo : defaultRepo(),
     rom: typeof saved.rom === 'string' ? saved.rom : '',
@@ -616,7 +625,7 @@ function state() {
   const ready = repoReady && binaryReady();
   const installedBuild = ready ? game.installed(config.repo, config.settings) : null;
   return {
-    config, platform: info, repoReady,
+    config, platform: info, repoReady, portable: Boolean(portableRoot),
     romReady: Boolean(config.rom) && !romError, romError,
     eclipseInstalled: repoReady && fs.existsSync(path.join(config.repo, port.ECLIPSE_ISO)),
     hdVisualsReady: repoReady && port.hdVisualsInstalled(config.repo, config.settings),
@@ -742,6 +751,12 @@ function setupTelemetry() {
 function setupAppUpdater() {
   const url = process.env.SMS_LAUNCHER_UPDATE_URL;
   const bundledFeed = fs.existsSync(path.join(process.resourcesPath, 'app-update.yml'));
+  // The updater would replace a portable launcher with the installer build.
+  if (portableRoot) {
+    appUpdate = { state: 'unconfigured', message: 'Portable launcher: download new versions from the releases page.' };
+    ipcMain.handle('check-app-update', () => appUpdate);
+    return;
+  }
   if (!app.isPackaged || (!url && !bundledFeed) || (process.platform === 'linux' && !process.env.APPIMAGE)) {
     appUpdate = { state: 'unconfigured', message: app.isPackaged ? 'Launcher updates are unavailable for this install.' : 'Launcher updates come with new releases.' };
     ipcMain.handle('check-app-update', () => appUpdate);

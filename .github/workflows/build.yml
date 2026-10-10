@@ -291,7 +291,7 @@ jobs:
           release="https://github.com/$REPO/releases/tag/pr-$PR"
           assets=$(gh release view "pr-$PR" --repo "$REPO" --json assets --jq '.assets[] | [.name, .url, .size] | @tsv' |
             grep -E '\.(exe|dmg|AppImage)\s' | sort | while IFS=$'\t' read -r name url size; do
-              case "$name" in *.AppImage) os=Linux;; *.dmg) os=macOS;; *) os=Windows;; esac
+              case "$name" in *.AppImage) os=Linux;; *.dmg) os=macOS;; *-win-portable.exe) os="Windows (portable)";; *) os=Windows;; esac
               echo "| $os | [$name]($url) | $((size / 1048576)) MB |"
             done)
           {

@@ -564,6 +564,9 @@ function refresh(data) {
   if (!capture) renderBindings();
   $('reset-bindings').disabled = Boolean(data.active);
   renderUpdateChannels(config.settings.updateChannel);
+  // Portable launchers update by downloading a new .exe, so channels do not apply.
+  $('update-channel-field').hidden = data.portable;
+  $('update-channel-note').hidden = data.portable;
   renderGameSource(data);
   for (const key of ['arch', 'widescreen', 'resolution', 'volume', 'frameRate', 'vsync', 'skipMovies', 'heatHaze', 'overlay', 'fullscreen', 'fullscreenMode', 'exclusiveResolution', 'display', 'invertCameraX', 'invertCameraY', 'freeCamera', 'cameraSpeed', 'mouseCamera', 'mouseSensitivity', 'msaa', 'fxaa', 'anisotropic', 'sharpen', 'brightness', 'aspect', 'presentFilter', 'hudEdges', 'textures', 'cutscenes', 'eclipse', 'autoUpdate', 'shareUsage', 'discordPresence', 'updateChannel', 'buttonPrompts', 'promptPad', 'graphicsPreset', 'fsrMode'])
     $(key).disabled = Boolean(data.active);

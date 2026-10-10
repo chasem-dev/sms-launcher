@@ -102,6 +102,16 @@ HD textures are **on by default for first-time setup**. In Sunshine mode, this a
 
 If HD setup is incomplete, choose **Finish HD setup** to download and prepare the missing files. Previously installed textures and movies are reused. The launcher shows download progress and checks all movies before activating the pack. Failed or cancelled setup keeps the previous pack. Your original disc and saves stay intact. Eclipse keeps its own movies.
 
+**Settings → Visuals → HD texture loading** chooses when HD textures load:
+
+- **Before each level** (default): a level's textures load while it loads, so they don't appear late while you play.
+- **Whole pack**: the rest of the HD textures load during the first few loading screens and all of them stay loaded, so after that none load at all. This needs a graphics card with at least 6 GB of memory.
+- **While playing**: each texture loads the first time it appears, which uses the least memory. The original texture shows until the HD one is ready.
+
+The first time each HD texture is used, the game also builds its smaller versions for distant surfaces, in the background at low priority, and keeps them for later sessions (about 1 GB once you've seen the whole game).
+
+**Prepare shaders ahead** (on by default) builds the graphics effects each level is known to use while the level loads, instead of the first time they're drawn. Without it, the first moments in a new level stutter on the first play on each computer. Turn it off to load levels slightly faster on the first play.
+
 ### Updates
 
 When a game update is ready, the main button becomes **Update & play**. Choose **Skip update & play** beside it to launch your installed version without downloading or rebuilding. Your current game stays available until the new setup succeeds.

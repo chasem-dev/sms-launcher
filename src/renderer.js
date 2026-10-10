@@ -370,15 +370,19 @@ function showWizardStep(data) {
   const needsMacTools = data.platform.id === 'macos' && !data.tools.appleReady;
   $('mac-setup-help').hidden = !needsMacTools;
   $('mac-tools-settings').hidden = data.platform.id !== 'macos';
-  $('tool-location-note').textContent = data.platform.id === 'macos'
-    ? data.tools.appleReady ? 'Build tools download to the launcher’s own folder.' : 'This Mac needs Apple’s tools first. Open Mac setup help to get started.'
-    : "Any tools we download stay in the launcher's own folder.";
+  $('tool-location-note').textContent = data.portable
+    ? 'Setup files and tools download to the SMS-Launcher-Portable folder beside the launcher.'
+    : data.platform.id === 'macos'
+      ? data.tools.appleReady ? 'Build tools download to the launcher’s own folder.' : 'This Mac needs Apple’s tools first. Open Mac setup help to get started.'
+      : "Any tools we download stay in the launcher's own folder.";
   if (needsMacTools) {
     $('setup-download-title').textContent = 'Prepare this Mac';
     $('setup-download-description').textContent = 'Check the tools needed before downloading and preparing your game.';
   }
   $('repo-location').hidden = data.repoReady;
-  $('choose-location').hidden = data.repoReady;
+  // The portable launcher keeps everything in its own folder, so there is no location to choose.
+  $('choose-location').hidden = data.repoReady || data.portable;
+  $('choose-repo-settings').hidden = data.portable;
   for (let step = 1; step <= 3; step++)
     $(`setup-step-${step}`).hidden = ready || step !== wizardStep;
   if (ready) $('play').textContent = downloadTextures

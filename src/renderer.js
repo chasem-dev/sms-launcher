@@ -1066,6 +1066,41 @@ $('window-minimize').addEventListener('click', () => window.sms.minimizeWindow()
 $('window-fullscreen').addEventListener('click', () => window.sms.toggleFullScreen().then(renderWindowState).catch(showError));
 $('window-close').addEventListener('click', () => window.sms.closeWindow());
 window.sms.onWindowState(renderWindowState);
+
+// --- Controller navigation (src/gamepad-nav.js).
+const openDialog = () => [...document.querySelectorAll('.launcher-modal[open]')].pop();
+const settingsViews = ['settings', 'controls', 'maintenance'];
+const settingsView = () => settingsViews.find(name => !$(`${name}-view`).hidden);
+// LB / RB step through Settings, Controls and Manage game with their own buttons.
+function stepSettingsView(step) {
+  if (!$('page-settings').open) return;
+  const target = settingsViews[settingsViews.indexOf(settingsView()) + step];
+  if (!target) return;
+  if (settingsView() === 'controls') $('controls-back').click();
+  if (settingsView() === 'maintenance') $('back-to-settings').click();
+  if (target !== 'settings') $(target === 'controls' ? 'open-controls' : 'open-maintenance').click();
+}
+function gamepadBack() {
+  const dialog = openDialog();
+  if (dialog?.id === 'page-settings' && settingsView() !== 'settings') stepSettingsView(-settingsViews.indexOf(settingsView()));
+  else if (dialog) dialog.close();
+  else if (consoleOpen) setConsoleOpen(false);
+  else [...document.querySelectorAll('[data-setup-back]')].find(button => !button.disabled && button.offsetParent)?.click();
+}
+window.smsGamepadNav.start({
+  document, window,
+  regions: '.switch, .quick-control, .field',
+  defaultFocus: () => [$('play'), $('settings-cog')],
+  // The game reads the same controller, and Controls waits for a button to bind.
+  paused: () => current?.active?.label === 'Play Super Mario Sunshine' || Boolean(capture),
+  actions: {
+    back: gamepadBack,
+    menu: () => openDialog() ? closeModal() : $('settings-cog').click(),
+    view: () => consoleOpen ? setConsoleOpen(false) : showActivityLog(),
+    previous: () => stepSettingsView(-1),
+    next: () => stepSettingsView(1)
+  }
+});
 window.sms.windowState().then(renderWindowState).catch(showError);
 setInterval(() => { if (current?.active) renderActivity(current.active); }, 1000);
 sync().then(() => { for (const line of current.logs) appendLog(line); showWhatsNew(); }).catch(showError);

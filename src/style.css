@@ -418,3 +418,14 @@ pre { height: 120px; margin: 0; padding: 12px; overflow: auto; border-radius: 8p
 .dolphin-save-drop { margin: 14px 0; padding: 16px; border: 2px dashed #6eafba; border-radius: 14px; background: #f1fafb; }
 .dolphin-save-drop.drag-over { border-color: #08798b; background: #d8f5f4; }
 .dolphin-save-drop[aria-disabled="true"] { opacity: .55; }
+
+/* Controller navigation: always show where focus is, even where :focus-visible would hide it. */
+.gamepad-active :is(button, select, input, summary, pre, a):focus { outline: 3px solid #ffc75a; outline-offset: 3px; }
+.gamepad-active .switch input:focus { outline: none; }
+.gamepad-active .switch:focus-within { outline: 3px solid #ffc75a; outline-offset: 3px; border-radius: 6px; }
+.gamepad-active .launcher-modal :is(button, select, input, summary, pre, a):focus,
+.gamepad-active .launcher-modal .switch:focus-within { outline-color: #0f7f8a; }
+.gamepad-hints { display: none; align-items: center; gap: 5px; margin-left: auto; color: #d2eaf0; white-space: nowrap; }
+.gamepad-hints kbd { margin-left: 7px; padding: 1px 5px; border: 1px solid #ffffff55; border-radius: 4px; background: #ffffff1a; color: #fff; font-family: inherit; font-size: 10px; font-weight: 700; line-height: 1.4; }
+.gamepad-active .gamepad-hints { display: flex; }
+.gamepad-active .byo { margin-left: 14px; }

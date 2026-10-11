@@ -28,7 +28,7 @@ contextBridge.exposeInMainWorld('sms', {
   clean: () => ipcRenderer.invoke('clean'),
   backupSaves: () => ipcRenderer.invoke('backup-saves'),
   steamStatus: () => ipcRenderer.invoke('steam-status'),
-  addToSteam: () => ipcRenderer.invoke('add-to-steam'),
+  addToSteam: options => ipcRenderer.invoke('add-to-steam', options),
   importDolphinSave: file => {
     const filePath = file ? webUtils.getPathForFile(file) : null;
     if (file && !filePath) throw new Error('Drop a .gci file from your computer.');

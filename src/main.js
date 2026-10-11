@@ -273,7 +273,8 @@ async function steamStatus() {
   return { available: true, inSteam: steam.hasShortcut({ ...located, exe }) };
 }
 
-async function addToSteam() {
+// `play` (Skip Launcher) adds `--play`, so Steam starts the game without the launcher's window.
+async function addToSteam({ play = false } = {}) {
   const exe = launcherExe();
   if (!exe) throw new Error(process.platform === 'linux' ? 'Add to Steam works from the launcher AppImage.' : 'Add to Steam works from the installed launcher on Windows and Linux.');
   if (startedFromSteam()) throw new Error('The launcher was started from Steam, so it is already in your Steam library.');
@@ -301,12 +302,12 @@ async function addToSteam() {
     await new Promise(resolve => setTimeout(resolve, 1500)); // Steam's last writes
   }
   const results = steam.addShortcut({ root, accounts, exe, startDir: path.dirname(exe), artwork,
-    launchOptions: process.platform === 'linux' ? '--no-sandbox' : '' });
+    launchOptions: process.platform === 'linux' ? '--no-sandbox' : '', play: Boolean(play) });
   const added = results.some(result => result.added);
   const images = Math.min(...results.map(result => result.artwork));
-  log(`${added ? 'Added' : 'Updated'} ${steam.APP_NAME} in Steam (${images} of ${steam.ARTWORK.length} artwork images, ${root}).`);
+  log(`${added ? 'Added' : 'Updated'} ${steam.APP_NAME} in Steam${play ? ' with Skip Launcher' : ''} (${images} of ${steam.ARTWORK.length} artwork images, ${root}).`);
   if (wasRunning) shell.openExternal('steam://open/games').catch(() => {});
-  return { added, name: steam.APP_NAME, artwork: images, total: steam.ARTWORK.length, reopened: wasRunning };
+  return { added, play: Boolean(play), name: steam.APP_NAME, artwork: images, total: steam.ARTWORK.length, reopened: wasRunning };
 }
 
 function requireRepo() {
@@ -1030,7 +1031,7 @@ function registerHandlers() {
   ipcMain.handle('clean-preview', () => exclusive('Preview cleanup', () => clean(true)));
   ipcMain.handle('backup-saves', () => exclusive('Back up saves', () => makeSaveBackup('manual')));
   ipcMain.handle('steam-status', () => steamStatus());
-  ipcMain.handle('add-to-steam', () => exclusive('Add to Steam', addToSteam));
+  ipcMain.handle('add-to-steam', (_event, options) => exclusive('Add to Steam', () => addToSteam(options)));
   ipcMain.handle('import-dolphin-save', (_event, file) => exclusive('Import Dolphin save', async () => {
     if (file == null) {
       const chosen = await dialog.showOpenDialog(window, { title: 'Import Dolphin save',

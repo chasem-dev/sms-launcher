@@ -73,6 +73,19 @@ test('on Linux, paths match exactly and the AppImage gets its launch options', (
   assert.equal(field(result.fields, 'LaunchOptions'), '--no-sandbox');
 });
 
+test('Skip Launcher adds --play to the launch options, and turning it off removes it', () => {
+  const root = [[MAP, 'shortcuts', []]];
+  const options = { exe: '/home/deck/Apps/SMS-Launcher.AppImage', startDir: '/home/deck/Apps', launchOptions: '--no-sandbox', platform: 'linux' };
+  const added = steam.upsertShortcut(root, { ...options, play: true });
+  assert.equal(field(added.fields, 'LaunchOptions'), '--no-sandbox --play');
+  // the player's own options stay, and --play is never doubled
+  added.fields.find(entry => entry[1] === 'LaunchOptions')[2] = '--no-sandbox --play -fullscreen';
+  assert.equal(field(steam.upsertShortcut(root, { ...options, play: true }).fields, 'LaunchOptions'), '--no-sandbox -fullscreen --play');
+  assert.equal(field(steam.upsertShortcut(root, { ...options, play: false }).fields, 'LaunchOptions'), '--no-sandbox -fullscreen');
+  assert.equal(field(steam.upsertShortcut(root, options).fields, 'LaunchOptions'), '--no-sandbox -fullscreen');
+  assert.equal(field(root, 'shortcuts').length, 1);
+});
+
 test('Steam is looked for where each system installs it', () => {
   const linux = steam.steamRoots({ platform: 'linux', home: '/home/deck' });
   assert.ok(linux.includes('/home/deck/.local/share/Steam'));

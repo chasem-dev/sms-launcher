@@ -128,7 +128,7 @@ After the launcher updates, its changelog opens once to show what changed in the
 
 ### Start the game from Steam
 
-To go straight into the game from Steam or another shortcut, add `--play` to the launcher's launch options (in Steam: Properties → Launch Options; on Linux keep `--no-sandbox` too, as in `--no-sandbox --play`). The game starts with your launcher settings, without the launcher's window, and Steam shows it running until you quit. Your saves are backed up before and after, as they are when you press Play.
+The [Add to Steam](#add-to-steam) banner sets this up for you when you turn on **Skip Launcher**. To go straight into the game from Steam or another shortcut yourself, add `--play` to the launcher's launch options (in Steam: Properties → Launch Options; on Linux keep `--no-sandbox` too, as in `--no-sandbox --play`). The game starts with your launcher settings, without the launcher's window, and Steam shows it running until you quit. Your saves are backed up before and after, as they are when you press Play.
 
 `--play` never downloads or builds anything. If the game needs setup, an update (with **Update automatically** on), or HD downloads, or if it closes with an error, the launcher opens instead so you can see why. Launcher updates are only checked while the launcher is open, so open it now and then.
 
@@ -151,6 +151,7 @@ Export your North American Super Mario Sunshine save (`GMSE01`, `super_mario_sun
 
 The **Add to Steam** banner on the home screen, under the Discord one, adds the launcher to your Steam library as a non-Steam game called **Super Mario Sunshine**, with artwork from [SteamGridDB](https://www.steamgriddb.com/game/34899): the library capsule, wide capsule, header, logo and icon. You can then start it from Steam, Big Picture, or a Steam Deck's Game Mode. On a Steam Deck, add it from Desktop Mode.
 
+- It first asks whether to **Skip Launcher**. With it on, the shortcut gets `--play`, so Steam starts the game straight away (see [Start the game from Steam](#start-the-game-from-steam)); turn it off to open the launcher from Steam instead. Your other launch options are kept.
 - If Steam is open, it closes for a moment and opens again, because Steam picks up new non-Steam games only when it starts.
 - The launcher is added for the Steam account that signed in last. Choosing it again updates the same entry instead of adding another.
 - Steam's list of non-Steam games is backed up first, as `shortcuts.vdf.sms-launcher-backup` beside it.

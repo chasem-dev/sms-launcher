@@ -1000,16 +1000,20 @@ async function refreshSteamBanner() {
     $('add-to-steam').hidden = !status.available || status.inSteam;
   } catch { $('add-to-steam').hidden = true; }
 }
-$('add-to-steam').addEventListener('click', async () => {
+// The banner asks first whether Steam should skip the launcher (`--play`).
+$('add-to-steam').addEventListener('click', () => $('steam-add').showModal());
+$('steam-add-confirm').addEventListener('click', async () => {
+  $('steam-add').close();
   $('add-to-steam').disabled = true;
   $('steam-banner-detail').textContent = 'Adding to Steam…';
   try {
-    const done = await window.sms.addToSteam();
+    const done = await window.sms.addToSteam({ play: $('steam-skip-launcher').checked });
     if (done.cancelled) setMessage('Not added. Steam needs to close for a moment to add the launcher.');
     else {
       const art = done.artwork === done.total ? ' with its artwork'
         : done.artwork ? ` with ${done.artwork} of ${done.total} artwork images (SteamGridDB didn't send the rest)` : " without artwork (SteamGridDB couldn't be reached)";
-      setMessage(`${done.added ? 'Added' : 'Updated'} "${done.name}" in your Steam library${art}. ${done.reopened ? 'Steam is opening again.' : 'Open Steam to find it.'}`);
+      const skip = done.play ? ' It starts the game straight away; open the launcher itself now and then for launcher updates.' : '';
+      setMessage(`${done.added ? 'Added' : 'Updated'} "${done.name}" in your Steam library${art}. ${done.reopened ? 'Steam is opening again.' : 'Open Steam to find it.'}${skip}`);
     }
   } catch (error) { showError(error); }
   finally {

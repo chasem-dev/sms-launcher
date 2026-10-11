@@ -283,6 +283,8 @@ pre { height: 120px; margin: 0; padding: 12px; overflow: auto; border-radius: 8p
 .controls-panel .actions { margin-top: 12px; }
 .modal-body { min-height: 0; overflow: auto; padding: 18px 24px 24px; }
 .changelog-modal { width: min(660px, calc(100% - 36px)); }
+.steam-modal { width: min(460px, calc(100% - 36px)); }
+.steam-actions { justify-content: flex-end; margin-top: 16px; }
 .changelog-list { display: grid; gap: 12px; color: #637980; font-size: 13px; }
 .changelog-release { padding: 15px 18px 16px; border: 1px solid #dfe9e8; border-radius: 12px; background: #fff; }
 .changelog-release header { display: flex; align-items: center; gap: 8px; }

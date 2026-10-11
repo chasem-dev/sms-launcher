@@ -120,6 +120,14 @@
       <div class="modal-body"><div id="changelog-list" class="changelog-list" aria-live="polite"></div><div class="actions changelog-actions"><button class="subtle" id="changelog-show-all" hidden>Show all releases</button><button class="text-button" id="changelog-page">View on GitHub ↗</button></div></div>
     </dialog>
 
+    <dialog id="steam-add" class="launcher-modal steam-modal" aria-label="Add to Steam">
+      <div class="modal-head"><div><h1>Add to Steam</h1><p>Adds Super Mario Sunshine to your Steam library, with artwork.</p></div><button class="modal-close" data-close-modal aria-label="Close Add to Steam">×</button></div>
+      <div class="modal-body">
+        <label class="switch"><span><strong>Skip Launcher</strong><small>Steam starts the game straight away with your launcher settings. The launcher still opens when the game needs setup or an update.</small></span><input id="steam-skip-launcher" type="checkbox"><i></i></label>
+        <div class="actions steam-actions"><button class="subtle" data-close-modal>Cancel</button><button id="steam-add-confirm" class="solid">Add to Steam</button></div>
+      </div>
+    </dialog>
+
     <dialog id="mac-tools-help" class="launcher-modal" aria-label="Mac setup help">
       <div class="modal-head"><div><h1>Prepare this Mac</h1><p>A one-time setup before we can prepare your game.</p></div><button class="modal-close" data-close-modal aria-label="Close Mac setup help">×</button></div>
       <div class="modal-body">

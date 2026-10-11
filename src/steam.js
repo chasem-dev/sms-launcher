@@ -122,10 +122,18 @@ function samePath(a, b, platform) {
 const findShortcut = (list, exe, platform) =>
   list.find(entry => entry[0] === MAP && field(entry[2], 'exe') && samePath(unquote(field(entry[2], 'exe')[2]), exe, platform));
 
+// Launch options with `--play` (Skip Launcher: Steam starts the game without
+// the launcher's window) added or removed, keeping the player's other options.
+function withPlay(options, play) {
+  const rest = options.split(/\s+/).filter(option => option && option !== '--play');
+  return [...rest, ...(play ? ['--play'] : [])].join(' ');
+}
+
 // Adds the launcher to a parsed shortcuts.vdf, or finds it by its Exe when it
 // is already there (added before, or by hand), keeping that entry's app ID
 // and name so its play time, collections and the player's name for it stay.
-function upsertShortcut(root, { exe, startDir, appName = APP_NAME, launchOptions = '', platform = process.platform }) {
+// `play` turns Skip Launcher on or off; left out, the options stay as they are.
+function upsertShortcut(root, { exe, startDir, appName = APP_NAME, launchOptions = '', play, platform = process.platform }) {
   let shortcuts = field(root, 'shortcuts');
   if (!shortcuts) { shortcuts = [MAP, 'shortcuts', []]; root.push(shortcuts); }
   const list = shortcuts[2];
@@ -137,13 +145,14 @@ function upsertShortcut(root, { exe, startDir, appName = APP_NAME, launchOptions
     if (!field(fields, 'appid')) setField(fields, INT32, 'appid', shortcutAppId(quotedExe, name) | 0);
     if (!unquote(field(fields, 'startdir')?.[2])) setField(fields, STRING, 'StartDir', `"${startDir}"`);
     if (launchOptions && !field(fields, 'launchoptions')?.[2]) setField(fields, STRING, 'LaunchOptions', launchOptions);
+    if (play !== undefined) setField(fields, STRING, 'LaunchOptions', withPlay(field(fields, 'launchoptions')?.[2] || '', play));
     return { appId: field(fields, 'appid')[2] >>> 0, fields, added: false };
   }
   const appId = shortcutAppId(quotedExe, appName);
   // The fields, names and order Steam itself writes
   const fields = [
     [INT32, 'appid', appId | 0], [STRING, 'appname', appName], [STRING, 'exe', quotedExe], [STRING, 'StartDir', `"${startDir}"`],
-    [STRING, 'icon', ''], [STRING, 'ShortcutPath', ''], [STRING, 'LaunchOptions', launchOptions], [INT32, 'IsHidden', 0],
+    [STRING, 'icon', ''], [STRING, 'ShortcutPath', ''], [STRING, 'LaunchOptions', withPlay(launchOptions, play)], [INT32, 'IsHidden', 0],
     [INT32, 'AllowDesktopConfig', 1], [INT32, 'AllowOverlay', 1], [INT32, 'OpenVR', 0], [INT32, 'Devkit', 0],
     [STRING, 'DevkitGameID', ''], [INT32, 'DevkitOverrideAppID', 0], [INT32, 'LastPlayTime', 0], [STRING, 'FlatpakAppID', ''],
     [STRING, 'sortas', ''], [MAP, 'tags', []]
@@ -219,7 +228,7 @@ function writeAtomically(file, data, files) {
 
 // Adds the launcher to each account's shortcuts.vdf (backing up the old file
 // first) and saves its artwork. Steam must be closed.
-function addShortcut({ root, accounts, exe, startDir, appName = APP_NAME, launchOptions = '', artwork = [], platform = process.platform, files = fs }) {
+function addShortcut({ root, accounts, exe, startDir, appName = APP_NAME, launchOptions = '', play, artwork = [], platform = process.platform, files = fs }) {
   return accounts.map(account => {
     const config = path.join(root, 'userdata', account, 'config');
     const vdf = path.join(config, 'shortcuts.vdf');
@@ -227,7 +236,7 @@ function addShortcut({ root, accounts, exe, startDir, appName = APP_NAME, launch
     let data = null;
     try { data = files.readFileSync(vdf); } catch (error) { if (error.code !== 'ENOENT') throw error; }
     const parsed = data ? parseVdf(data) : [[MAP, 'shortcuts', []]];
-    const shortcut = upsertShortcut(parsed, { exe, startDir, appName, launchOptions, platform });
+    const shortcut = upsertShortcut(parsed, { exe, startDir, appName, launchOptions, play, platform });
     const saved = [];
     for (const piece of artwork) {
       if (!piece.data) continue;

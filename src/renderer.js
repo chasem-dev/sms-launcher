@@ -991,6 +991,39 @@ async function importDolphinSave(file) {
   } catch (error) { resultText.textContent = error.message || String(error); await sync(); }
 }
 $('import-dolphin-save').addEventListener('click', () => importDolphinSave());
+// Add to Steam, under the Discord banner: shown while the launcher can add
+// itself to Steam and is not in its library yet.
+const STEAM_DETAIL = $('steam-banner-detail').textContent;
+async function refreshSteamBanner() {
+  try {
+    const status = await window.sms.steamStatus();
+    $('add-to-steam').hidden = !status.available || status.inSteam;
+  } catch { $('add-to-steam').hidden = true; }
+}
+// The banner asks first whether Steam should skip the launcher (`--play`).
+$('add-to-steam').addEventListener('click', () => $('steam-add').showModal());
+$('steam-add-confirm').addEventListener('click', async () => {
+  $('steam-add').close();
+  $('add-to-steam').disabled = true;
+  $('steam-banner-detail').textContent = 'Adding to Steam…';
+  try {
+    const done = await window.sms.addToSteam({ play: $('steam-skip-launcher').checked });
+    if (done.cancelled) setMessage('Not added. Steam needs to close for a moment to add the launcher.');
+    else {
+      const art = done.artwork === done.total ? ' with its artwork'
+        : done.artwork ? ` with ${done.artwork} of ${done.total} artwork images (SteamGridDB didn't send the rest)` : " without artwork (SteamGridDB couldn't be reached)";
+      const skip = done.play ? ' It starts the game straight away; open the launcher itself now and then for launcher updates.' : '';
+      setMessage(`${done.added ? 'Added' : 'Updated'} "${done.name}" in your Steam library${art}. ${done.reopened ? 'Steam is opening again.' : 'Open Steam to find it.'}${skip}`);
+    }
+  } catch (error) { showError(error); }
+  finally {
+    $('add-to-steam').disabled = false;
+    $('steam-banner-detail').textContent = STEAM_DETAIL;
+    await refreshSteamBanner();
+    await sync();
+  }
+});
+refreshSteamBanner();
 const dolphinDrop = $('dolphin-save-drop');
 for (const type of ['dragenter', 'dragover']) dolphinDrop.addEventListener(type, event => {
   event.preventDefault();

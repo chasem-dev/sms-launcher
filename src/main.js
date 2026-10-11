@@ -11,6 +11,8 @@ const gciSave = require('./gci-save');
 const buildTools = require('./build-tools');
 const game = require('./game-version');
 const updateChannel = require('./update-channel');
+const steam = require('./steam');
+const appImageUpdate = require('./appimage-update');
 const bindings = require('./bindings');
 const prompts = require('./prompts');
 const gameSource = require('./game-source');
@@ -222,6 +224,90 @@ async function exclusive(label, callback, newLog = false) {
     throw error;
   }
   finally { operation = null; broadcast('activity', null); }
+}
+
+// Add to Steam (steam.js). Steam reads non-Steam games only when it starts and
+// writes them back when it closes, so an open Steam closes first (steam://exit)
+// and opens again afterwards.
+function steamRunning() {
+  const [command, args] = process.platform === 'win32' ? ['tasklist', ['/FI', 'IMAGENAME eq steam.exe', '/NH']] : ['pgrep', ['-x', 'steam']];
+  return new Promise(resolve => execFile(command, args, { windowsHide: true },
+    (error, stdout) => resolve(process.platform === 'win32' ? /steam\.exe/i.test(stdout || '') : !error)));
+}
+
+function windowsSteamPath() {
+  return new Promise(resolve => execFile('reg', ['query', 'HKCU\\Software\\Valve\\Steam', '/v', 'SteamPath'], { windowsHide: true },
+    (error, stdout) => resolve(error ? null : steam.registrySteamPath(stdout))));
+}
+
+// Steam artwork comes straight from SteamGridDB into memory: no-store keeps it
+// out of the launcher's web cache, so the only copy is the one in Steam's folder.
+async function downloadImage(url) {
+  const response = await net.fetch(url, { cache: 'no-store' });
+  if (!response.ok) throw new Error(`${url}: HTTP ${response.status}`);
+  return Buffer.from(await response.arrayBuffer());
+}
+
+// The file Steam starts: the installed launcher, or the AppImage on Linux.
+// Not in development, and not on macOS.
+function launcherExe() {
+  if (!app.isPackaged || !['win32', 'linux'].includes(process.platform)) return null;
+  return (process.platform === 'linux' ? process.env.APPIMAGE : process.execPath) || null;
+}
+
+const startedFromSteam = () => Boolean(process.env.SteamGameId || process.env.SteamAppId);
+
+async function locateSteam() {
+  const registryPath = process.platform === 'win32' ? await windowsSteamPath() : null;
+  const root = steam.findSteam(steam.steamRoots({ registryPath }));
+  return root ? { root, accounts: steam.steamAccounts(root) } : null;
+}
+
+// For the home screen's Add to Steam banner: offered while Steam is installed
+// and the launcher is not in its library yet.
+async function steamStatus() {
+  const exe = launcherExe();
+  if (!exe || startedFromSteam()) return { available: false };
+  const located = await locateSteam();
+  if (!located || !located.accounts.length) return { available: false };
+  return { available: true, inSteam: steam.hasShortcut({ ...located, exe }) };
+}
+
+// `play` (Skip Launcher) adds `--play`, so Steam starts the game without the launcher's window.
+async function addToSteam({ play = false } = {}) {
+  const exe = launcherExe();
+  if (!exe) throw new Error(process.platform === 'linux' ? 'Add to Steam works from the launcher AppImage.' : 'Add to Steam works from the installed launcher on Windows and Linux.');
+  if (startedFromSteam()) throw new Error('The launcher was started from Steam, so it is already in your Steam library.');
+  const located = await locateSteam();
+  if (!located) throw new Error("Steam isn't installed on this computer, or nobody has signed in to it yet.");
+  const { root, accounts } = located;
+  if (!accounts.length) throw new Error('Sign in to Steam once, then try again.');
+  log('Downloading Steam artwork from SteamGridDB…');
+  const artwork = await steam.downloadArtwork(downloadImage);
+  const wasRunning = await steamRunning();
+  if (wasRunning) {
+    const answer = await dialog.showMessageBox(window, {
+      type: 'question', buttons: ['Cancel', 'Close Steam and add'], defaultId: 1, cancelId: 0,
+      message: 'Close Steam to add the launcher?',
+      detail: 'Steam picks up new non-Steam games only when it starts, so it closes for a moment and opens again afterwards.'
+    });
+    if (answer.response !== 1) return { cancelled: true };
+    log('Closing Steam…');
+    await shell.openExternal('steam://exit');
+    const deadline = Date.now() + 60000;
+    while (await steamRunning()) {
+      if (Date.now() > deadline) throw new Error("Steam didn't close. Close Steam yourself, then choose Add to Steam again.");
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    }
+    await new Promise(resolve => setTimeout(resolve, 1500)); // Steam's last writes
+  }
+  const results = steam.addShortcut({ root, accounts, exe, startDir: path.dirname(exe), artwork,
+    launchOptions: process.platform === 'linux' ? '--no-sandbox' : '', play: Boolean(play) });
+  const added = results.some(result => result.added);
+  const images = Math.min(...results.map(result => result.artwork));
+  log(`${added ? 'Added' : 'Updated'} ${steam.APP_NAME} in Steam${play ? ' with Skip Launcher' : ''} (${images} of ${steam.ARTWORK.length} artwork images, ${root}).`);
+  if (wasRunning) shell.openExternal('steam://open/games').catch(() => {});
+  return { added, play: Boolean(play), name: steam.APP_NAME, artwork: images, total: steam.ARTWORK.length, reopened: wasRunning };
 }
 
 function requireRepo() {
@@ -796,6 +882,8 @@ function setupAppUpdater() {
     return;
   }
   ({ autoUpdater: updater } = require('electron-updater'));
+  // Updates keep the AppImage's name and folder, so Steam shortcuts to it keep working
+  if (process.platform === 'linux') appImageUpdate.keepAppImagePath(updater);
   updater.autoDownload = true;
   updater.autoInstallOnAppQuit = true;
   applyUpdateChannel();
@@ -942,6 +1030,8 @@ function registerHandlers() {
   ipcMain.handle('set-game-source', (_event, input) => exclusive('Choose game source', () => chooseGameSource(input)));
   ipcMain.handle('clean-preview', () => exclusive('Preview cleanup', () => clean(true)));
   ipcMain.handle('backup-saves', () => exclusive('Back up saves', () => makeSaveBackup('manual')));
+  ipcMain.handle('steam-status', () => steamStatus());
+  ipcMain.handle('add-to-steam', (_event, options) => exclusive('Add to Steam', () => addToSteam(options)));
   ipcMain.handle('import-dolphin-save', (_event, file) => exclusive('Import Dolphin save', async () => {
     if (file == null) {
       const chosen = await dialog.showOpenDialog(window, { title: 'Import Dolphin save',

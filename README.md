@@ -22,7 +22,7 @@ Choose the launcher file for your computer:
 | --- | --- |
 | Windows | The `.exe` installer, or `SMS-Launcher-<version>-win-portable.exe` for the portable version |
 | Mac — Intel or Apple Silicon | `SMS-Launcher-<version>-mac-universal.dmg` |
-| Linux | The `.AppImage` |
+| Linux | `SMS-Launcher.AppImage` |
 
 The launcher requires a **64-bit computer** and an internet connection for setup. Required setup tools download automatically.
 
@@ -45,6 +45,8 @@ Use the DMG for the usual drag-and-drop installation. If you download the ZIP in
 ### Linux
 
 Download the `.AppImage`, allow it to run as a program in your file manager's permissions settings, then open it.
+
+To play through Steam (on a Steam Deck, in Desktop Mode), choose the **Add to Steam** banner on the home screen; see [Add to Steam](#add-to-steam). Launcher updates install over the AppImage in place, keeping its name and folder, so the Steam shortcut and any desktop entry keep working.
 
 ## Set up your game
 
@@ -126,7 +128,7 @@ After the launcher updates, its changelog opens once to show what changed in the
 
 ### Start the game from Steam
 
-To go straight into the game from Steam or another shortcut, add `--play` to the launcher's launch options (in Steam: Properties → Launch Options; on Linux keep `--no-sandbox` too, as in `--no-sandbox --play`). The game starts with your launcher settings, without the launcher's window, and Steam shows it running until you quit. Your saves are backed up before and after, as they are when you press Play.
+The [Add to Steam](#add-to-steam) banner sets this up for you when you turn on **Skip Launcher**. To go straight into the game from Steam or another shortcut yourself, add `--play` to the launcher's launch options (in Steam: Properties → Launch Options; on Linux keep `--no-sandbox` too, as in `--no-sandbox --play`). The game starts with your launcher settings, without the launcher's window, and Steam shows it running until you quit. Your saves are backed up before and after, as they are when you press Play.
 
 `--play` never downloads or builds anything. If the game needs setup, an update (with **Update automatically** on), or HD downloads, or if it closes with an error, the launcher opens instead so you can see why. Launcher updates are only checked while the launcher is open, so open it now and then.
 
@@ -144,6 +146,17 @@ In **Settings → Manage game → Saved games**, you can:
 Backups are stored in **SMS Launcher Backups** in your home folder, separate from the launcher installation and game build folders. Copy that folder to another drive or cloud storage for extra protection.
 
 Export your North American Super Mario Sunshine save (`GMSE01`, `super_mario_sunshine`) from Dolphin's Memory Card Manager as a `.gci` file. The importer transfers the entire save, including all three slots. It installs the unchanged save data and the card metadata into the save folder shown in the launcher, including custom locations, on Windows, macOS, and Linux. A fresh card does not need to be created in-game first. Other games, regions, raw memory cards, and `.sav`/`.gcs` files are not supported.
+
+### Add to Steam
+
+The **Add to Steam** banner on the home screen, under the Discord one, adds the launcher to your Steam library as a non-Steam game called **Super Mario Sunshine**, with artwork from [SteamGridDB](https://www.steamgriddb.com/game/34899): the library capsule, wide capsule, header, logo and icon. You can then start it from Steam, Big Picture, or a Steam Deck's Game Mode. On a Steam Deck, add it from Desktop Mode.
+
+- It first asks whether to **Skip Launcher**. With it on, the shortcut gets `--play`, so Steam starts the game straight away (see [Start the game from Steam](#start-the-game-from-steam)); turn it off to open the launcher from Steam instead. Your other launch options are kept.
+- If Steam is open, it closes for a moment and opens again, because Steam picks up new non-Steam games only when it starts.
+- The launcher is added for the Steam account that signed in last. Choosing it again updates the same entry instead of adding another.
+- Steam's list of non-Steam games is backed up first, as `shortcuts.vdf.sms-launcher-backup` beside it.
+- The artwork is not part of the launcher. It downloads from SteamGridDB when you choose Add to Steam and is saved only in Steam's artwork folder.
+- The banner shows on Windows and Linux, from the installed launcher or the AppImage, while Steam is installed and the launcher is not in its library yet.
 
 The launcher asks before importing, warns if save block checksums fail, and makes a verified backup of your existing card before writing. A failed import restores the files it replaced. Import is disabled while the game or another launcher task is running. The source `.gci` is never changed or uploaded. Restore a **Before Dolphin import** backup to recover previous progress.
 

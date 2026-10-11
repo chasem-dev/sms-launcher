@@ -1,32 +1,45 @@
 {
   "_instructions": "Players see this file in the launcher. Add each player-visible change here in the same commit: launcher changes to beta.launcher, game changes Beta now builds to beta.game. Releases move beta into a new entry (npm run update:game does it). One plain sentence for players per line, no commit hashes or PR numbers. See AGENTS.md.",
   "beta": {
-    "launcher": [
-      "Start the game straight from Steam: add --play to the launcher's launch options and the game opens with your launcher settings, without the launcher's window. The launcher opens instead when the game needs setup or an update.",
-      "On Full HD Windows displays scaled above 125%, the launcher is sized as it is at 125% so it fits on screen.",
-      "Fixed the game failing to build on Macs whose newest macOS SDK is newer than their Command Line Tools can link (\"ld: tapi error: malformed file\"). The launcher now builds with the newest installed SDK that works.",
-      "You can now use the launcher with a game controller: move with the stick or d-pad, A selects, B goes back, Start opens Settings, and LB and RB switch between Settings, Controls and Manage game.",
-      "The portable Windows launcher always sets up in its SMS-Launcher-Portable folder without asking for a location, and the game's shader and HD texture caches now stay in that folder too instead of going to AppData.",
-      "Settings → Visuals has HD texture loading (Before each level, Whole pack, or While playing) and Prepare shaders ahead, to choose when the game loads HD textures and builds its shaders.",
-      "Add to Steam: a banner on the home screen, under the Discord one, adds the launcher to your Steam library as Super Mario Sunshine with artwork, for Big Picture and the Steam Deck. Turn on Skip Launcher when you add it and Steam starts the game straight away.",
-      "On Linux, launcher updates keep the AppImage's name and folder, so Steam shortcuts to it keep working. Re-add it to Steam once after this update.",
-      "Invert camera Y is now on by default for new players. Turn it off under Settings → Gameplay."
-    ],
-    "game": [
-      "Super Mario Eclipse now runs the code its v1.1.0 release ships, which removes the extra circle and blinking X button behind the FLUDD gauge in every stage.",
-      "Fixed Super Mario Eclipse crashing when you pick a character after unlocking Piantissimo.",
-      "Super Mario Eclipse's menus fill the widescreen frame properly, and its pause menu's Shine and blue coin counts are back on screen. Its own Aspect Ratio setting is hidden, since the game handles widescreen itself.",
-      "Fixed Super Mario Eclipse overwriting game memory at startup and while riding the green Yoshi.",
-      "Super Mario Eclipse's Delfino Plaza title card and pause menu no longer show \"(null)\" under the area's name.",
-      "The arrow under Super Mario Eclipse's B button balloon is red again instead of black.",
-      "Screen wipes, like the iris and warp transitions, run at their original speed at 60 and 120 fps, so warps no longer cut their sound short.",
-      "Fixed white specks on the sea with the High and Ultra graphics presets.",
-      "The goop Piranha Plant's hit voice plays once at 120 fps instead of twice.",
-      "The game ignores the keyboard and controllers while another window has focus, such as the launcher or another game, so they no longer move Mario in the background.",
-      "Entering a level no longer stutters the first time: the game builds the level's shaders and loads its HD textures into video memory while it loads, and HD textures no longer interrupt play while they finish in the background."
-    ]
+    "launcher": [],
+    "game": []
   },
   "releases": [
+    {
+      "version": "0.1.57",
+      "date": "2026-10-11",
+      "launcher": [
+        "Start the game straight from Steam: add --play to the launcher's launch options and the game opens with your launcher settings, without the launcher's window. The launcher opens instead when the game needs setup or an update.",
+        "On Full HD Windows displays scaled above 125%, the launcher is sized as it is at 125% so it fits on screen.",
+        "Fixed the game failing to build on Macs whose newest macOS SDK is newer than their Command Line Tools can link (\"ld: tapi error: malformed file\"). The launcher now builds with the newest installed SDK that works.",
+        "You can now use the launcher with a game controller: move with the stick or d-pad, A selects, B goes back, Start opens Settings, and LB and RB switch between Settings, Controls and Manage game.",
+        "The portable Windows launcher always sets up in its SMS-Launcher-Portable folder without asking for a location, and the game's shader and HD texture caches now stay in that folder too instead of going to AppData.",
+        "Settings → Visuals has HD texture loading (Before each level, Whole pack, or While playing) and Prepare shaders ahead, to choose when the game loads HD textures and builds its shaders.",
+        "Add to Steam: a banner on the home screen, under the Discord one, adds the launcher to your Steam library as Super Mario Sunshine with artwork, for Big Picture and the Steam Deck. Turn on Skip Launcher when you add it and Steam starts the game straight away.",
+        "On Linux, launcher updates keep the AppImage's name and folder, so Steam shortcuts to it keep working. Re-add it to Steam once after this update.",
+        "Invert camera Y is now on by default for new players. Turn it off under Settings → Gameplay."
+      ],
+      "game": {
+        "version": "2026.10.11.1",
+        "commit": "d205537c5d90c09999715665a99750935d25fd5e",
+        "changes": [
+          "Super Mario Eclipse now runs the code its v1.1.0 release ships, which removes the extra circle and blinking X button behind the FLUDD gauge in every stage.",
+          "Fixed Super Mario Eclipse crashing when you pick a character after unlocking Piantissimo.",
+          "Super Mario Eclipse's menus fill the widescreen frame properly, and its pause menu's Shine and blue coin counts are back on screen. Its own Aspect Ratio setting is hidden, since the game handles widescreen itself.",
+          "Fixed Super Mario Eclipse overwriting game memory at startup and while riding the green Yoshi.",
+          "Super Mario Eclipse's Delfino Plaza title card and pause menu no longer show \"(null)\" under the area's name.",
+          "The arrow under Super Mario Eclipse's B button balloon is red again instead of black.",
+          "Screen wipes, like the iris and warp transitions, run at their original speed at 60 and 120 fps, so warps no longer cut their sound short.",
+          "Fixed white specks on the sea with the High and Ultra graphics presets.",
+          "The goop Piranha Plant's hit voice plays once at 120 fps instead of twice.",
+          "The game ignores the keyboard and controllers while another window has focus, such as the launcher or another game, so they no longer move Mario in the background.",
+          "Entering a level no longer stutters the first time: the game builds the level's shaders and loads its HD textures into video memory while it loads, and HD textures no longer interrupt play while they finish in the background.",
+          "A cheat menu: press F9 in the game for God Mode, Infinite Lives, Infinite FLUDD, Movement Speed, Jump Height and Coin Multiplier.",
+          "Controllers rumble when the game rumbles. Turn it off with the Rumble option in the game's own options.",
+          "Fixed audio crackling and distortion after the game slows down or hitches."
+        ]
+      }
+    },
     {
       "version": "0.1.56",
       "date": "2026-10-09",

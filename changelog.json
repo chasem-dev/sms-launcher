@@ -9,7 +9,8 @@
       "The portable Windows launcher always sets up in its SMS-Launcher-Portable folder without asking for a location, and the game's shader and HD texture caches now stay in that folder too instead of going to AppData.",
       "Settings → Visuals has HD texture loading (Before each level, Whole pack, or While playing) and Prepare shaders ahead, to choose when the game loads HD textures and builds its shaders.",
       "Add to Steam: a banner on the home screen, under the Discord one, adds the launcher to your Steam library as Super Mario Sunshine with artwork, for Big Picture and the Steam Deck. Turn on Skip Launcher when you add it and Steam starts the game straight away.",
-      "On Linux, launcher updates keep the AppImage's name and folder, so Steam shortcuts to it keep working. Re-add it to Steam once after this update."
+      "On Linux, launcher updates keep the AppImage's name and folder, so Steam shortcuts to it keep working. Re-add it to Steam once after this update.",
+      "Invert camera Y is now on by default for new players. Turn it off under Settings → Gameplay."
     ],
     "game": [
       "Super Mario Eclipse now runs the code its v1.1.0 release ships, which removes the extra circle and blinking X button behind the FLUDD gauge in every stage.",

@@ -99,7 +99,7 @@ function normalizeSettings(input = {}, platform = process.platform) {
     hdrHighlights: numberSetting(input.hdrHighlights, 40, 0, 100),
     overlay: Boolean(input.overlay),
     invertCameraX: input.invertCameraX !== false,
-    invertCameraY: Boolean(input.invertCameraY),
+    invertCameraY: input.invertCameraY !== false,
     // The camera stays where it is put instead of swinging back behind Mario; manual turning speed; mouse look.
     freeCamera: Boolean(input.freeCamera),
     cameraSpeed: numberSetting(input.cameraSpeed, 100, 10, 400),

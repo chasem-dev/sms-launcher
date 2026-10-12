@@ -10,8 +10,12 @@ performance has not been measured on AYN Thor. An S24 Ultra tester reports
 near-60 FPS while recording but lower FPS during ordinary play. Performance
 requests and faster-core placement did not help in their comparisons. Their
 timing log identified an avoidable extra refresh wait in our background-work
-fallback; preview 12 replaces it with a short cooperative turn. Its effect on
-device FPS and loading still requires physical-device validation.
+fallback; preview 12 replaces it with a short cooperative turn. The tester
+reports that build is much faster and supplies a sustained nominal-60 FPS
+4:3 run, while widescreen still runs around 55–60 FPS. Preview 13 reduces
+CPU work in widescreen layout;
+its device FPS effect needs comparison. The two tester runs were not a
+controlled matching-camera benchmark.
 
 ## Build
 
@@ -101,6 +105,8 @@ and presentation timing, SDK pacing waits and main-thread CPU time without
 recording or touching the screen during the sample. A current CPU frequency
 sample is included when Android allows reading it; -1 means unavailable.
 SDK pacing also reports background-handoff average/max wall time. These
+logs include a GX breakdown for vertex decoding, draw submission, textures,
+copies and peeks to help investigate the extra widescreen cost. These
 timers add some overhead, and swap/wait times are CPU wall time,
 not asynchronous GPU measurements. Startup logs include Game Mode, reported
 Game State, battery saver, current display refresh and the frame rate request.

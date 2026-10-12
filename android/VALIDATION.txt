@@ -456,3 +456,44 @@ ON. Skip movies for steady gameplay comparison. Use the same stationary
 plaza view without recording or touching the screen, then export the log
 before another Play. Check title/save/stage loading still completes. No
 device FPS improvement is claimed before the tester runs this candidate.
+
+
+v12 tester result and v13 widescreen CPU work (2026-10-12)
+---------------------------------------------------------
+The S24 Ultra tester calls v12 "way faster". A supplied 4:3 log shows
+sustained game/shown 59.94 FPS after loading with roughly 12.6–12.8 ms
+average work, about 4 ms intentional wait and performance hints/cores off.
+A widescreen log shows roughly 55–60 FPS and 17–18 ms work during slower
+sections. Background handoffs are short (about 0.3 ms per frame in those
+widescreen sections). Frequency readings are point samples, not sustained
+measurements. Both logs include loading/menu/cutscene transitions; these
+are not a controlled same-camera comparison or proof that every extra
+millisecond comes from layout, pixel count or clock policy.
+
+v13 reduces known CPU work in widescreen layout. Centred artwork and 3D HUD
+pieces with an existing pane anchor avoid unnecessary bounds scans. Bounds
+that are still needed walk cached vertex runs once, instead of rescanning
+the run list for every vertex, and reuse consecutive position matrices.
+The perspective-aspect threshold is computed once at widescreen setup.
+Existing compiler optimization and floating-point rules are preserved. Resolution,
+field of view and normal frame targets remain unchanged. Existing timing
+logging adds vertex/draw/texture/copy/peek detail; no new setting is needed.
+Android version preview.13 / version code 15713.
+
+Validation uses host bounds equivalence fixtures and actual headless desktop
+GL pixel checks at 1x/2x, including HUD anchors, unanchored HUD, full/partial
+artwork, wipes, scissors and mixed stream/arena batches. The pre-change
+renderer also passes the placement fixtures. A CPU-only bounds benchmark
+measures the routine's speed; it does not predict Android game FPS.
+An experimental -O3 host build exposed graphics failures with the optional
+GL worker; that compiler change is excluded from this candidate.
+Build the actual Android debug/release APK and audit source metadata,
+signature and ARM64/16 KiB packaging separately. No Android runtime,
+container or emulator run/benchmark is performed for this follow-up.
+
+Device comparison: 60 FPS, scale 1, widescreen 16:9; hints/headroom/display
+matching/performance cores OFF, timing logs ON. Compare v12/v13 in the
+same stationary scene without recording/screenshots/touches. Check HUD,
+fades and save/stage loading. Export the log before another Play; use the
+GX breakdown to distinguish decoder, draw, texture, copy and peek costs.
+No physical-device FPS improvement from v13 is claimed before testing.

@@ -68,6 +68,7 @@ public class LauncherActivity extends Activity {
         });
         button("Import disc image", () -> pick(DISC));
         label("Saves and diagnostics", 18);
+        button("Input test (controllers and keyboards)", () -> startActivity(new Intent(this, InputMonitorActivity.class)));
         button("Import save backup (.zip)", () -> pick(IMPORT_SAVE));
         button("Export save backup", () -> create(EXPORT_SAVE, "application/zip", "sunshine-save.zip"));
         button("Export game log", () -> create(EXPORT_LOG, "text/plain", "sunshine-game.log"));

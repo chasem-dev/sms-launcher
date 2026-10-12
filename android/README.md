@@ -115,6 +115,24 @@ game work, GX submission, presentation/swap and idle time. This helps
 separate game timing from an external SurfaceFlinger FPS counter.
 Android Back returns to the launcher. Each game session uses a fresh process.
 
+**Input test (controllers and keyboards)** under Saves and diagnostics opens
+a landscape monitor without starting the game. It lists Android input devices
+and USB adapters, and shows live key/button down/up events, scan codes,
+modifiers, held keys and stick/trigger/hat axes. Bluetooth/wireless keyboards
+use the same monitor. Both panels scroll; Refresh updates device inventory,
+Clear resets the sample, and Done returns to the launcher. Controller Back/B
+is captured for testing instead of closing the screen; system Back still exits.
+Capture runs only while the test screen is active, with a bounded event history.
+Export writes `sunshine-input.log` through the document picker, including
+phone/build metadata, connected devices and the last 256 events.
+
+For a generic adapter with no game input, open Input test, connect it, Refresh,
+and press buttons/move sticks. Events here show what Android receives before
+SDL mapping or game bindings. A USB adapter listed without an Android input
+device suggests a different problem from a controller producing unmapped keys.
+Export the sample to identify the device IDs and received codes before choosing
+a mapping; the monitor itself does not fix or guess unknown controller layouts.
+
 **Export save backup** writes a ZIP you can keep or move to the desktop port's
 `card-a` folder. **Import save backup** accepts a ZIP containing the desktop
 port's `index.txt`, `super_mario_sunshine.dat` and

@@ -14,6 +14,8 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <activity android:name=".InputMonitorActivity" android:exported="false" android:screenOrientation="userLandscape"
+            android:configChanges="keyboard|keyboardHidden|orientation|screenSize|screenLayout|density|navigation" />
         <activity android:name=".GameActivity" android:exported="false" android:process=":game"
             android:enableOnBackInvokedCallback="true"
             android:screenOrientation="userLandscape" android:configChanges="keyboard|keyboardHidden|orientation|screenSize|screenLayout|uiMode|navigation|density"

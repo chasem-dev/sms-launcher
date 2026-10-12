@@ -497,3 +497,31 @@ same stationary scene without recording/screenshots/touches. Check HUD,
 fades and save/stage loading. Export the log before another Play; use the
 GX breakdown to distinguish decoder, draw, texture, copy and peek costs.
 No physical-device FPS improvement from v13 is claimed before testing.
+
+
+v14 Android input monitor (2026-10-12)
+-------------------------------------
+The user reports no input from a generic controller through a C3tech adapter
+and requests a keypress monitor for wireless keyboards. Model/device details
+are not yet supplied, so no adapter-specific mapping is assumed.
+
+Input test under Saves and diagnostics captures Android input directly in
+a separate launcher activity. It lists Android input devices with names,
+VID/PID, sources and axis ranges, plus USB device enumeration without opening
+USB devices or requesting access. Live key down/up/repeats, unknown-key scan
+codes, modifiers, held buttons and controller axes appear in scrolling panels.
+Device connect/disconnect updates inventory; Refresh handles USB-only adapters.
+Controller Back is captured; Done/system Back closes the screen. Capture and
+listeners stop on pause, and held state clears on focus loss/disconnect.
+Export snapshots build/phone/device metadata and the last 256 events to the
+document picker. Motion history is throttled while live axes remain current.
+No input is monitored outside this test screen, and no new permissions are added.
+
+Pure-Java host tests cover independent device/scan-code identities, key release,
+disconnect, axes/history throttling, bounded history, focus loss and clear.
+Run JAVA_HOME=... bash android/tests/check-input-monitor.sh. Android compilation
+checks actual Activity/InputDevice/KeyEvent/MotionEvent/USB/document-picker APIs;
+launcher Node tests and static signed APK audits are separate checks. Actual
+UI, wireless keyboard/C3tech events, hotplug and picker export need a device.
+No Android container/emulator is run, per the user's continuing instruction.
+Version preview.14 / version code 15714; native game remains the v13 revision.

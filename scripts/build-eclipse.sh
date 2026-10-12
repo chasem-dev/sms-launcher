@@ -46,7 +46,9 @@ fi
 command -v clang >/dev/null && command -v clang++ >/dev/null || {
   echo "Eclipse needs clang and clang++, which these build tools do not include. Update the launcher, then try again." >&2; exit 1; }
 
-git submodule update --init decomp
+# Skip `git submodule` when decomp is already at its commit: older Git for
+# Windows runs it as a shell script whose forks can fail (e.g. Windows 7).
+[[ "$(git -C decomp rev-parse HEAD 2>/dev/null)" == "$(git rev-parse :decomp)" ]] || git submodule update --init decomp
 cmake -S . -B "$bdir" "${cmake_args[@]}"
 cmake --build "$bdir" --target sms --parallel "${JOBS:-4}"
 if [[ "$os" == macos ]]; then

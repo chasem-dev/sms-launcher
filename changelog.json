@@ -8,7 +8,8 @@
       "Fixed the game build and HD texture setup crashing on some Windows PCs (\"Access violation\", or exit code 2816) when another Python install's settings were set on the PC.",
       "Fixed every game update leaving the previous versions' files behind, which used several GB of disk space each. The launcher now keeps only the current and previous versions, and frees up the space from older ones the next time it opens.",
       "Add to Steam is safer: it checks that all your other non-Steam games are still in Steam's list before saving it, never replaces its first backup of that list, and on Linux and the Steam Deck no longer restarts Steam itself, which could open Game Mode inside Desktop Mode.",
-      "Windows: advanced players can build with their own MSYS2 instead of the launcher's downloaded tools by setting the SMS_MSYS2_ROOT environment variable to its folder, for example on Windows 7 with the last MSYS2 that runs there."
+      "Windows: advanced players can build with their own MSYS2 instead of the launcher's downloaded tools by setting the SMS_MSYS2_ROOT environment variable to its folder, for example on Windows 7 with the last MSYS2 that runs there.",
+      "Fixed game setup failing on some older Windows setups with \"fork: Resource temporarily unavailable\" while preparing the game files, and game updates now reuse the previous version's decomp download instead of downloading it all again."
     ],
     "game": [
       "Fixed Super Mario Eclipse's Delfino Plaza going almost black once you have more than 120 Shines.",

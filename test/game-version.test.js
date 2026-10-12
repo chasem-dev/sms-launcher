@@ -171,10 +171,65 @@ test('download selects exact port and decomp commits even when the branch has ne
   assert.equal(game.gitRevision(path.join(destination,'decomp')), source.decomp);
   assert.equal(git(destination, ['submodule', 'status']).trim().slice(0, 40), source.decomp);
   assert.equal(fs.readFileSync(path.join(destination,'file.txt'),'utf8'),'one');
+  // Initialized and at the pinned commit, so the port's own update is a no-op.
+  const status = execFileSync('git', ['submodule', 'status'], { cwd: destination, env, encoding: 'utf8' });
+  assert.equal(status[0], ' ');
+  git(destination, ['submodule', 'update', '--init', 'decomp']);  // what build.sh runs
+  assert.equal(game.gitRevision(path.join(destination,'decomp')), source.decomp);
+  assert.equal(git(destination, ['status', '--porcelain', '--untracked-files=no']), '');
   const failed = path.join(root,'failed');
   await assert.rejects(game.checkout(failed, { source: { ...source, decomp:'0'.repeat(40) }, env, run, capture }), /did not match/);
   assert.equal(fs.existsSync(failed),false);
   assert.equal(fs.readdirSync(root).some(name => name.startsWith('failed.download-')),false);
+});
+
+test('an update reuses an older install\'s submodule decomp and a fork\'s relative decomp URL still works', async t => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'sms checkout reuse-'));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  const env = { ...process.env, GIT_CONFIG_COUNT: '1', GIT_CONFIG_KEY_0: 'protocol.file.allow', GIT_CONFIG_VALUE_0: 'always' };
+  const git = (cwd, args) => execFileSync('git', args, { cwd, env, encoding: 'utf8', stdio: ['ignore','pipe','pipe'] }).trim();
+  function repo(name) {
+    const dir = path.join(root, name); fs.mkdirSync(dir);
+    git(dir, ['init', '-b', game.release.branch]);
+    git(dir, ['config','user.name','CI']); git(dir, ['config','user.email','ci@example.invalid']);
+    fs.writeFileSync(path.join(dir,'file.txt'),'one'); git(dir,['add','.']); git(dir,['commit','-m','first']);
+    return dir;
+  }
+  const decomp = repo('decomp');
+  const origin = repo('origin');
+  git(origin, ['submodule','add',decomp,'decomp']); git(origin,['commit','-am','pin decomp']);
+  const source = { ...game.release, repository: origin, commit: git(origin,['rev-parse','HEAD']), decomp: git(decomp,['rev-parse','HEAD']) };
+  const capture = async (command,args,cwd,environment) => execFileSync(command,args,{cwd,env:environment,encoding:'utf8',stdio:['ignore','pipe','pipe']}).trim();
+  const run = async (command,args,options) => capture(command,args,options.cwd,options.env);
+  // An install made by earlier launchers: decomp's Git folder lives in .git/modules.
+  const older = path.join(root, 'older');
+  git(root, ['clone', '-q', origin, older]);
+  git(older, ['submodule', 'update', '--init']);
+  assert.ok(fs.statSync(path.join(older, 'decomp', '.git')).isFile());
+  const updated = path.join(root, 'updated');
+  const calls = [];
+  const recording = async (command, args, options) => { calls.push(args); return run(command, args, options); };
+  await game.checkout(updated, { source, env, run: recording, capture, reference: older });
+  assert.equal(game.matchesSource(updated, source), true);
+  assert.ok(calls.some(args => args.includes('--reference-if-able') && args.includes(path.join(older, '.git', 'modules', 'decomp'))));
+  assert.equal(fs.existsSync(path.join(updated, 'decomp', '.git', 'objects', 'info', 'alternates')), false);
+  fs.rmSync(older, { recursive: true, force: true });
+  assert.equal(git(path.join(updated, 'decomp'), ['fsck', '--connectivity-only']), '');
+  // A previous install whose decomp Git folder is gone is skipped, not fatal.
+  const broken = path.join(root, 'broken');
+  git(root, ['clone', '-q', origin, broken]);
+  fs.mkdirSync(path.join(broken, 'decomp'), { recursive: true });
+  fs.writeFileSync(path.join(broken, 'decomp', '.git'), `gitdir: ${path.join(root, 'missing')}\n`);
+  await game.checkout(path.join(root, 'after-broken'), { source, env, run, capture, reference: broken });
+  assert.equal(game.matchesSource(path.join(root, 'after-broken'), source), true);
+
+  // A fork whose .gitmodules names decomp relative to the port's remote.
+  git(origin, ['config', '--file', '.gitmodules', 'submodule.decomp.url', '../decomp']);
+  git(origin, ['commit', '-qam', 'relative decomp']);
+  const relative = { ...source, commit: git(origin, ['rev-parse', 'HEAD']) };
+  const forked = path.join(root, 'forked');
+  await game.checkout(forked, { source: relative, env, run, capture });
+  assert.equal(game.matchesSource(forked, relative), true);
 });
 
 test('a decomp from another fork and commit survives the port\'s own submodule update', async t => {

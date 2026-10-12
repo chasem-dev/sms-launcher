@@ -8,18 +8,23 @@ const tools = require('./build-tools');
 const saves = require('./saves');
 const release = require('./game-release.json');
 
+// A checkout's Git folder, following a submodule's `gitdir:` file.
+function gitDirectory(root) {
+  const directory = path.join(root, '.git');
+  if (!fs.statSync(directory).isFile()) return directory;
+  const match = fs.readFileSync(directory, 'utf8').match(/^gitdir: (.+)\s*$/);
+  if (!match) return null;
+  let location = match[1];
+  // MSYS Git can write absolute /c/... paths, while Electron uses native
+  // Windows paths. Relative and native Git paths work without conversion.
+  if (process.platform === 'win32') location = location.replace(/^\/([a-zA-Z])\//, '$1:/');
+  return path.resolve(root, location);
+}
+
 function gitRevision(root) {
   try {
-    let directory = path.join(root, '.git');
-    if (fs.statSync(directory).isFile()) {
-      const match = fs.readFileSync(directory, 'utf8').match(/^gitdir: (.+)\s*$/);
-      if (!match) return null;
-      let location = match[1];
-      // MSYS Git can write absolute /c/... paths, while Electron uses native
-      // Windows paths. Relative and native Git paths work without conversion.
-      if (process.platform === 'win32') location = location.replace(/^\/([a-zA-Z])\//, '$1:/');
-      directory = path.resolve(root, location);
-    }
+    const directory = gitDirectory(root);
+    if (!directory) return null;
     const head = fs.readFileSync(path.join(directory, 'HEAD'), 'utf8').trim();
     if (/^[a-f0-9]{40}$/.test(head)) return head;
     const ref = head.match(/^ref: (refs\/.+)$/)?.[1];
@@ -96,14 +101,32 @@ async function checkout(root, { git = 'git', run, capture, env, source = release
     // after promotion so none of their paths refer to the temporary checkout.
     fs.renameSync(temporary, root);
     promoted = true;
-    if (source.decompRepository) {
-      // Another decomp: clone it from there, and record its commit in the index
-      // so the port's own `git submodule update` keeps it.
-      await run(git, ['submodule', 'init', 'decomp'], { cwd: root, env }, 'Choose decomp source');
-      await run(git, ['config', 'submodule.decomp.url', source.decompRepository], { cwd: root, env }, 'Choose decomp source');
-      await run(git, ['update-index', '--cacheinfo', `160000,${source.decomp},decomp`], { cwd: root, env }, 'Choose decomp commit');
+    // Clone decomp as plain commands rather than `git submodule update`, which
+    // older Git for Windows runs as a shell script whose forks can fail (e.g.
+    // on Windows 7). Git treats this clone as the populated submodule, and
+    // recording its URL initializes it as `git submodule init` would.
+    const url = source.decompRepository || await capture(git, ['config', '--file', '.gitmodules', 'submodule.decomp.url'], root, env);
+    if (/^\.\.?\//.test(url)) {
+      // A fork's relative URL: let Git resolve it against the port's remote.
+      await run(git, ['-c', 'core.longpaths=true', 'submodule', 'update', '--init', '--recursive'], { cwd: root, env }, 'Prepare game release');
+    } else {
+      const decompPath = path.join(root, 'decomp');
+      // Borrow objects from the previous install's decomp by its resolved Git
+      // folder: Git stops on a submodule `gitdir:` file it cannot follow.
+      let previous = null;
+      try { previous = reference && gitDirectory(path.join(reference, 'decomp')); } catch (_) { /* none */ }
+      const clone = ['clone', '--config', 'core.longpaths=true', '--no-checkout'];
+      if (previous && fs.existsSync(path.join(previous, 'objects')))
+        clone.push('--reference-if-able', previous, '--dissociate');
+      await run(git, [...clone, url, decompPath], { env }, 'Download decomp source');
+      await run(git, ['fetch', 'origin', source.decomp], { cwd: decompPath, env }, 'Get decomp release');
+      await run(git, ['checkout', '--detach', source.decomp], { cwd: decompPath, env }, 'Select decomp release');
+      await run(git, ['config', 'submodule.decomp.url', url], { cwd: root, env }, 'Prepare game release');
     }
-    await run(git, ['-c', 'core.longpaths=true', 'submodule', 'update', '--init', '--recursive'], { cwd: root, env }, 'Prepare game release');
+    // Another decomp: record its commit in the index so the port's own
+    // `git submodule update` keeps it.
+    if (source.decompRepository)
+      await run(git, ['update-index', '--cacheinfo', `160000,${source.decomp},decomp`], { cwd: root, env }, 'Choose decomp commit');
     const decomp = await capture(git, ['rev-parse', 'HEAD'], path.join(root, 'decomp'), env);
     if (decomp !== source.decomp || gitRevision(root) !== source.commit || gitRevision(path.join(root, 'decomp')) !== source.decomp)
       throw new Error('The downloaded game files did not match this release. Please retry.');

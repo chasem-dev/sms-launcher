@@ -10,7 +10,8 @@
       "Android launcher panels now keep their headings visible and show scrollbars so game settings are easier to find in landscape.",
       "Android display refresh and performance headroom requests now start off following reports of slower gameplay, and remain available for testing.",
       "Android Game settings now has an optional performance CPU cores switch that works independently of performance hints.",
-      "Android now has an Input test screen for connected controllers and wireless keyboards, with live buttons, keys and sticks, a device list and input log export."
+      "Android now has an Input test screen for connected controllers and wireless keyboards, with live buttons, keys and sticks, a device list and input log export.",
+      "Android Game settings now has controller configuration: assign buttons, sticks and triggers, save a layout for each device, clear controls, or restore defaults."
     ],
     "game": [
       "Fixed the water in Bowser's hot tub being invisible in the final fight. Bowser now sits in it, and the duck and Bowser Jr.'s boat float on it.",
@@ -28,7 +29,8 @@
       "Reduced the CPU work used to position widescreen HUD elements and menus.",
       "Fixed an Android startup crash when the system occupies the game's preferred memory address, by relocating its arena and keeping game and graphics addresses consistent.",
       "Fixed Android reading textures and colour palettes from the wrong memory location after relocation, which could leave the picture black after the intro.",
-      "Added an Android controller mapping for the legacy USB Gamepad adapter that was detected in Input test but ignored by the game."
+      "Added an Android controller mapping for the legacy USB Gamepad adapter that was detected in Input test but ignored by the game.",
+      "Android now applies player-configured controller layouts, including devices without an automatic mapping."
     ]
   },
   "releases": [

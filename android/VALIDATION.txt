@@ -607,3 +607,38 @@ checks, debug/release APK compilation and static audits are separate checks.
 No Android emulator/container is run. Physical game input and the exact face,
 shoulder and right-stick assignments still require the tester. No controller
 compatibility/performance guarantee is made before that test. Preview17/code15717.
+
+
+v18 controller configuration in Settings (2026-10-12)
+----------------------------------------------------
+User clarified they wanted their own mapping UI, beyond v17's adapter profile.
+Added a private landscape ControllerConfigActivity under Game settings with
+per-device selection, Assign/press or axis-direction capture, Cancel capture,
+Clear/unbind, Save per controller, Restore defaults, live key/axis preview and
+Done/discard-unsaved protection. Both panels scroll, headings/footer are fixed,
+insets handled. Device hotplug/disconnected saved profiles supported. Captures
+only selected device while active; repeated/held keys do not bind, first motion
+is primed if neutral data absent, focus/pause/disconnect cancel capture. Drafts
+serialize across Activity recreation; mappings stored in private preferences.
+
+Play atomically writes descriptor-CRC/VID/PID profiles and passes a private
+path to native code. Java button IDs and axis sorting match bundled SDL2.32.10.
+Trigger capture distinguishes endpoint-rest full axes from centred half axes;
+requested right/down movement detects inversion. Native code validates file,
+allowed targets/expressions and physical button/axis bounds, merges edited rows
+with automatic SDL bindings and opens the controller immediately when needed.
+A controller Back key explicitly bound to a game action bypasses app exit;
+Android navigation Back remains unchanged. Configured known VID/PID devices
+route through Android input instead of HIDAPI's different raw ABI; custom mode
+has no SDL controller rumble. Product-zero IDs never create a HIDAPI wildcard.
+Defaults remove overrides and restore driver choice next Play. No permissions
+or background input monitor added. Existing v15/v16/v17 artifacts preserved.
+
+Pure-Java checks validate key ABI, axis sorting, inversion, trigger rest/direction,
+noise rejection, CRC identity and bounded serialization. Actual host SDL virtual
+joystick checks validate profile parsing/identity/exclusions, override/clear/default
+merging, events, inversion and half-axis triggers; native builds use SDL2.32.10.
+Android Activity compile checks APIs; full debug/release and static APK checks
+follow. No Android emulator/container runtime test is performed. Actual UI,
+controller capture/persistence, restore, hotplug, Back behavior, rumble tradeoff
+and application to gameplay still require physical validation. Preview18/code15718.

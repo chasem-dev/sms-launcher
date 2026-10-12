@@ -16,6 +16,7 @@ import org.libsdl.app.SDLActivity;
 import org.libsdl.app.SDLSurface;
 
 public class GameActivity extends SDLActivity {
+    private final java.util.Set<Integer> assignedBackPresses = new java.util.HashSet<>();
     private volatile String displayRequest = "not requested";
     private volatile String gamePolicy = "not queried";
     private SharedPreferences settings() { return getSharedPreferences("settings", MODE_PRIVATE); }
@@ -67,6 +68,7 @@ public class GameActivity extends SDLActivity {
         args.add("--disc"); args.add(new File(getFilesDir(), "disc/game.iso").getAbsolutePath());
         args.add("--env"); args.add("SMS_SAVE_DIR=" + new File(getFilesDir(), "saves/card-a").getAbsolutePath());
         args.add("--env"); args.add("SMS_SETTINGS=" + new File(data, "settings.txt").getAbsolutePath());
+        args.add("--env"); args.add("SMS_ANDROID_CONTROLLER_MAPPINGS=" + new File(getFilesDir(), "controller-mappings.txt").getAbsolutePath());
         PowerManager power = getSystemService(PowerManager.class);
         Display display = getWindow().getDecorView().getDisplay();
         args.add("--env"); args.add("SMS_ANDROID_STARTUP_POLICY=" + gamePolicy
@@ -91,6 +93,13 @@ public class GameActivity extends SDLActivity {
     }
     @Override public boolean dispatchKeyEvent(android.view.KeyEvent event) {
         if (event.getKeyCode() == android.view.KeyEvent.KEYCODE_BACK) {
+            if(event.getAction()==android.view.KeyEvent.ACTION_DOWN&&ControllerProfiles.backAssigned(this,event.getDevice()))
+                assignedBackPresses.add(event.getDeviceId());
+            if(assignedBackPresses.contains(event.getDeviceId())) {
+                if(event.getAction()==android.view.KeyEvent.ACTION_UP)assignedBackPresses.remove(event.getDeviceId());
+                SDLActivity.handleKeyEvent(mSurface,event.getKeyCode(),event,null);
+                return true;
+            }
             if (event.getAction() == android.view.KeyEvent.ACTION_UP) finish();
             return true;
         }

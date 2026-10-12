@@ -217,3 +217,33 @@ four-axis/numbered-button layout, preserving existing mappings. No new switch
 is needed: connect it before Play or hotplug during the game. Physical button
 assignments follow SDL's existing desktop profile and require tester checking;
 use Input test to export key/axis identities if a button or camera axis is wrong.
+
+
+Preview 18 adds **Game settings → Controller configuration**. Select a
+connected controller, tap Assign beside a GameCube control and press a button
+or move the requested stick direction. L/R accept a button or calibrated
+trigger. D-pad accepts keys, hats or an axis direction. Clear disables that
+control; unchanged rows keep their automatic layout. Save applies the selected
+controller on the next Play. Restore defaults then Save removes its overrides.
+Both landscape panels scroll and the build footer stays visible. Capture is
+restricted to the selected device and stops on focus loss/pause/disconnect.
+Unsaved drafts survive Activity recreation; Done warns before discarding them.
+Disconnected saved devices remain available for clearing/restoring settings.
+
+Profiles persist by Android device descriptor, not the temporary input ID.
+Play writes a private bounded profile file matched to SDL by VID/PID and the
+same descriptor CRC used in SDL's Android GUID. Native mapping merges only
+edited controls into the automatic mapping, supports previously unmapped
+controllers and validates raw button/axis bounds. Configured known VID/PID
+pairs use the Android input backend to match captured key/axis numbering;
+controller rumble is unavailable in custom mode. Restore defaults restores
+normal driver selection on the next Play. USB permissions are unchanged.
+System Back still exits the game; a controller Back key explicitly assigned
+to a game control is forwarded as controller input instead.
+
+Host checks cover Java Android-to-SDL button/axis rules, trigger calibration,
+inversion, descriptor CRC and serialization, plus real SDL virtual-controller
+profile matching/merging, malformed/out-of-range rejection, event conversion,
+cleared controls, untouched defaults, calibrated triggers and inverted axes.
+No Android container/emulator is run. The actual configuration UI, device
+capture/save/reload and gameplay application need a physical tester.

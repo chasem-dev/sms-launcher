@@ -73,6 +73,7 @@ public class LauncherActivity extends Activity {
         button("Export save backup", () -> create(EXPORT_SAVE, "application/zip", "sunshine-save.zip"));
         button("Export game log", () -> create(EXPORT_LOG, "text/plain", "sunshine-game.log"));
         content = panel(columns, "Game settings");
+        button("Controller configuration", () -> startActivity(new Intent(this, ControllerConfigActivity.class)));
         choice("Frame rate", "frame_rate", new String[]{"30", "60"}, "60");
         choice("Resolution scale", "resolution", new String[]{"1", "2", "3"}, "1");
         choice("Aspect ratio", "widescreen", new String[]{"off", "16:9"}, "16:9");
@@ -139,6 +140,7 @@ public class LauncherActivity extends Activity {
         content.addView(box);
     }
     private void writeSettings() throws IOException {
+        ControllerProfiles.writeGameFile(this);
         String text = "frame_rate=" + prefs.getString("frame_rate", "60") + "\nresolution=" + prefs.getString("resolution", "1")
             + "\nwidescreen=" + prefs.getString("widescreen", "16:9") + "\nvolume=" + prefs.getString("volume", "100")
             + "\nmsaa=0\nfullscreen=on\nvsync=on\nbutton_prompts=auto\n"

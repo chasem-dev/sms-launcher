@@ -22,7 +22,8 @@
       "Android now reports frame workloads to help the device schedule the game and renderer.",
       "Android can request an earlier frame-work deadline to leave performance headroom for smooth gameplay.",
       "Android now uses its original frame workload deadline unless experimental performance headroom is enabled.",
-      "Android can keep frame production on a detected group of faster CPU cores, with automatic fallback when that group is unclear."
+      "Android can keep frame production on a detected group of faster CPU cores, with automatic fallback when that group is unclear.",
+      "Android no longer waits for an extra screen refresh after a late frame just to give background loading a turn."
     ]
   },
   "releases": [

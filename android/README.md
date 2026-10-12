@@ -6,7 +6,12 @@ newer, with GLES 3.1 or newer and a controller.
 AYN Thor and similar modern Android handhelds are the intended hardware.
 See [VALIDATION.txt](VALIDATION.txt) for build and emulator results. Plaza
 gameplay is currently slow in the ARM64-translating emulator; handheld
-performance has not been measured on AYN Thor. An S24 Ultra tester reports near-60 FPS while recording but lower FPS during ordinary play; the new policy requests still require physical-device validation.
+performance has not been measured on AYN Thor. An S24 Ultra tester reports
+near-60 FPS while recording but lower FPS during ordinary play. Performance
+requests and faster-core placement did not help in their comparisons. Their
+timing log identified an avoidable extra refresh wait in our background-work
+fallback; preview 12 replaces it with a short cooperative turn. Its effect on
+device FPS and loading still requires physical-device validation.
 
 ## Build
 
@@ -95,7 +100,8 @@ No game-mode configuration overrides the manufacturer's interventions.
 and presentation timing, SDK pacing waits and main-thread CPU time without
 recording or touching the screen during the sample. A current CPU frequency
 sample is included when Android allows reading it; -1 means unavailable.
-These timers add some overhead, and swap/wait times are CPU wall time,
+SDK pacing also reports background-handoff average/max wall time. These
+timers add some overhead, and swap/wait times are CPU wall time,
 not asynchronous GPU measurements. Startup logs include Game Mode, reported
 Game State, battery saver, current display refresh and the frame rate request.
 **Show performance overlay** reports the port's game/shown FPS, frame time,

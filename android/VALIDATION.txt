@@ -420,3 +420,39 @@ matching off, recording off, same fixed stage view; performance CPU cores
 off then on, with a new Play session after each change. Export the game log
 to confirm whether a mask was actually applied. Battery Saver off and a
 charged/cool phone help keep the comparison consistent. No FPS gain claimed.
+
+
+v12 background pacing fix (2026-10-12)
+--------------------------------------
+The tester confirmed v11 applied CPUs 2–7 but performance cores alone did
+not help. Hints/headroom combinations also had no effect. Their all-options-
+off timing log shows roughly 11–13 ms average frame work, 0.5–0.6 ms swaps,
+and frequent 33–35 ms frames with 29–66 background yields per 120 frames.
+CPU frequency samples reach 3.15 GHz, so low clocks alone do not account
+for these drops. Separate log windows are not perfectly aligned; do not
+infer an exact per-frame correlation from adjacent summary lines.
+
+The old background fallback waited for another VI retrace whenever a frame
+was already due and a lower-priority SDK worker was runnable. v12 instead
+temporarily blocks the frame producer for a cooperative worker turn. It
+returns as soon as workers block/exit or after a 1 ms budget at an SDK
+scheduling checkpoint. Uninterrupted native work can exceed that budget.
+Normal frame targets, SDK priorities and optional performance settings are
+preserved. Background average/max time is added to existing pacing logs.
+Android version preview.12 / version code 15712.
+
+Host regression tests run the actual Android-configured scheduler and VI
+frame-wait code without a ROM, GPU or VI timer. They cover short jobs,
+continuously runnable yield/poll jobs, higher-priority work, IRQ-state and
+scheduler guards, worker exit and repeated handoffs. An already-due frame
+returns without a new retrace, retaining background progress. Existing
+fallback code stalls in that same no-timer regression fixture. Existing
+32/64-bit frame-rate checks pass. Android builds and APK packaging are
+validated separately; no Android container/emulator runtime test is run.
+
+Device comparison: keep 60 FPS, scale 1, performance hints, headroom,
+display matching and performance CPU cores OFF; Log performance timings
+ON. Skip movies for steady gameplay comparison. Use the same stationary
+plaza view without recording or touching the screen, then export the log
+before another Play. Check title/save/stage loading still completes. No
+device FPS improvement is claimed before the tester runs this candidate.

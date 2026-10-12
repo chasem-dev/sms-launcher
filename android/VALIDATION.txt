@@ -555,3 +555,27 @@ compilation, existing scheduler/frame-rate/graphics checks, launcher checks and
 static signed APK audits are separate validation. No Android container/emulator
 runtime test is performed. Actual title/save/stage loading and movies on the
 affected device still need tester confirmation. Preview.15 / version code15715.
+
+
+v16 J3D texture/palette relocation fix (2026-10-12)
+-------------------------------------------------
+Physical v15 log from Adreno740 confirms MEM1 at 0x40800000 and matching SDK
+arena/audio addresses, with no crash in the supplied snippet. Tester reports
+no image after skipping the intro. Two actual JRenderer GD command writers
+use OSPhysicalToCached on cached texture/palette pointers, a retail shortcut
+that only works with the original base. For example, at base0x40800000 an
+image0x40900000 is incorrectly decoded as0x41900000 by the old command.
+Android-only patched writers now encode OSCachedToPhysical(pointer)>>5;
+texture registers and all palette selector/load/flush bytes stay unchanged.
+Desktop writers and v15 release/APK stay unchanged.
+
+New host script platform/tests/check_j3d_addresses.sh compiles real writers
+and SDK adaptation, reproduces old failure, then passes 68640 command checks
+with fixed Android writers across five bases, eight slots and varied offsets,
+and 13728 checks for the unchanged preferred-base desktop path. Independent
+checks cover exact BP bytes/opcodes/count, physical offsets/pointer round trips,
+write guards and unchanged palette sequence. No ROM, GPU or Android OS is run
+by that fixture. NDK debug/release compilation and signed APK audits follow.
+No Android container/emulator test is performed. Actual texture/image recovery,
+intro playback/skipping, save and stage loading require physical retesting.
+Preview.16 / version code15716. No clock/performance-policy change.

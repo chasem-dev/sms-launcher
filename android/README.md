@@ -199,3 +199,12 @@ SMS_SKIP_MOVIES=1,SMS_OVERLAY=1` on the launcher intent instead of `gxSelftest`.
 The movie flag skips non-looping prerecorded movies; native 3D camera sequences
 still render. The overlay reports frame timing. These intent flags apply only
 to debug APKs. Force-stop and reopen without extras to check ordinary playback.
+
+
+Preview 16 fixes J3D texture-image and palette-load commands when Android
+relocates the game's arena. The v15 tester log confirms compatible allocation
+at 0x40800000, but the original address shortcut in those two writers encoded
+incorrect texture pointers. Android now writes arena-relative addresses;
+desktop behavior and v15 APK/release artifacts are preserved. Host byte-level
+regression tests compile the real writers and show the previous relocation
+failure followed by correct commands. Device image recovery must be retested.

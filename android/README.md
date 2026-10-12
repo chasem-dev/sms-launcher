@@ -115,6 +115,14 @@ game work, GX submission, presentation/swap and idle time. This helps
 separate game timing from an external SurfaceFlinger FPS counter.
 Android Back returns to the launcher. Each game session uses a fresh process.
 
+Preview 15 fixes the unsafe memory fallback reported by an Adreno 740 tester.
+If Android occupies the preferred game-arena address, the port reserves another
+compatible range and updates both SDK and renderer address conversions. It
+fails startup safely if no compatible range is available. The APK remains ARM64;
+some legacy game data still stores addresses in 32-bit fields. Confirm a
+successful title/save/stage load on the affected device before treating the
+physical-device crash as resolved.
+
 **Input test (controllers and keyboards)** under Saves and diagnostics opens
 a landscape monitor without starting the game. It lists Android input devices
 and USB adapters, and shows live key/button down/up events, scan codes,

@@ -525,3 +525,33 @@ launcher Node tests and static signed APK audits are separate checks. Actual
 UI, wireless keyboard/C3tech events, hotplug and picker export need a device.
 No Android container/emulator is run, per the user's continuing instruction.
 Version preview.14 / version code 15714; native game remains the v13 revision.
+
+
+v15 MEM1 address-collision fix (2026-10-12)
+-------------------------------------------
+An Adreno 740 tester's v13 log reports the game library at 0x38000000 and
+failure to map MEM1 at 0x80000000. The old arbitrary mmap fallback placed
+MEM1 at 0x7126bc8000; raw arena fields then show truncated 0x26bc... addresses.
+SIGSEGV at libsms.so+0x71b338 / address 0xA717C78C resolves against the matching
+v13 symbols to gx::loadComp<short,false> in gx_fifo.cpp during display-list
+vertex decoding. SDK conversions and GX still used their preferred base.
+
+The fix retains preferred placement when free, otherwise selects a complete
+arena inside the compatibility address window without replacing system pages.
+It scans fragmented low gaps, then upper-half ranges if needed, rejecting
+ArenaHi at/above 4 GiB and any unsafe high heap fallback. Android SDK physical
+addresses become relative to the actual arena, cached/uncached CPU aliases
+share it, and GX receives its base/size before game commands. Native boot-info
+writes follow the arena. The app remains ARM64; this preserves legacy address
+fields rather than changing the process architecture. Desktop SDK behavior
+is preserved by the Android-only translation patch.
+
+Host regression coverage uses the actual runtime and patched SDK header:
+preferred mapping, occupied preferred mapping, 1 MiB fragmentation, upper-half
+fallback, pointer/rounding/physical-alias round trips, renderer-window callback,
+sentinel preservation, and exhausted compatible space with a free but invalid
+4 GiB endpoint. It does not run a ROM, GPU or Android OS. Android debug/release
+compilation, existing scheduler/frame-rate/graphics checks, launcher checks and
+static signed APK audits are separate validation. No Android container/emulator
+runtime test is performed. Actual title/save/stage loading and movies on the
+affected device still need tester confirmation. Preview.15 / version code15715.

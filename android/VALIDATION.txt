@@ -579,3 +579,31 @@ by that fixture. NDK debug/release compilation and signed APK audits follow.
 No Android container/emulator test is performed. Actual texture/image recovery,
 intro playback/skipping, save and stage loading require physical retesting.
 Preview.16 / version code15716. No clock/performance-policy change.
+
+
+v17 legacy USB Gamepad mapping (2026-10-12)
+------------------------------------------
+Physical Input test report: v16 on moto g53 5G/Android14 detects0810:0001 USB
+Gamepad, keyboard+joystick sources, X/Y/Z/RZ+HAT_X/Y, genericBUTTON_1..12.
+SDL2.32.10 forwards keyboard-source keys from a joystick device correctly,
+but its Android generated mapping rejects devices without namedA/B/X/Y keys.
+The game listens to mapped controller events and never opens this raw device.
+
+Native Android fallback adds an exact live-GUID SDL mapping for the unmapped
+0810:0001 four-axis/numbered-button layout only. Generic keys map to raw20..31;
+D-pad hats are already converted to raw11..14. Profile assignments translate
+SDL's existing Linux PS1 profile for this VID/PID. Existing/user mappings and
+other devices/layouts are preserved. Open immediately after adding the profile
+because this SDL API does not emit another controller-add event; instance-ID
+guards prevent duplicate opens. Normal removal/reconnect/rumble paths remain.
+The accepted profile is logged. No SDL dependency or Java input code is edited.
+
+Host fixture uses SDL2.30 virtual joystick with actual SDL mapping/event
+conversion, without video/Android: profile exclusions, mapping recognition,
+numbered face/shoulder/start/select/stick buttons, full digital triggers,
+D-pad/stick axes, releases and reconnect with a distinct instanceID. Android
+NDK compilation uses bundledSDL2.32.10. Existing host graphics and launcher
+checks, debug/release APK compilation and static audits are separate checks.
+No Android emulator/container is run. Physical game input and the exact face,
+shoulder and right-stick assignments still require the tester. No controller
+compatibility/performance guarantee is made before that test. Preview17/code15717.

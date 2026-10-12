@@ -27,7 +27,8 @@
       "Android no longer waits for an extra screen refresh after a late frame just to give background loading a turn.",
       "Reduced the CPU work used to position widescreen HUD elements and menus.",
       "Fixed an Android startup crash when the system occupies the game's preferred memory address, by relocating its arena and keeping game and graphics addresses consistent.",
-      "Fixed Android reading textures and colour palettes from the wrong memory location after relocation, which could leave the picture black after the intro."
+      "Fixed Android reading textures and colour palettes from the wrong memory location after relocation, which could leave the picture black after the intro.",
+      "Added an Android controller mapping for the legacy USB Gamepad adapter that was detected in Input test but ignored by the game."
     ]
   },
   "releases": [

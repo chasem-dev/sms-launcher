@@ -208,3 +208,12 @@ incorrect texture pointers. Android now writes arena-relative addresses;
 desktop behavior and v15 APK/release artifacts are preserved. Host byte-level
 regression tests compile the real writers and show the previous relocation
 failure followed by correct commands. Device image recovery must be retested.
+
+
+Preview 17 adds a game-controller mapping for the reported legacy USB Gamepad
+0810:0001. Its generic numbered keys reach SDL, but SDL's automatic Android
+mapping requires named face buttons. The native fallback maps the matching
+four-axis/numbered-button layout, preserving existing mappings. No new switch
+is needed: connect it before Play or hotplug during the game. Physical button
+assignments follow SDL's existing desktop profile and require tester checking;
+use Input test to export key/axis identities if a button or camera axis is wrong.

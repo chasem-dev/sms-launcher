@@ -77,6 +77,7 @@ public class LauncherActivity extends Activity {
         choice("Aspect ratio", "widescreen", new String[]{"off", "16:9"}, "16:9");
         choice("Volume", "volume", new String[]{"0", "25", "50", "75", "100"}, "100");
         toggle("Android performance hints", "performance_hints", true);
+        toggle("Use performance CPU cores", "performance_cores", false);
         toggle("Request performance headroom", "performance_headroom", false);
         toggle("Match display refresh to game FPS", "match_display_rate", false);
         toggle("Show performance overlay", "performance_overlay", false);
@@ -141,6 +142,7 @@ public class LauncherActivity extends Activity {
             + "\nwidescreen=" + prefs.getString("widescreen", "16:9") + "\nvolume=" + prefs.getString("volume", "100")
             + "\nmsaa=0\nfullscreen=on\nvsync=on\nbutton_prompts=auto\n"
             + "SMS_ANDROID_PERFORMANCE_HINTS=" + (prefs.getBoolean("performance_hints", true) ? "1" : "0")
+            + "\nSMS_ANDROID_PERFORMANCE_CORES=" + (prefs.getBoolean("performance_cores", false) ? "1" : "0")
             + "\nSMS_ANDROID_PERFORMANCE_HEADROOM=" + (prefs.getBoolean("performance_headroom", false) ? "1" : "0")
             + "\nSMS_TIMING_LOG=" + (prefs.getBoolean("timing_log", false) ? "1" : "0")
             + "\nSMS_OVERLAY=" + (prefs.getBoolean("performance_overlay", false) ? "1" : "0") + "\n";

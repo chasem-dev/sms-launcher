@@ -63,6 +63,17 @@ Connect a USB/Bluetooth controller or use the handheld's built-in gamepad.
 **Android performance hints** defaults on and lets supported devices adjust
 CPU scheduling to the frame workload. It does not force clock speeds or
 bypass thermal limits. Toggle it off to compare the same scene and settings.
+**Use performance CPU cores** defaults off. Enable it to restrict the game's
+frame-producing thread and optional renderer worker to a detected group of
+big/prime cores. It uses the current thread's allowed CPU mask, prefers
+complete scheduler-capacity metadata, and falls back to complete maximum
+frequency metadata from one source. It never guesses from core numbering,
+never restricts to one core, and leaves placement unchanged if a distinct
+multi-core tier cannot be identified. Android still controls clock speeds
+and thermal policy. This works independently of ADPF: compare it on/off
+with performance hints, headroom and display matching off, restarting Play
+between runs. Game logs report requested/effective core masks or the reason
+for falling back. This candidate has not been runtime-tested on Android.
 **Request performance headroom** defaults off and asks ADPF to finish frame
 work within 80% of the frame interval (about 13.35 ms at nominal 60 FPS),
 leaving a margin for presentation and scheduling variation. It changes the

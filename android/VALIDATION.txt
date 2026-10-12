@@ -386,3 +386,37 @@ No Android container/emulator run or benchmark is permitted for this
 follow-up. Validate compilation, host launcher checks, embedded APK
 metadata, development signature and ARM64/16 KiB packaging. Actual Android
 footer rendering and installer behavior still require the tester's device.
+
+
+v11 performance-core candidate (2026-10-12)
+------------------------------------------
+The tester reports no effect from hints and headroom separately or in their
+on/off combinations. No conclusion about Samsung accepting clock requests
+is drawn from API success. ARMSX2 2.6.7 documents big/prime group affinity
+as its default, while ADPF was introduced off by default in 2.6.5. Source
+inspection at 6cfb3070664ceeb3c0efdcc8aa5362ed3a090c64 confirms group
+placement. Our port previously set no Android core affinity.
+
+v11 adds optional Use performance CPU cores (default off). Before native
+hint-session setup, the current frame producer and optional GL worker can
+restrict themselves to a group within their current allowed CPU masks.
+Complete cpu_capacity metadata is preferred, then complete cpuinfo_max_freq
+metadata; scales are not mixed. Cores at least 75% of the peak ranking are
+selected, only if that identifies a distinct group with at least two cores.
+Missing metadata, a homogeneous/already-narrow mask or a lone prime leaves
+placement unchanged. Rejected affinity calls also fall back. No individual
+core numbers are hard-coded, clock speed is not forced, and no helper work
+is manufactured to raise clocks. Each participating thread attempts once
+per game process and logs requested/effective masks or a fallback reason.
+The option works with ADPF disabled. Existing headroom/display options
+remain opt-in. Version preview.11 / Android version code 15711.
+
+Do not run the Android container/emulator for this follow-up. Validate the
+host topology-selection/controller tests, launcher checks, Android builds,
+APK source/version metadata, signature and ARM64/16 KiB packaging. Actual
+Android affinity acceptance, UI and performance require a physical tester.
+Suggested device comparison: 60 FPS, resolution1, hints/headroom/display
+matching off, recording off, same fixed stage view; performance CPU cores
+off then on, with a new Play session after each change. Export the game log
+to confirm whether a mask was actually applied. Battery Saver off and a
+charged/cool phone help keep the comparison consistent. No FPS gain claimed.

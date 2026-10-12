@@ -8,7 +8,8 @@
       "Android Game settings now includes performance headroom and display refresh requests, plus optional timing logs for diagnosing slow gameplay.",
       "The Android launcher now keeps its version and game build visible at the bottom of the screen and includes them in exported game logs.",
       "Android launcher panels now keep their headings visible and show scrollbars so game settings are easier to find in landscape.",
-      "Android display refresh and performance headroom requests now start off following reports of slower gameplay, and remain available for testing."
+      "Android display refresh and performance headroom requests now start off following reports of slower gameplay, and remain available for testing.",
+      "Android Game settings now has an optional performance CPU cores switch that works independently of performance hints."
     ],
     "game": [
       "Fixed the water in Bowser's hot tub being invisible in the final fight. Bowser now sits in it, and the duck and Bowser Jr.'s boat float on it.",
@@ -20,7 +21,8 @@
       "Fixed Android showing a black screen with audio on some Adreno graphics drivers.",
       "Android now reports frame workloads to help the device schedule the game and renderer.",
       "Android can request an earlier frame-work deadline to leave performance headroom for smooth gameplay.",
-      "Android now uses its original frame workload deadline unless experimental performance headroom is enabled."
+      "Android now uses its original frame workload deadline unless experimental performance headroom is enabled.",
+      "Android can keep frame production on a detected group of faster CPU cores, with automatic fallback when that group is unclear."
     ]
   },
   "releases": [

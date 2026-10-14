@@ -13,8 +13,19 @@ function state() {
     platform: port.platformInfo(), tools: { ready: true, appleReady: true },
     repoReady: true, romReady: true, binaryReady: true, hdVisualsReady: true,
     game: { needsUpdate: true, installedVersion: 'older', availableVersion: 'newer', launcherVersion: '0.1.39' },
-    appUpdate: { message: '' }, backups: [], logs: [], active: null
+    appUpdate: { message: '' }, backups: [], logs: [], active: null,
+    locations: { folder: '/installed', data: '/installed', tools: '/installed/build-tools', dataInFolder: true, toolsDownloaded: true, toolDownloadBytes: 766490376 }
   };
+}
+
+function firstRun(locations) {
+  const data = state();
+  Object.assign(data, { repoReady: false, romReady: false, binaryReady: false, hdVisualsReady: false });
+  data.config = { ...data.config, repo: '/games/sms-pc-port', completedSetup: false };
+  data.tools = { ready: false, appleReady: true };
+  data.locations = { folder: '/games', data: '/games', tools: '/games/build-tools', dataInFolder: true, toolsDownloaded: false,
+    toolDownloadBytes: 766490376, ...locations };
+  return data;
 }
 
 async function renderer(data = state(), copyError = null, notes = { releases: [], unseen: [], current: '0.1.39' }, steam = {}) {
@@ -446,4 +457,17 @@ test("a shortcut made by hand without --no-sandbox is offered a fix when the lau
   assert.equal(fromSteam.elements.get('steam-add').open, false);
   assert.equal(fromSteam.elements.get('add-to-steam').disabled, true);
   assert.match(fromSteam.elements.get('steam-banner-detail').textContent, /add --no-sandbox to its launch options/);
+});
+
+test('setup names one folder for the game, tools, saves and backups, with the download size', async () => {
+  let ui = await renderer(firstRun());
+  assert.equal(ui.elements.get('repo-path').textContent, '/games');
+  assert.equal(ui.elements.get('tool-location-note').textContent,
+    'The game, its build tools (766 MB download), your saves and their backups all go in this folder.');
+  assert.match(ui.elements.get('settings-data-path').textContent, /^\/games\n/);
+  ui = await renderer(firstRun({ toolsDownloaded: true }));
+  assert.match(ui.elements.get('tool-location-note').textContent, /build tools \(already downloaded\)/);
+  ui = await renderer(firstRun({ dataInFolder: false, data: '/data', tools: '/data/build-tools', toolDownloadBytes: 1266171545 }));
+  assert.equal(ui.elements.get('tool-location-note').textContent,
+    'Game files go in this folder. Build tools (1.3 GB download), saves and backups go in /data.');
 });

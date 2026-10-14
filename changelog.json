@@ -6,7 +6,8 @@
       "Settings → Controls shows when a GameCube adapter is plugged in and whether the game can read it, and on Linux, Allow access gives the game permission to open it.",
       "Fixed setup on Windows stopping with \"operation not permitted\" while the build tools were moved into place, usually because antivirus was still scanning them.",
       "Fixed Super Mario Eclipse with a language other than English chosen: Eclipse now always plays in English, and Settings greys out Language while Eclipse is on. Your language comes back when you turn Eclipse off.",
-      "Import a Dolphin save now takes Super Mario Eclipse saves (04-GMSE-super_mario_sunshine.gci) and puts them in Eclipse's save. You can drop several saves, or the whole Dolphin memory card folder, at once: Eclipse's settings files and saves with no progress are skipped instead of replacing yours, and after importing, Settings → Saves shows which game each save is for and the Shines in each file."
+      "Import a Dolphin save now takes Super Mario Eclipse saves (04-GMSE-super_mario_sunshine.gci) and puts them in Eclipse's save. You can drop several saves, or the whole Dolphin memory card folder, at once: Eclipse's settings files and saves with no progress are skipped instead of replacing yours, and after importing, Settings → Saves shows which game each save is for and the Shines in each file.",
+      "The folder you choose during setup now holds the build tools, your saves and their backups too, not just the game files, so they no longer fill up your system drive. Saves and backups you already have are copied there the first time this version starts, and the originals stay where they were."
     ],
     "game": [
       "Rumble can now be set stronger than the console's: light rumbles run the controller's motor more often, on any controller, including a GameCube controller on an adapter.",

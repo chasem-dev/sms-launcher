@@ -193,7 +193,7 @@ function savedMultiplayer(saved) {
     .slice(0, multiplayer.RECENT_HOSTS)
     .map(item => ({ address: item.address.slice(0, 255), port: item.port, name: multiplayer.playerName(item.name, '') }));
   return { name: multiplayer.playerName(value.name, ''), address: typeof value.address === 'string' ? value.address.slice(0, 255) : '',
-    hostPort: portOr(value.hostPort), joinPort: portOr(value.joinPort), recent };
+    hostPort: portOr(value.hostPort), joinPort: portOr(value.joinPort), public: value.public === true, recent };
 }
 
 function loadConfig() {
@@ -950,6 +950,7 @@ function saveMultiplayer(input = {}, { strict = true } = {}) {
   };
   const value = { name: multiplayer.playerName(input.name, ''), address: String(input.address ?? config.multiplayer.address).trim().slice(0, 255),
     hostPort: portField(input.hostPort, config.multiplayer.hostPort), joinPort: portField(input.joinPort, config.multiplayer.joinPort),
+    public: typeof input.public === 'boolean' ? input.public : config.multiplayer.public === true,
     recent: config.multiplayer.recent || [] };
   config.multiplayer = value;
   saveConfig();
@@ -1001,17 +1002,28 @@ async function hostGame(input) {
   const session = { mode: 'host', env: multiplayer.environment('host', { port: settings.hostPort, name }),
     beforePlay: async () => {
       await natCheck?.catch(() => {});
-      room = await rooms.host({ port: settings.hostPort, name, build: localGameBuild(), log, onRoom: showRoom });
+      room = await rooms.host({ port: settings.hostPort, name, build: localGameBuild(), isPublic: settings.public, log,
+        onRoom: showRoom });
       Object.assign(session.env, { SMS_MULTIPLAYER_PORT: String(room.gamePort), SMS_MULTIPLAYER_LOCAL: '1',
         SMS_MULTIPLAYER_ROOM: room.code ? rooms.formatRoomCode(room.code) : '' });
     } };
-  log(`Hosting a multiplayer game on UDP port ${settings.hostPort}.`);
+  log(`Hosting a multiplayer game on UDP port ${settings.hostPort}${settings.public ? ', listed publicly' : ''}.`);
   try { return await launchGame(session); }
   finally {
     room?.close();
     hostedRoom = null;
     broadcast('activity', activityState());
   }
+}
+
+// The public list, for the Multiplayer window: each game with why it can't be joined from here (another version, or
+// full), or null.
+async function publicGames() {
+  const list = await rooms.listPublic();
+  const build = localGameBuild();
+  return list.map(room => ({ code: rooms.formatRoomCode(room.code), name: multiplayer.playerName(room.name, 'Host'),
+    status: String(room.status || '').slice(0, 63), players: room.players, maxPlayers: room.maxPlayers, minutes: room.minutes,
+    problem: multiplayer.joinProblem(room, build) }));
 }
 
 // Join with a room code: the room server says whose game it is and which build it runs, then the launcher connects
@@ -1441,6 +1453,7 @@ function registerHandlers() {
   ipcMain.handle('copy-text', (_event, text) => { clipboard.writeText(String(text ?? '').slice(0, 1000)); });
   // NAT type, checked from the port the player would host on (src/nat.js).
   ipcMain.handle('check-nat', (_event, input) => checkNat(input));
+  ipcMain.handle('public-games', () => publicGames());
   ipcMain.handle('host-game', (_event, input) => exclusive('Host multiplayer game', () => hostGame(input), true));
   ipcMain.handle('join-game', (_event, input) => exclusive('Join multiplayer game', () => joinGame(input), true));
   ipcMain.handle('clean-preview', () => exclusive('Preview cleanup', () => clean(true)));

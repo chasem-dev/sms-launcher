@@ -69,6 +69,8 @@ function roomServer({ code = 'KQ7M2D', secret = 'ab'.repeat(16) } = {}) {
     } else if (msg.type === 'hello') {
       server.host.deliver(JSON.stringify({ type: 'join', id: ws.id, secret, candidates: msg.candidates, name: msg.name }));
       ws.deliver(JSON.stringify({ type: 'host', id: ws.id, secret, candidates: server.hostInfo.candidates, name: server.hostInfo.name }));
+    } else if (ws === server.host && msg.type === 'status') {
+      server.statuses = [...(server.statuses || []), msg];
     } else if (msg.type === 'relay') {
       ws.relay = true;
       server.relayed = msg.reason;
@@ -277,4 +279,48 @@ test('when the direct path stops working mid-game, the joiner moves to the relay
     game.close();
     host.close();
   }
+});
+
+test('a public host says so, and reports its game for the list once the game answers', async () => {
+  const server = roomServer();
+  const logged = [];
+  const host = await rooms.host({ ...quiet, log: line => logged.push(line), port: await freePort(), name: 'Chase', build: 'b',
+    isPublic: true, url: 'http://rooms.test', WebSocketImpl: server.WebSocket, lan: [] });
+  try {
+    assert.equal(server.hostInfo.public, true);
+    await new Promise(resolve => setTimeout(resolve, 600));
+    assert.equal(server.statuses, undefined, 'nothing before the game answers');
+    const game = await fakeGame(host.gamePort);
+    try {
+      // the next try is a few seconds away; don't wait for it
+      host.statusAt = 0;
+      for (let i = 0; i < 40 && !server.statuses; i++) await new Promise(resolve => setTimeout(resolve, 50));
+      assert.deepEqual(server.statuses[0], { type: 'status', players: 1, maxPlayers: 4, status: 'Delfino Plaza', open: true });
+      assert.match(logged.join('\n'), /Your game is in the public list/);
+    } finally { game.close(); }
+  } finally { host.close(); }
+});
+
+test('a private host is never reported for the list', async () => {
+  const server = roomServer();
+  const host = await rooms.host({ ...quiet, port: await freePort(), name: 'Chase', build: 'b', url: 'http://rooms.test',
+    WebSocketImpl: server.WebSocket, lan: [] });
+  const game = await fakeGame(host.gamePort);
+  try {
+    await new Promise(resolve => setTimeout(resolve, 600));
+    assert.equal(server.hostInfo.public, false);
+    assert.equal(server.statuses, undefined);
+  } finally {
+    game.close();
+    host.close();
+  }
+});
+
+test('the public list comes back as the server sends it, or says why not', async () => {
+  const games = [{ code: 'KQ7M2D', name: 'Chase', build: 'b', protocol: 2, players: 1, maxPlayers: 4, status: 'Delfino Plaza', open: true, minutes: 3 }];
+  const answer = (status, body) => async () => ({ status, ok: status === 200, json: async () => body });
+  assert.deepEqual(await rooms.listPublic({ url: 'https://x', fetchImpl: answer(200, { rooms: games }) }), games);
+  assert.deepEqual(await rooms.listPublic({ url: 'https://x', fetchImpl: answer(200, {}) }), []);
+  await assert.rejects(rooms.listPublic({ url: 'https://x', fetchImpl: answer(500) }), /had a problem/);
+  await assert.rejects(rooms.listPublic({ url: 'https://x', fetchImpl: async () => { throw new Error('x'); } }), /Couldn't reach/);
 });

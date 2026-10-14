@@ -41,6 +41,8 @@ const PEER_IDLE = 30000;       // ms before a silent player's forwarding is clos
 const MAX_PEERS = 12;          // players (and probes) forwarded at once by a host
 const PING_EVERY = 30000;      // ms between WebSocket keepalives
 const RESTUN_EVERY = 25000;    // ms between checks of the host's public address
+const STATUS_EVERY = 20000;    // ms between a public host's reports of its game for the list
+const STATUS_RETRY = 5000;     // ms between tries while the game isn't answering yet
 const REPLY_WAIT = 8000;       // ms to wait for the room server
 const RECONNECT = [2000, 5000, 10000, 30000];
 
@@ -190,6 +192,17 @@ async function lookup(code, { url = serverUrl(), fetchImpl = globalThis.fetch } 
   return response.json();
 }
 
+// --- The public list: games whose hosts chose to list them
+
+async function listPublic({ url = serverUrl(), fetchImpl = globalThis.fetch } = {}) {
+  let response;
+  try { response = await fetchImpl(`${url}/v1/rooms`, { signal: AbortSignal.timeout(REPLY_WAIT) }); }
+  catch (_) { throw new Error('Couldn\'t reach the room server. Check your internet connection.'); }
+  if (!response.ok) throw new Error('The room server had a problem. Try again in a moment.');
+  const body = await response.json();
+  return Array.isArray(body?.rooms) ? body.rooms : [];
+}
+
 // --- Hosting
 
 // A player the host's launcher passes packets for: its own socket on this
@@ -230,9 +243,10 @@ class Peer {
 }
 
 class HostRoom {
-  constructor({ port, name, build, url = serverUrl(), WebSocketImpl = globalThis.WebSocket, log = () => {},
+  constructor({ port, name, build, isPublic = false, url = serverUrl(), WebSocketImpl = globalThis.WebSocket, log = () => {},
     onRoom = () => {}, servers, lan }) {
-    Object.assign(this, { port, name, build, url, WebSocketImpl, log, onRoom, servers, lan });
+    Object.assign(this, { port, name, build, isPublic, url, WebSocketImpl, log, onRoom, servers, lan });
+    this.statusAt = 0;
     this.code = null;
     this.roomKey = null;
     this.joins = new Map();     // join id -> { id, secret, candidates, name, started, reached, peer }
@@ -258,7 +272,8 @@ class HostRoom {
   }
 
   hello() {
-    return { type: 'hello', candidates: this.candidates, name: this.name, build: this.build, protocol: multiplayer.PROTOCOL };
+    return { type: 'hello', candidates: this.candidates, name: this.name, build: this.build, protocol: multiplayer.PROTOCOL,
+      public: this.isPublic };
   }
 
   async connect() {
@@ -286,6 +301,7 @@ class HostRoom {
     this.roomKey = roomKey;
     this.attempt = 0;
     this.pingAt = Date.now();
+    this.statusAt = 0; // a new connection's room needs its line in the list again
     this.onRoom(code, Boolean(changed));
   }
 
@@ -390,6 +406,18 @@ class HostRoom {
       if (!join.peer && age > 10 * 60 * 1000) this.joins.delete(join.id);
     }
     for (const peer of this.peers) if (now - Math.max(peer.heard, peer.sent) > PEER_IDLE) this.dropPeer(peer);
+    // a public room's line in the list: the game's own answer to a probe
+    if (this.isPublic && this.ws && !this.reporting && now >= this.statusAt) {
+      this.reporting = true;
+      multiplayer.probe('127.0.0.1', this.gamePort, { timeout: 1500, attempts: 3 }).then(info => {
+        send(this.ws, { type: 'status', players: info.players, maxPlayers: info.maxPlayers, status: info.status, open: info.open });
+        if (!this.listed) {
+          this.listed = true;
+          this.log('Your game is in the public list: anyone can join it from their Multiplayer window.');
+        }
+        this.statusAt = Date.now() + STATUS_EVERY;
+      }, () => { this.statusAt = Date.now() + STATUS_RETRY; }).finally(() => { this.reporting = false; });
+    }
     if (this.ws && now - this.pingAt >= PING_EVERY) {
       this.pingAt = now;
       send(this.ws, 'ping');
@@ -568,5 +596,5 @@ async function join(options) {
   return new JoinLink(options).start();
 }
 
-module.exports = { parseRoomCode, formatRoomCode, serverUrl, lookup, host, join, punchPacket, readPunch, candidates,
+module.exports = { parseRoomCode, formatRoomCode, serverUrl, lookup, listPublic, host, join, punchPacket, readPunch, candidates,
   freeLoopbackPort, HELLO, ACK, KEEP };

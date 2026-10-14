@@ -286,6 +286,19 @@ pre { height: 120px; margin: 0; padding: 12px; overflow: auto; border-radius: 8p
 .mp-share-value { padding: 3px 8px; border-radius: 6px; background: #eef4f3; color: #223940; font: 600 13px/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; user-select: all; }
 .mp-copy { font-size: 12px; }
 .mp-network .mp-stun-note { margin-top: 10px; font-size: 11px; }
+.mp-public-switch { margin: -4px 0 10px; padding: 8px 0 12px; }
+.mp-browser-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 6px; }
+.mp-browser-head h2 { margin: 0; }
+.mp-browser-list { display: grid; gap: 6px; max-height: 220px; margin: 0; padding: 0; overflow-y: auto; list-style: none; }
+.mp-game { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 12px; border: 1px solid #d3dedc; border-radius: 10px; background: #f6faf9; }
+.mp-game-text { display: grid; gap: 2px; min-width: 0; }
+.mp-game-text strong { overflow: hidden; color: #334b51; font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
+.mp-game-text small { color: #6b7d82; font-size: 11px; }
+.mp-game.unavailable { opacity: .65; }
+.mp-game-join { flex: none; font-weight: 650; }
+.dark .mp-game { border-color: #33566a; background: #0f2636; }
+.dark .mp-game-text strong { color: #e1edf0; }
+.dark .mp-game-text small { color: #9fb7bd; }
 .mp-recent { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; margin-bottom: 10px; }
 .mp-recent-label { color: #607379; font-size: 12px; font-weight: 650; }
 .mp-recent-list { display: flex; flex-wrap: wrap; gap: 6px; }

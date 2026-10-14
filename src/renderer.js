@@ -1134,7 +1134,7 @@ async function showWhatsNew() {
 // kept for next time; Join asks the host's game first, so a wrong address is reported here.
 function multiplayerFields() {
   return { name: $('mp-name').value, hostPort: $('mp-host-port').value, address: $('mp-address').value,
-    joinPort: $('mp-join-port').value };
+    joinPort: $('mp-join-port').value, public: $('mp-list-public').checked };
 }
 function setMultiplayerResult(text, error = false) {
   $('mp-result').textContent = text;
@@ -1144,13 +1144,70 @@ function setMultiplayerResult(text, error = false) {
 const looksLikeInvite = text => /^[0-9a-z]{4}-?[0-9a-z]{4}-?[0-9a-z]{4}$/i.test(String(text).trim());
 // So does a room code (src/rooms.js): the host's launcher has the port.
 const looksLikeRoom = text => /^[0-9a-z]{3}[-\s]?[0-9a-z]{3}$/i.test(String(text).trim());
+// The public games last loaded (below), shown again as the buttons' state changes.
+let publicGames = null, publicTicket = 0, publicTimer = null;
+const PUBLIC_REFRESH = 15000;
 function renderMultiplayer() {
   const busy = Boolean(current?.active) || setupPending;
   $('mp-host').disabled = busy;
   $('mp-join').disabled = busy;
   $('mp-host-port-note').textContent = /^\d{1,5}$/.test($('mp-host-port').value.trim()) ? $('mp-host-port').value.trim() : '24002';
   $('mp-join-port').disabled = looksLikeInvite($('mp-address').value) || looksLikeRoom($('mp-address').value);
+  if (publicGames) renderPublicGames(publicGames);
 }
+// Public games (src/rooms.js: listPublic): games whose hosts listed them, refreshed while the window is open.
+async function loadPublicGames() {
+  const ticket = ++publicTicket;
+  $('mp-browser-refresh').disabled = true;
+  try {
+    const games = await window.sms.publicGames();
+    if (ticket !== publicTicket) return;
+    publicGames = games;
+    renderPublicGames(games);
+  } catch (_) {
+    if (ticket !== publicTicket) return;
+    publicGames = null;
+    $('mp-browser-list').replaceChildren();
+    $('mp-browser-note').hidden = false;
+    $('mp-browser-note').textContent = "Couldn't load public games. Check your internet connection.";
+  } finally {
+    if (ticket === publicTicket) $('mp-browser-refresh').disabled = false;
+  }
+}
+function renderPublicGames(games) {
+  const busy = Boolean(current?.active) || setupPending;
+  const list = $('mp-browser-list');
+  list.replaceChildren();
+  $('mp-browser-note').hidden = games.length > 0;
+  $('mp-browser-note').textContent = 'No public games right now. Host one with "List my game publicly" on, and it shows here.';
+  for (const game of games) {
+    const item = document.createElement('li');
+    item.className = 'mp-game';
+    const text = document.createElement('span');
+    text.className = 'mp-game-text';
+    const name = document.createElement('strong');
+    name.textContent = `${game.name}'s game`;
+    const detail = document.createElement('small');
+    const where = game.status ? game.status[0].toUpperCase() + game.status.slice(1) : '';
+    detail.textContent = [where, `${game.players} of ${game.maxPlayers} players`, game.problem].filter(Boolean).join(' · ');
+    text.append(name, detail);
+    const join = document.createElement('button');
+    join.className = 'text-button mp-game-join';
+    join.textContent = 'Join';
+    join.disabled = busy || Boolean(game.problem);
+    join.setAttribute('aria-label', `Join ${game.name}'s game`);
+    join.addEventListener('click', () => {
+      $('mp-address').value = game.code;
+      renderMultiplayer();
+      startMultiplayer('join');
+    });
+    item.classList.toggle('unavailable', Boolean(game.problem));
+    item.append(text, join);
+    list.append(item);
+  }
+}
+$('mp-browser-refresh').addEventListener('click', loadPublicGames);
+$('multiplayer').addEventListener('close', () => { clearInterval(publicTimer); publicTimer = null; });
 // The hosts joined lately: one press joins again; × forgets one.
 function renderRecentHosts(list = current?.config?.multiplayer?.recent || []) {
   const holder = $('mp-recent-list');
@@ -1189,14 +1246,18 @@ $('open-multiplayer').addEventListener('click', () => {
   $('mp-host-port').value = String(saved.hostPort || 24002);
   $('mp-address').value = saved.address || '';
   $('mp-join-port').value = String(saved.joinPort || 24002);
+  $('mp-list-public').checked = saved.public === true;
   setMultiplayerResult('');
   renderRecentHosts();
   renderMultiplayer();
   $('multiplayer').showModal();
   $(saved.address ? 'mp-join' : 'mp-name').focus();
   checkNat();
+  loadPublicGames();
+  clearInterval(publicTimer);
+  publicTimer = setInterval(() => { if ($('multiplayer').open) loadPublicGames(); }, PUBLIC_REFRESH);
 });
-for (const id of ['mp-name', 'mp-host-port', 'mp-address', 'mp-join-port']) {
+for (const id of ['mp-name', 'mp-host-port', 'mp-address', 'mp-join-port', 'mp-list-public']) {
   $(id).addEventListener('input', renderMultiplayer);
   // An unfinished port is kept as it was until it is a number.
   $(id).addEventListener('change', () => window.sms.saveMultiplayer(multiplayerFields())

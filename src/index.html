@@ -265,6 +265,7 @@
         <section class="mp-section" aria-labelledby="mp-host-title">
           <h2 id="mp-host-title">Host a game</h2>
           <p class="helper">You play as Mario on your own save; players who join add to it. When your game starts, its room code is copied for you to send to friends, and shows under the play button and on the game's pause screen. No port forwarding needed. (Friends joining with your address instead need UDP port <strong id="mp-host-port-note">24002</strong> forwarded to this computer.)</p>
+          <label class="switch mp-public-switch"><span><strong>List my game publicly</strong><small>Anyone can see your name and where you are in the game, and join you on your save. Your address isn't shown.</small></span><input id="mp-list-public" type="checkbox"><i></i></label>
           <div class="mp-row"><label class="mp-field mp-port">Port<input id="mp-host-port" class="mp-input" type="text" inputmode="numeric" maxlength="5" spellcheck="false" autocomplete="off"></label><button id="mp-host" class="solid mp-go">Host Game</button></div>
         </section>
         <section class="mp-section" aria-labelledby="mp-join-title">
@@ -272,6 +273,11 @@
           <p class="helper">The host presses Host Game first and sends you their room code. You join as Luigi, Peach or Metal Mario, and go straight to wherever the host is.</p>
           <div id="mp-recent" class="mp-recent" hidden><span class="mp-recent-label">Recent</span><div id="mp-recent-list" class="mp-recent-list"></div></div>
           <div class="mp-row"><label class="mp-field mp-address">Room code, invite code or IP address<input id="mp-address" class="mp-input" type="text" spellcheck="false" autocomplete="off" placeholder="KQ7-M2D" aria-describedby="mp-result"></label><label class="mp-field mp-port">Port<input id="mp-join-port" class="mp-input" type="text" inputmode="numeric" maxlength="5" spellcheck="false" autocomplete="off" aria-describedby="mp-result"></label><button id="mp-join" class="solid mp-go">Join</button></div>
+        </section>
+        <section class="mp-section" aria-labelledby="mp-browser-title">
+          <div class="mp-browser-head"><h2 id="mp-browser-title">Public games</h2><button id="mp-browser-refresh" class="text-button">Refresh</button></div>
+          <p id="mp-browser-note" class="helper" role="status" aria-live="polite">Looking for public games…</p>
+          <ul id="mp-browser-list" class="mp-browser-list" aria-labelledby="mp-browser-title"></ul>
         </section>
         <p id="mp-result" class="mp-result" role="status" aria-live="polite"></p>
         <p class="helper mp-rules">Shines, blue coins, red coins, coins and lives are shared, and everyone sees the host's enemies and each other's water. Only the host can take everyone to another area. A Shine collected by anyone takes everyone back out together. Out of lives, you watch the others until everyone is out, then the level starts again. Save states are off while playing together.</p>

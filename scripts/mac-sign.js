@@ -24,19 +24,24 @@ function designatedRequirement(certificateHash) {
     `(certificate leaf = H"${certificateHash.toLowerCase()}" or (${DEVELOPER_ID}))`;
 }
 
+// codesign's options for one file of the app. No secure timestamp: it only counts for Apple's notarization, which
+// this certificate can't have, and fetching one from Apple's server for each of the app's few hundred files made
+// signing take minutes.
+function fileOptions(file, { app, identity, base = () => ({}) }) {
+  return { ...base(file), timestamp: 'none', ...(file === app ? { requirements: designatedRequirement(identity) } : {}) };
+}
+
 async function sign(options) {
   if (!options.keychain) throw new Error('Set CSC_LINK and CSC_KEY_PASSWORD to sign the Mac app.');
   const identity = identityHash(options.keychain);
-  const optionsForFile = options.optionsForFile;
   await signApp({
     ...options,
     identity,
     identityValidation: false,
-    optionsForFile: file => file === options.app
-      ? { ...optionsForFile(file), requirements: designatedRequirement(identity) }
-      : optionsForFile(file)
+    optionsForFile: file => fileOptions(file, { app: options.app, identity, base: options.optionsForFile })
   });
 }
 
 module.exports = sign;
 module.exports.designatedRequirement = designatedRequirement;
+module.exports.fileOptions = fileOptions;

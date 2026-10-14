@@ -1034,7 +1034,8 @@ async function joinRoom(code, settings) {
     beforePlay: async () => {
       if (updateDue) await check(localGameBuild());
       link = await rooms.join({ code, name, log });
-      log(link.mode === 'relay' ? 'Connected through the relay: your networks couldn\'t reach each other directly.'
+      log(link.mode === 'relay' ? 'Connected through the relay, which adds a little delay: your networks couldn\'t connect '
+        + 'directly. If the host forwards their UDP port on their router, you\'ll connect directly.'
         : `Connected ${link.mode === 'lan' ? 'over your local network' : 'directly over the internet'}.`);
       let hosted;
       try { hosted = await multiplayer.probe('127.0.0.1', link.localPort); }

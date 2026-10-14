@@ -316,7 +316,10 @@ class HostRoom {
       const peer = this.peerFor(join);
       if (!peer) return;
       peer.route = { relay: join.id };
-      this.log(`${join.name} is connected through the relay: your networks couldn't reach each other directly.`);
+      this.log(msg.reason === 'lost'
+        ? `${join.name}'s direct connection stopped working, so they're now connected through the relay, which adds a little delay.`
+        : `${join.name} is connected through the relay, which adds a little delay: your networks couldn't connect directly. `
+          + `Forwarding UDP port ${this.port} on your router to this computer would let players connect directly.`);
     } else if (msg.type === 'leave') {
       const join = this.joins.get(msg.id);
       if (join?.peer?.route.relay) this.dropPeer(join.peer);
@@ -473,7 +476,7 @@ class JoinLink {
         this.hostAddresses.add(key(path));
         this.mode = privateAddress(path.address) ? 'lan' : 'direct';
       } else {
-        await this.useRelay();
+        await this.useRelay('punch');
       }
       this.local = await bindUdp(0, '127.0.0.1');
       this.local.on('message', (packet, from) => this.fromGame(packet, from));
@@ -492,9 +495,10 @@ class JoinLink {
     }
   }
 
-  async useRelay() {
+  // `reason`: 'punch' (punching failed) or 'lost' (the direct path stopped working)
+  async useRelay(reason) {
     const reply = nextMessage(this.ws, 'relay', 'The host closed their game.');
-    send(this.ws, { type: 'relay' });
+    send(this.ws, { type: 'relay', reason });
     await reply;
     this.mode = 'relay';
   }
@@ -544,7 +548,7 @@ class JoinLink {
     if (!this.switched && this.game && now - this.sent < 1000 && now - this.heard > QUIET_SWITCH) {
       this.switched = true;
       this.log('The direct connection to the host stopped working. Switching to the relay…');
-      this.useRelay().then(() => { this.heard = Date.now(); this.log('Connected through the relay.'); },
+      this.useRelay('lost').then(() => { this.heard = Date.now(); this.log('Connected through the relay, which adds a little delay.'); },
         error => this.log(`Couldn't switch to the relay: ${error.message}`));
     }
   }

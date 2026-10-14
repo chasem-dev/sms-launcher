@@ -71,7 +71,8 @@ function roomServer({ code = 'KQ7M2D', secret = 'ab'.repeat(16) } = {}) {
       ws.deliver(JSON.stringify({ type: 'host', id: ws.id, secret, candidates: server.hostInfo.candidates, name: server.hostInfo.name }));
     } else if (msg.type === 'relay') {
       ws.relay = true;
-      server.host.deliver(JSON.stringify({ type: 'relay', id: ws.id }));
+      server.relayed = msg.reason;
+      server.host.deliver(JSON.stringify({ type: 'relay', id: ws.id, reason: msg.reason }));
       ws.deliver(JSON.stringify({ type: 'relay' }));
     }
   };
@@ -170,9 +171,11 @@ test('a joiner reaches the host\'s game directly through the punched path', asyn
   }
 });
 
-test('with no way through, the joiner falls back to the relay', async () => {
+test('with no way through, the joiner falls back to the relay, and the host hears why', async () => {
   const server = roomServer();
-  const host = await rooms.host({ ...quiet, port: await freePort(), name: 'Chase', build: 'b', url: 'http://rooms.test',
+  const hostLog = [];
+  const port = await freePort();
+  const host = await rooms.host({ ...quiet, log: line => hostLog.push(line), port, name: 'Chase', build: 'b', url: 'http://rooms.test',
     WebSocketImpl: server.WebSocket, lan: [] });
   const game = await fakeGame(host.gamePort);
   try {
@@ -180,8 +183,10 @@ test('with no way through, the joiner falls back to the relay', async () => {
       WebSocketImpl: server.WebSocket, lan: [], punchFor: 300 });
     try {
       assert.equal(link.mode, 'relay');
+      assert.equal(server.relayed, 'punch');
       const info = await multiplayer.probe('127.0.0.1', link.localPort, { timeout: 2000 });
       assert.equal(info.name, 'Chase');
+      assert.match(hostLog.join('\n'), new RegExp(`Luigi is connected through the relay.*Forwarding UDP port ${port}`));
     } finally { link.close(); }
   } finally {
     game.close();
@@ -238,8 +243,11 @@ test('when the direct path stops working mid-game, the joiner moves to the relay
   const host = await rooms.host({ ...quiet, port: await freePort(), name: 'Chase', build: 'b', url: 'http://rooms.test',
     WebSocketImpl: server.WebSocket, lan: ['127.0.0.1'] });
   const game = await fakeGame(host.gamePort);
-  const link = await rooms.join({ ...quiet, code: 'KQ7M2D', name: 'Luigi', url: 'http://rooms.test',
+  const joinLog = [];
+  const link = await rooms.join({ ...quiet, log: line => joinLog.push(line), code: 'KQ7M2D', name: 'Luigi', url: 'http://rooms.test',
     WebSocketImpl: server.WebSocket, lan: ['127.0.0.1'] });
+  const hostLog = [];
+  host.log = line => hostLog.push(line);
   // a joining game that keeps asking, as a game sends all the time
   const player = dgram.createSocket('udp4');
   let answers = 0;
@@ -255,6 +263,9 @@ test('when the direct path stops working mid-game, the joiner moves to the relay
     host.socket.send = () => {};
     await new Promise(resolve => setTimeout(resolve, 5500));
     assert.equal(link.mode, 'relay');
+    assert.equal(server.relayed, 'lost');
+    assert.match(joinLog.join('\n'), /stopped working. Switching to the relay/);
+    assert.match(hostLog.join('\n'), /Luigi's direct connection stopped working, so they're now connected through the relay/);
     const before = answers;
     await new Promise(resolve => setTimeout(resolve, 300));
     assert.ok(answers > before, 'answered through the relay');

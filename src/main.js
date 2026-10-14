@@ -23,6 +23,8 @@ const telemetry = require('./telemetry');
 const discord = require('./discord');
 const presence = require('./presence');
 const changelog = require('./changelog');
+const multiplayer = require('./multiplayer');
+const nat = require('./nat');
 const { cleanOutputLine, createActivityReader } = require('./progress');
 const { createActivityLog } = require('./activity-log');
 const { observeProcess, exitDescription, failureMessage } = require('./process-output');
@@ -179,6 +181,17 @@ function saveConfig() {
   fs.renameSync(temporary, file);
 }
 
+function savedMultiplayer(saved) {
+  const value = saved && typeof saved === 'object' ? saved : {};
+  const portOr = text => { try { return multiplayer.parsePort(text); } catch (_) { return multiplayer.DEFAULT_PORT; } };
+  const recent = (Array.isArray(value.recent) ? value.recent : [])
+    .filter(item => item && typeof item.address === 'string' && item.address && Number.isInteger(item.port) && item.port > 0 && item.port < 65536)
+    .slice(0, multiplayer.RECENT_HOSTS)
+    .map(item => ({ address: item.address.slice(0, 255), port: item.port, name: multiplayer.playerName(item.name, '') }));
+  return { name: multiplayer.playerName(value.name, ''), address: typeof value.address === 'string' ? value.address.slice(0, 255) : '',
+    hostPort: portOr(value.hostPort), joinPort: portOr(value.joinPort), recent };
+}
+
 function loadConfig() {
   let saved = {};
   try { saved = portable.resolvedPaths(JSON.parse(fs.readFileSync(configFile(), 'utf8')), portableRoot); } catch (_) { /* first run */ }
@@ -202,7 +215,9 @@ function loadConfig() {
     // Whether the launcher has offered to fix a Steam shortcut without --no-sandbox.
     steamFixOffered: Boolean(saved.steamFixOffered),
     // Customize Mario: the colours the player chose and the Shine shirt.
-    marioLook: marioColors.normalizeLook(saved.marioLook)
+    marioLook: marioColors.normalizeLook(saved.marioLook),
+    // The Multiplayer window's fields, as last used.
+    multiplayer: savedMultiplayer(saved.multiplayer)
   };
   if (config.installId !== saved.installId) {
     try { saveConfig(); } catch (error) { log(`Could not save preferences: ${error.message}`); }
@@ -800,7 +815,8 @@ async function displayInfo() {
   catch (_) { return { displays: [], error: 'The game reported your display in a way the launcher did not understand.' }; }
 }
 
-async function play(installation = null) {
+// `session`: a multiplayer game to host or join ({ mode: 'host' or 'join', env }: hostGame, joinGame), or null to play alone.
+async function play(installation = null, session = null) {
   const root = installation?.repo || requireRepo();
   // Controls, sound, display and picture choices are the player's, not the build's: an earlier install plays with them too.
   const settings = installation ? { ...installation.settings, ...playerSettings(config.settings) } : config.settings;
@@ -810,7 +826,9 @@ async function play(installation = null) {
     throw new Error('HD visuals need to be set up. Return to the main screen to finish setup, or turn them off in Settings.');
   const disc = port.gameDisc(root, rom, settings.eclipse);
   makeSaveBackup('before-play');
-  const saveDir = saves.prepareSaveDirectory(currentSaveDirectory());
+  // A player who joins plays the host's save: their own memory card stays out of it.
+  const saveDir = saves.prepareSaveDirectory(session?.mode === 'join'
+    ? path.join(currentSaveDirectory(), 'multiplayer-guest') : currentSaveDirectory());
   const recordedTools = game.toolRoot(root, settings);
   const env = recordedTools
     ? buildTools.environmentAtRoot(recordedTools, { ...port.buildEnvironment(settings, disc, root), SMS_SAVE_DIR: saveDir })
@@ -827,6 +845,7 @@ async function play(installation = null) {
   if (config.settings.discordPresence) env.SMS_PRESENCE = '1';
   const look = marioLookPack(rom, root, settings);
   if (look) env.SMS_MARIO_LOOK = look;
+  if (session) Object.assign(env, session.env);
   if (portableRoot && !env.SMS_GX_SHADER_CACHE) {
     // The game only makes the folder for its default location.
     env.SMS_GX_SHADER_CACHE = portable.shaderCache(portableRoot, settings.arch);
@@ -906,14 +925,100 @@ function stopPresence(startedAt) {
 }
 
 // Update & play asks for the update even when updates are not automatic.
-async function launchGame(update = config.settings.autoUpdate) {
+async function launchGame(session = null, update = config.settings.autoUpdate) {
   requireRepo();
   port.validateRom(config.rom);
   if (!binaryReady() || (update && !game.isCurrent(config.repo, config.settings, currentSource()))) await build();
   if (!port.hdVisualsInstalled(config.repo, config.settings)) await installTextures();
   else await updateTextureExtras(config.repo, config.settings);
   await updateLanguagePack(config.repo, config.settings);
-  return play();
+  // last checks, with the game as it will run (multiplayer: the network check is done, the host's version matches)
+  if (session?.beforePlay) await session.beforePlay();
+  return play(null, session);
+}
+
+// The Multiplayer window's fields, kept for next time. Host Game and Join throw a sentence for a field that is wrong
+// (`strict`); saving as the player types keeps the last good port instead, so the other fields are still kept.
+function saveMultiplayer(input = {}, { strict = true } = {}) {
+  const portField = (text, previous) => {
+    if (text === undefined) return previous;
+    try { return multiplayer.parsePort(text); } catch (error) { if (strict) throw error; return previous; }
+  };
+  const value = { name: multiplayer.playerName(input.name, ''), address: String(input.address ?? config.multiplayer.address).trim().slice(0, 255),
+    hostPort: portField(input.hostPort, config.multiplayer.hostPort), joinPort: portField(input.joinPort, config.multiplayer.joinPort),
+    recent: config.multiplayer.recent || [] };
+  config.multiplayer = value;
+  saveConfig();
+  return value;
+}
+
+// The game build a host must also be running for this game to join it: the
+// game's commit (as the game names its build), with Eclipse marked.
+function localGameBuild() {
+  const installed = config.repo && game.installed(config.repo, config.settings);
+  if (!installed?.commit) return null;
+  return `${installed.commit.slice(0, 12)}${config.settings.eclipse ? '-eclipse' : ''}`;
+}
+
+// The network check (src/nat.js) holds the port a hosted game listens on for a few seconds: one runs at a time, and
+// Host Game waits for it to let go of the port.
+let natCheck = null, lastNat = null;
+function checkNat(input) {
+  if (!natCheck) {
+    let port = multiplayer.DEFAULT_PORT;
+    try { port = multiplayer.parsePort(input?.port); } catch (_) { /* the default */ }
+    natCheck = nat.detect({ port }).then(result => {
+      // what to give friends: the public address with the port players reach (the hosting port, or the router's
+      // own when it showed the port open under another number), as an invite code too, and the address on this network
+      const reach = result.canHost && result.publicPort && !result.portBusy ? result.publicPort : port;
+      const lan = multiplayer.lanAddresses()[0] || null;
+      result.share = result.publicAddress ? { address: result.publicAddress, port: reach,
+        invite: multiplayer.inviteCode(result.publicAddress, reach), lan: lan && `${lan}:${port}` } : null;
+      lastNat = result;
+      return result;
+    }).finally(() => { natCheck = null; });
+  }
+  return natCheck;
+}
+
+// Host Game: plays like Play, with the game listening for players on the chosen port.
+async function hostGame(input) {
+  const settings = saveMultiplayer(input);
+  const name = multiplayer.playerName(settings.name, 'Host');
+  log(`Hosting a multiplayer game on UDP port ${settings.hostPort}. Players join with your public IP address and this port.`);
+  return launchGame({ mode: 'host', env: multiplayer.environment('host', { port: settings.hostPort, name }),
+    beforePlay: () => natCheck?.catch(() => {}) });
+}
+
+// Join: finds the host's game first, so a wrong address or a full game is reported before anything else happens.
+// The versions are compared with the game as it will run: after an update, if one is due, the host is asked again.
+async function joinGame(input) {
+  const settings = saveMultiplayer(input);
+  const target = multiplayer.parseAddress(settings.address, settings.joinPort);
+  const find = async build => {
+    // the log is often pasted in public: the host's address is not written out in full
+    log(`Looking for a multiplayer game at ${multiplayer.maskAddress(target.host)}:${target.port}…`);
+    let info;
+    try { info = await multiplayer.probe(target.host, target.port); }
+    catch (error) {
+      // from inside the host's own network their public address usually doesn't answer (the router won't loop it back)
+      if (lastNat?.publicAddress && lastNat.publicAddress === target.host)
+        throw new Error(`${error.message} You and the host seem to be on the same network: use the "Same Wi-Fi" address `
+          + 'from their Multiplayer window instead.');
+      throw error;
+    }
+    const problem = multiplayer.joinProblem(info, build);
+    if (problem) throw new Error(problem);
+    return info;
+  };
+  const updateDue = !binaryReady() || (config.settings.autoUpdate && !game.isCurrent(config.repo, config.settings, currentSource()));
+  const info = await find(updateDue ? null : localGameBuild());
+  config.multiplayer.recent = multiplayer.rememberHost(config.multiplayer.recent, { ...target, name: info.name });
+  saveConfig();
+  log(`Found ${info.name || 'the host'}'s game: ${info.players} of ${info.maxPlayers} players${info.status ? `, in ${info.status}` : ''}. `
+    + (updateDue ? 'Updating the game first, then joining it.' : 'Starting the game to join it.'));
+  return launchGame({ mode: 'join', env: multiplayer.environment('join', { ...target, name: multiplayer.playerName(settings.name) }),
+    beforePlay: updateDue ? () => find(localGameBuild()) : null });
 }
 
 // Why `--play` opens the launcher instead of the game, or null if the game can start as it is.
@@ -1256,7 +1361,7 @@ function registerHandlers() {
     'update-port': ['Update game', updatePort], 'install-eclipse': ['Install Eclipse', () => installEclipse()],
     'install-textures': ['Install UHD textures', () => installTextures()], 'build': ['Build game', () => build(true)],
     'setup-game': ['Build game', setupGame], 'play': ['Play Super Mario Sunshine', playInstalled],
-    'launch-game': ['Prepare game', () => launchGame()], 'update-and-play': ['Prepare game', () => launchGame(true)],
+    'launch-game': ['Prepare game', () => launchGame()], 'update-and-play': ['Prepare game', () => launchGame(null, true)],
     'play-previous': ['Play Super Mario Sunshine', () => {
       if (!config.previousInstall) throw new Error('There is no previous version available.');
       return play(config.previousInstall);
@@ -1264,6 +1369,18 @@ function registerHandlers() {
   for (const [channel, [label, callback]] of Object.entries(actions))
     ipcMain.handle(channel, () => exclusive(label, callback, ['play', 'launch-game', 'update-and-play', 'play-previous'].includes(channel)));
   ipcMain.handle('set-game-source', (_event, input) => exclusive('Choose game source', () => chooseGameSource(input)));
+  ipcMain.handle('save-multiplayer', (_event, input) => saveMultiplayer(input, { strict: false }));
+  ipcMain.handle('forget-multiplayer-host', (_event, input) => {
+    config.multiplayer.recent = (config.multiplayer.recent || [])
+      .filter(item => !(item.address === input?.address && item.port === input?.port));
+    saveConfig();
+    return config.multiplayer;
+  });
+  ipcMain.handle('copy-text', (_event, text) => { clipboard.writeText(String(text ?? '').slice(0, 1000)); });
+  // NAT type, checked from the port the player would host on (src/nat.js).
+  ipcMain.handle('check-nat', (_event, input) => checkNat(input));
+  ipcMain.handle('host-game', (_event, input) => exclusive('Host multiplayer game', () => hostGame(input), true));
+  ipcMain.handle('join-game', (_event, input) => exclusive('Join multiplayer game', () => joinGame(input), true));
   ipcMain.handle('clean-preview', () => exclusive('Preview cleanup', () => clean(true)));
   ipcMain.handle('backup-saves', () => exclusive('Back up saves', () => makeSaveBackup('manual')));
   ipcMain.handle('steam-status', () => steamStatus());

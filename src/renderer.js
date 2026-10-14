@@ -1130,6 +1130,161 @@ async function showWhatsNew() {
     await window.sms.markChangelogSeen();
   } catch (_) { /* the changelog button still works */ }
 }
+// --- Multiplayer (src/multiplayer.js): host a game, or join one by address and port. The fields are
+// kept for next time; Join asks the host's game first, so a wrong address is reported here.
+function multiplayerFields() {
+  return { name: $('mp-name').value, hostPort: $('mp-host-port').value, address: $('mp-address').value,
+    joinPort: $('mp-join-port').value };
+}
+function setMultiplayerResult(text, error = false) {
+  $('mp-result').textContent = text;
+  $('mp-result').classList.toggle('error', error);
+}
+// The network check's last word: on a network that lets no UDP through, neither button can work.
+let natType = null;
+// An invite code carries its own port (src/multiplayer.js: inviteCode).
+const looksLikeInvite = text => /^[0-9a-z]{4}-?[0-9a-z]{4}-?[0-9a-z]{4}$/i.test(String(text).trim());
+function renderMultiplayer() {
+  const busy = Boolean(current?.active) || setupPending;
+  const blocked = natType === 'blocked';
+  $('mp-host').disabled = busy || blocked;
+  $('mp-join').disabled = busy || blocked;
+  $('mp-host-port-note').textContent = /^\d{1,5}$/.test($('mp-host-port').value.trim()) ? $('mp-host-port').value.trim() : '24002';
+  $('mp-join-port').disabled = looksLikeInvite($('mp-address').value);
+}
+// The hosts joined lately: one press joins again; × forgets one.
+function renderRecentHosts(list = current?.config?.multiplayer?.recent || []) {
+  const holder = $('mp-recent-list');
+  holder.replaceChildren();
+  for (const host of list) {
+    const item = document.createElement('span');
+    item.className = 'mp-recent-item';
+    const join = document.createElement('button');
+    join.className = 'mp-recent-join';
+    join.textContent = host.name ? `${host.name}'s game` : `${host.address}:${host.port}`;
+    join.title = `Join ${host.address}:${host.port}`;
+    join.addEventListener('click', () => {
+      $('mp-address').value = host.address;
+      $('mp-join-port').value = String(host.port);
+      renderMultiplayer();
+      startMultiplayer('join');
+    });
+    const forget = document.createElement('button');
+    forget.className = 'mp-recent-forget';
+    forget.textContent = '×';
+    forget.setAttribute('aria-label', `Forget ${join.textContent}`);
+    forget.addEventListener('click', async () => {
+      const saved = await window.sms.forgetMultiplayerHost({ address: host.address, port: host.port });
+      if (current) current.config.multiplayer = saved;
+      renderRecentHosts(saved.recent);
+    });
+    item.append(join, forget);
+    holder.append(item);
+  }
+  $('mp-recent').hidden = list.length === 0;
+}
+$('open-multiplayer').addEventListener('click', () => {
+  closeModal();
+  const saved = current?.config?.multiplayer || {};
+  $('mp-name').value = saved.name || '';
+  $('mp-host-port').value = String(saved.hostPort || 24002);
+  $('mp-address').value = saved.address || '';
+  $('mp-join-port').value = String(saved.joinPort || 24002);
+  setMultiplayerResult('');
+  renderRecentHosts();
+  renderMultiplayer();
+  $('multiplayer').showModal();
+  $(saved.address ? 'mp-join' : 'mp-name').focus();
+  checkNat();
+});
+for (const id of ['mp-name', 'mp-host-port', 'mp-address', 'mp-join-port']) {
+  $(id).addEventListener('input', renderMultiplayer);
+  // An unfinished port is kept as it was until it is a number.
+  $(id).addEventListener('change', () => window.sms.saveMultiplayer(multiplayerFields())
+    .then(saved => { if (current) current.config.multiplayer = saved; }).catch(() => {}));
+}
+for (const id of ['mp-address', 'mp-join-port'])
+  $(id).addEventListener('keydown', event => { if (event.key === 'Enter') $('mp-join').click(); });
+$('mp-host-port').addEventListener('keydown', event => { if (event.key === 'Enter') $('mp-host').click(); });
+// Copy buttons in the network section: the invite code, the public address, the address on this network.
+for (const button of document.querySelectorAll('.mp-copy')) {
+  button.addEventListener('click', async () => {
+    await window.sms.copyText($(button.dataset.copy).textContent);
+    button.textContent = 'Copied';
+    setTimeout(() => { button.textContent = 'Copy'; }, 1500);
+  });
+}
+async function startMultiplayer(mode) {
+  if (!current?.binaryReady && !current?.repoReady) {
+    setMultiplayerResult('Set up the game first: close this and press the main button.', true);
+    return;
+  }
+  setMessage('');
+  setMultiplayerResult(mode === 'join' ? "Looking for the host's game..." : 'Starting the game...');
+  setupPending = true;
+  try {
+    if (current) refresh(current);
+    renderMultiplayer();
+    await (mode === 'host' ? window.sms.hostGame(multiplayerFields()) : window.sms.joinGame(multiplayerFields()));
+    await sync();
+  } catch (error) {
+    // The game had not started (or failed): say why here, where the player is.
+    const message = String(error.message || error).replace(/^Error invoking remote method '[^']+': (Error: )?/, '');
+    if ($('multiplayer').open) setMultiplayerResult(message, true);
+    else showError({ message });
+    await sync();
+  } finally {
+    setupPending = false;
+    if (current) refresh(current);
+    renderMultiplayer();
+  }
+}
+// NAT type (src/nat.js): what this network allows, from the port the player would host on.
+let natCheck = 0;
+async function checkNat() {
+  const ticket = ++natCheck;
+  natType = null;
+  $('mp-nat-badge').className = 'mp-nat-badge';
+  $('mp-nat-badge').textContent = 'Checking…';
+  $('mp-nat-text').textContent = 'Checking whether you can host and join from this network…';
+  $('mp-share').hidden = true;
+  $('mp-nat-check').disabled = true;
+  renderMultiplayer();
+  try {
+    const port = $('mp-host-port').value.trim() || '24002';
+    const result = await window.sms.checkNat({ port });
+    if (ticket !== natCheck) return;
+    natType = result.type;
+    $('mp-nat-badge').textContent = `NAT: ${result.label}`;
+    $('mp-nat-badge').classList.add(result.type);
+    $('mp-nat-text').textContent = result.portBusy
+      ? `${result.text} (Port ${port} is in use, so another port was checked.)` : result.text;
+    const share = result.share;
+    if (share) {
+      $('mp-share').hidden = false;
+      $('mp-share-note').textContent = result.canHost ? 'Give friends who join you one of these:'
+        : `Once port ${share.port} is forwarded, friends join you with one of these. (Forwarding can't help if your `
+          + 'internet provider shares one IP address among its customers, which is called CGNAT.)';
+      $('mp-invite-row').hidden = !share.invite;
+      $('mp-invite').textContent = share.invite || '';
+      $('mp-public').textContent = `${share.address}:${share.port}`;
+      $('mp-lan-row').hidden = !share.lan;
+      $('mp-lan').textContent = share.lan || '';
+    }
+  } catch (_) {
+    if (ticket !== natCheck) return;
+    $('mp-nat-badge').textContent = 'NAT: Unknown';
+    $('mp-nat-text').textContent = "Couldn't check your network. Are you online?";
+  } finally {
+    if (ticket === natCheck) $('mp-nat-check').disabled = false;
+    renderMultiplayer();
+  }
+}
+$('mp-nat-check').addEventListener('click', checkNat);
+$('mp-host-port').addEventListener('change', checkNat);
+$('mp-host').addEventListener('click', () => startMultiplayer('host'));
+$('mp-join').addEventListener('click', () => startMultiplayer('join'));
+
 $('changelog-show-all').addEventListener('click', () => renderChangelog(changelogShown, false));
 $('open-changelog').addEventListener('click', showChangelog);
 $('changelog-page').addEventListener('click', () => window.sms.openChangelogPage().catch(error => setMessage(errorText(error))));
@@ -1397,6 +1552,8 @@ window.sms.onActivity(value => {
   const changed = Boolean(value) !== Boolean(current?.active);
   // Update & play builds and then starts the game in one task: reread the versions once the new game boots.
   const gameStarted = value?.label === 'Play Super Mario Sunshine' && current?.active?.label !== value.label;
+  // Host Game and Join close their window once the game is starting.
+  if (gameStarted && $('multiplayer').open) $('multiplayer').close();
   if (current) current.active = value;
   renderActivity(value);
   // Lock the settings now: the next state (sync) can take a while to arrive.

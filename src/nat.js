@@ -131,13 +131,13 @@ function classify({ first, changed, second, local }) {
 
 const DESCRIPTIONS = {
   open: { label: 'Open', canHost: true, canJoin: true,
-    text: 'You can host and join. Players join you at your public IP address and port.' },
+    text: 'You can host and join. Friends join you with your room code, or your public IP address and port.' },
   moderate: { label: 'Moderate', canHost: false, canJoin: true,
-    text: 'You can join games. To host, forward the UDP port on your router to this computer.' },
+    text: 'You can host and join with room codes. Joining you with your address needs the UDP port forwarded on your router.' },
   strict: { label: 'Strict', canHost: false, canJoin: true,
-    text: 'You can join games whose host has an open port. To host, forward the UDP port on your router to this computer.' },
-  blocked: { label: 'Blocked', canHost: false, canJoin: false,
-    text: "This network doesn't let UDP through, so multiplayer can't work on it. Try another network." },
+    text: 'You can host and join with room codes, though some friends may connect through the relay, which adds a little delay. Forwarding the UDP port on your router avoids that.' },
+  blocked: { label: 'Blocked', canHost: false, canJoin: true,
+    text: "This network doesn't let UDP through. You can still host and join with room codes, through the relay, which adds a little delay." },
   unknown: { label: 'Unknown', canHost: false, canJoin: false,
     text: "Couldn't check your network. Are you online?" }
 };
@@ -202,4 +202,4 @@ async function online(servers) {
   try { await dns.lookup(servers[0].host); return true; } catch (_) { return false; }
 }
 
-module.exports = { detect, classify, bindingRequest, readResponse, DESCRIPTIONS, SERVERS, MAGIC };
+module.exports = { detect, classify, ask, bindingRequest, readResponse, DESCRIPTIONS, SERVERS, MAGIC };

@@ -3,7 +3,8 @@
 // Multiplayer: the launcher's side of the game's multiplayer extension
 // (ext/multiplayer in sms-pc-port). Hosting and joining are the game's work;
 // the launcher checks that a host answers before starting the game to join it,
-// and hands the game its settings as SMS_MULTIPLAYER* variables.
+// and hands the game its settings as SMS_MULTIPLAYER* variables. Room codes,
+// and passing packets between the game and the internet, are src/rooms.js.
 //
 // The check is the game's own probe: a UDP packet "SMMP", protocol version,
 // type 1 (PROBE) and a number, padded to PROBE_SIZE bytes (the game ignores a

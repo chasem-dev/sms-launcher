@@ -25,6 +25,7 @@ const presence = require('./presence');
 const changelog = require('./changelog');
 const multiplayer = require('./multiplayer');
 const nat = require('./nat');
+const rooms = require('./rooms');
 const { cleanOutputLine, createActivityReader } = require('./progress');
 const { createActivityLog } = require('./activity-log');
 const { observeProcess, exitDescription, failureMessage } = require('./process-output');
@@ -78,10 +79,13 @@ function broadcast(channel, data) {
   if (window && !window.isDestroyed()) window.webContents.send(channel, data);
 }
 
+// The room code friends join with, while hosting (shown under the play button).
+let hostedRoom = null;
+
 function activityState() {
   const task = active || operation;
   return task ? { label: task.label, detail: task.detail, percent: task.percent,
-    startedAt: task.startedAt, canStop: Boolean(active?.child) } : null;
+    startedAt: task.startedAt, canStop: Boolean(active?.child), room: hostedRoom } : null;
 }
 
 function log(message) {
@@ -981,19 +985,76 @@ function checkNat(input) {
   return natCheck;
 }
 
-// Host Game: plays like Play, with the game listening for players on the chosen port.
+// Host Game: plays like Play, with the game listening for players on this computer and the launcher passing their
+// packets on from the chosen port (src/rooms.js), so friends can join with a room code and no port forwarding.
 async function hostGame(input) {
   const settings = saveMultiplayer(input);
   const name = multiplayer.playerName(settings.name, 'Host');
-  log(`Hosting a multiplayer game on UDP port ${settings.hostPort}. Players join with your public IP address and this port.`);
-  return launchGame({ mode: 'host', env: multiplayer.environment('host', { port: settings.hostPort, name }),
-    beforePlay: () => natCheck?.catch(() => {}) });
+  let room = null;
+  const showRoom = (code, changed) => {
+    hostedRoom = rooms.formatRoomCode(code);
+    clipboard.writeText(hostedRoom);
+    log(changed ? `Your room code changed to ${hostedRoom} (copied). Give friends the new one.`
+      : `Room code ${hostedRoom} (copied): friends join with it from their Multiplayer window.`);
+    broadcast('activity', activityState());
+  };
+  const session = { mode: 'host', env: multiplayer.environment('host', { port: settings.hostPort, name }),
+    beforePlay: async () => {
+      await natCheck?.catch(() => {});
+      room = await rooms.host({ port: settings.hostPort, name, build: localGameBuild(), log, onRoom: showRoom });
+      Object.assign(session.env, { SMS_MULTIPLAYER_PORT: String(room.gamePort), SMS_MULTIPLAYER_LOCAL: '1',
+        SMS_MULTIPLAYER_ROOM: room.code ? rooms.formatRoomCode(room.code) : '' });
+    } };
+  log(`Hosting a multiplayer game on UDP port ${settings.hostPort}.`);
+  try { return await launchGame(session); }
+  finally {
+    room?.close();
+    hostedRoom = null;
+    broadcast('activity', activityState());
+  }
+}
+
+// Join with a room code: the room server says whose game it is and which build it runs, then the launcher connects
+// to the host's launcher (src/rooms.js) and the game joins through it, on this computer.
+async function joinRoom(code, settings) {
+  const shown = rooms.formatRoomCode(code);
+  const check = async build => {
+    const info = await rooms.lookup(code);
+    const problem = multiplayer.joinProblem({ ...info, open: true, players: 0, maxPlayers: 4 }, build);
+    if (problem) throw new Error(problem);
+    return info;
+  };
+  log(`Looking for room ${shown}…`);
+  const updateDue = !binaryReady() || (config.settings.autoUpdate && !game.isCurrent(config.repo, config.settings, currentSource()));
+  const info = await check(updateDue ? null : localGameBuild());
+  log(`Found ${info.name || 'the host'}'s room. ${updateDue ? 'Updating the game first, then joining it.' : 'Connecting…'}`);
+  const name = multiplayer.playerName(settings.name);
+  let link = null;
+  const session = { mode: 'join', env: {},
+    beforePlay: async () => {
+      if (updateDue) await check(localGameBuild());
+      link = await rooms.join({ code, name, log });
+      log(link.mode === 'relay' ? 'Connected through the relay: your networks couldn\'t reach each other directly.'
+        : `Connected ${link.mode === 'lan' ? 'over your local network' : 'directly over the internet'}.`);
+      let hosted;
+      try { hosted = await multiplayer.probe('127.0.0.1', link.localPort); }
+      catch (_) { throw new Error('Reached the host, but their game didn\'t answer. Check that it\'s still running.'); }
+      const problem = multiplayer.joinProblem(hosted, localGameBuild());
+      if (problem) throw new Error(problem);
+      log(`${hosted.name || 'The host'}'s game: ${hosted.players} of ${hosted.maxPlayers} players`
+        + `${hosted.status ? `, in ${hosted.status}` : ''}. Starting the game to join it.`);
+      session.env = multiplayer.environment('join', { host: '127.0.0.1', port: link.localPort, name });
+    } };
+  try { return await launchGame(session); }
+  finally { link?.close(); }
 }
 
 // Join: finds the host's game first, so a wrong address or a full game is reported before anything else happens.
 // The versions are compared with the game as it will run: after an update, if one is due, the host is asked again.
 async function joinGame(input) {
   const settings = saveMultiplayer(input);
+  const code = rooms.parseRoomCode(settings.address);
+  if (code) return joinRoom(code, settings);
   const target = multiplayer.parseAddress(settings.address, settings.joinPort);
   const find = async build => {
     // the log is often pasted in public: the host's address is not written out in full

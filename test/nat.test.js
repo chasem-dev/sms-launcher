@@ -60,7 +60,7 @@ test('one public port, but only answers get in: moderate, joining only', async (
     assert.equal(result.type, 'moderate');
     assert.equal(result.canHost, false);
     assert.equal(result.canJoin, true);
-    assert.match(result.text, /forward the UDP port/);
+    assert.match(result.text, /UDP port forwarded/);
   } finally { stun.close(); }
 });
 
@@ -76,7 +76,7 @@ test('no answer at all while online means UDP is blocked', async () => {
   try {
     const result = await nat.detect({ servers: [{ ...stun.server, host: 'localhost' }], timeout: 300 });
     assert.equal(result.type, 'blocked');
-    assert.equal(result.canJoin, false);
+    assert.equal(result.canJoin, true, 'room codes still work, through the relay');
   } finally { stun.close(); }
 });
 

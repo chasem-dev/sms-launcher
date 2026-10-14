@@ -519,7 +519,7 @@ function renderActivity(active) {
   $('stop').textContent = active?.label === 'Play Super Mario Sunshine' ? 'Stop game'
     : active?.label.startsWith('Build ') ? 'Stop build' : 'Stop task';
   $('view-build-log').textContent = active?.label.startsWith('Build ') ? 'View build log' : 'View activity';
-  $('task-status').textContent = active ? taskName(active.label)
+  $('task-status').textContent = active?.room ? `Hosting room ${active.room}` : active ? taskName(active.label)
     : current?.binaryReady && needsTextureDownload(current) ? 'HD setup needed'
     : current?.game.needsUpdate && current.config.completedSetup ? 'Update ready'
     : $('page-home').classList.contains('ready-mode') ? 'Ready to play' : 'Finish setup to play';
@@ -1140,17 +1140,16 @@ function setMultiplayerResult(text, error = false) {
   $('mp-result').textContent = text;
   $('mp-result').classList.toggle('error', error);
 }
-// The network check's last word: on a network that lets no UDP through, neither button can work.
-let natType = null;
 // An invite code carries its own port (src/multiplayer.js: inviteCode).
 const looksLikeInvite = text => /^[0-9a-z]{4}-?[0-9a-z]{4}-?[0-9a-z]{4}$/i.test(String(text).trim());
+// So does a room code (src/rooms.js): the host's launcher has the port.
+const looksLikeRoom = text => /^[0-9a-z]{3}[-\s]?[0-9a-z]{3}$/i.test(String(text).trim());
 function renderMultiplayer() {
   const busy = Boolean(current?.active) || setupPending;
-  const blocked = natType === 'blocked';
-  $('mp-host').disabled = busy || blocked;
-  $('mp-join').disabled = busy || blocked;
+  $('mp-host').disabled = busy;
+  $('mp-join').disabled = busy;
   $('mp-host-port-note').textContent = /^\d{1,5}$/.test($('mp-host-port').value.trim()) ? $('mp-host-port').value.trim() : '24002';
-  $('mp-join-port').disabled = looksLikeInvite($('mp-address').value);
+  $('mp-join-port').disabled = looksLikeInvite($('mp-address').value) || looksLikeRoom($('mp-address').value);
 }
 // The hosts joined lately: one press joins again; × forgets one.
 function renderRecentHosts(list = current?.config?.multiplayer?.recent || []) {
@@ -1243,7 +1242,6 @@ async function startMultiplayer(mode) {
 let natCheck = 0;
 async function checkNat() {
   const ticket = ++natCheck;
-  natType = null;
   $('mp-nat-badge').className = 'mp-nat-badge';
   $('mp-nat-badge').textContent = 'Checking…';
   $('mp-nat-text').textContent = 'Checking whether you can host and join from this network…';
@@ -1254,7 +1252,6 @@ async function checkNat() {
     const port = $('mp-host-port').value.trim() || '24002';
     const result = await window.sms.checkNat({ port });
     if (ticket !== natCheck) return;
-    natType = result.type;
     $('mp-nat-badge').textContent = `NAT: ${result.label}`;
     $('mp-nat-badge').classList.add(result.type);
     $('mp-nat-text').textContent = result.portBusy
@@ -1262,9 +1259,9 @@ async function checkNat() {
     const share = result.share;
     if (share) {
       $('mp-share').hidden = false;
-      $('mp-share-note').textContent = result.canHost ? 'Give friends who join you one of these:'
-        : `Once port ${share.port} is forwarded, friends join you with one of these. (Forwarding can't help if your `
-          + 'internet provider shares one IP address among its customers, which is called CGNAT.)';
+      $('mp-share-note').textContent = result.canHost ? 'Friends can also join you with one of these instead of your room code:'
+        : `Friends join with your room code. These work instead once port ${share.port} is forwarded. (Forwarding can't `
+          + 'help if your internet provider shares one IP address among its customers, which is called CGNAT.)';
       $('mp-invite-row').hidden = !share.invite;
       $('mp-invite').textContent = share.invite || '';
       $('mp-public').textContent = `${share.address}:${share.port}`;

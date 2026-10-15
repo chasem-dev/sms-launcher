@@ -18,7 +18,9 @@
       "Fixed a joining player being unable to take FLUDD on the Airstrip in multiplayer: taking it now moves everyone on with the story.",
       "Multiplayer: the host picks each episode for everyone, so other players no longer get an episode select of their own.",
       "Fixed the M that Shadow Mario paints on Delfino Plaza's statue showing only in the host's game.",
-      "Fixed other players staying stuck in the host's cutscene of Shadow Mario painting an M in Delfino Plaza."
+      "Fixed other players staying stuck in the host's cutscene of Shadow Mario painting an M in Delfino Plaza.",
+      "Fixed every player's level restarting when the host lost a life in multiplayer.",
+      "Multiplayer: when every player is out of lives it's game over for everyone, and you all leave the level for Delfino Plaza, as Exit Area does, with your lives refilled."
     ]
   },
   "releases": [

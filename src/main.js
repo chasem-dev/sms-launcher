@@ -482,8 +482,16 @@ function currentSaveDirectory() {
   return process.env.SMS_SAVE_DIR ? saves.saveDirectory(config.repo) : config.saveDirectory || saves.saveDirectory(config.repo);
 }
 
+// An older launcher's multiplayer guest save, inside the card folder, out of the way of backups.
+function tidySaveDirectory() {
+  if (!config.repo && !config.saveDirectory && !process.env.SMS_SAVE_DIR) return; // not set up: no card yet
+  try { if (saves.moveOldGuestSaves(currentSaveDirectory())) log('Moved the multiplayer guest save out of your memory card folder.'); }
+  catch (error) { log(`Couldn't move the multiplayer guest save out of your memory card folder: ${error.message}`); }
+}
+
 function makeSaveBackup(reason) {
   if (active) throw new Error('Stop the running game or task before backing up saves.');
+  tidySaveDirectory();
   const result = saves.backupSaves(currentSaveDirectory(), saves.backupRoot(), reason);
   log(result.empty ? result.message : `Saved ${result.count} memory card file(s) to ${result.directory}`);
   return result;
@@ -832,7 +840,7 @@ async function play(installation = null, session = null) {
   makeSaveBackup('before-play');
   // A player who joins plays the host's save: their own memory card stays out of it.
   const saveDir = saves.prepareSaveDirectory(session?.mode === 'join'
-    ? path.join(currentSaveDirectory(), 'multiplayer-guest') : currentSaveDirectory());
+    ? saves.guestSaveDirectory(currentSaveDirectory()) : currentSaveDirectory());
   const recordedTools = game.toolRoot(root, settings);
   const env = recordedTools
     ? buildTools.environmentAtRoot(recordedTools, { ...port.buildEnvironment(settings, disc, root), SMS_SAVE_DIR: saveDir })
@@ -1595,6 +1603,7 @@ function createWindow() {
 
 if (ownsInstance) app.whenReady().then(async () => {
   loadConfig();
+  tidySaveDirectory();
   registerHandlers();
   setupTelemetry();
   if (playOnStart && await playDirectly()) return app.quit();

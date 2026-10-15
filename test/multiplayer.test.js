@@ -82,6 +82,8 @@ test('no answer, a full game and another game version are reported for the playe
   } finally { silent.close(); }
   const full = { players: 4, maxPlayers: 4, open: false, build: 'abc', protocol: multiplayer.PROTOCOL };
   assert.match(multiplayer.joinProblem(full, 'abc'), /full \(4 players\)/);
+  const choosing = { players: 1, maxPlayers: 4, open: false, build: 'abc', protocol: multiplayer.PROTOCOL };
+  assert.match(multiplayer.joinProblem(choosing, 'abc'), /still choosing a save file/);
   const other = { players: 1, maxPlayers: 4, open: true, build: 'def', protocol: multiplayer.PROTOCOL };
   assert.match(multiplayer.joinProblem(other, 'abc'), /different version/);
   assert.equal(multiplayer.joinProblem(other, null), null); // unknown local build: the game checks

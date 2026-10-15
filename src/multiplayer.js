@@ -207,7 +207,9 @@ function probeAddress(host, port, { timeout = 4000, attempts = 4 } = {}) {
 function joinProblem(info, localBuild = null) {
   if (info.protocol !== PROTOCOL || (localBuild && info.build && info.build !== localBuild))
     return 'The host is playing a different version of the game. Update both games to the same version.';
-  if (!info.open || info.players >= info.maxPlayers) return `The game is full (${info.maxPlayers} players).`;
+  if (info.players >= info.maxPlayers) return `The game is full (${info.maxPlayers} players).`;
+  // a host still on the title screen or choosing a file takes nobody yet
+  if (!info.open) return 'The host is still choosing a save file. Try again once they\'re playing.';
   return null;
 }
 

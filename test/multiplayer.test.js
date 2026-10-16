@@ -105,7 +105,9 @@ test('the probe packet is the game\'s PROBE', () => {
 
 test('the game is told to host or join through its environment', () => {
   assert.deepEqual(multiplayer.environment('host', { port: 24005, name: 'Chase' }),
-    { SMS_MULTIPLAYER: 'host', SMS_MULTIPLAYER_PORT: '24005', SMS_MULTIPLAYER_NAME: 'Chase' });
+    { SMS_MULTIPLAYER: 'host', SMS_MULTIPLAYER_PORT: '24005', SMS_MULTIPLAYER_NAME: 'Chase', SMS_MULTIPLAYER_MAX_PLAYERS: '8' });
+  assert.equal(multiplayer.environment('host', { port: 24005, name: 'Chase', maxPlayers: '3' }).SMS_MULTIPLAYER_MAX_PLAYERS, '3');
+  assert.throws(() => multiplayer.environment('host', { port: 24005, name: 'Chase', maxPlayers: 9 }), /2 to 8/);
   assert.deepEqual(multiplayer.environment('join', { host: '203.0.113.7', port: 24002, name: 'Bob' }),
     { SMS_MULTIPLAYER: 'join', SMS_MULTIPLAYER_ADDRESS: '203.0.113.7:24002', SMS_MULTIPLAYER_PORT: '24002', SMS_MULTIPLAYER_NAME: 'Bob' });
   assert.equal(multiplayer.environment('join', { host: '2001:db8::1', port: 24002, name: 'Bob' }).SMS_MULTIPLAYER_ADDRESS,
@@ -130,6 +132,21 @@ test('an invite code carries the host\'s address and port, and catches typos', (
   assert.deepEqual(multiplayer.parseAddress(code, '99'), { host: '203.0.113.7', port: 24002 });
   assert.deepEqual(multiplayer.parseAddress('example.com', '24003'), { host: 'example.com', port: 24003 });
   assert.equal(multiplayer.parseInvite('example.com'), null);
+});
+
+test('the most players a host takes is a whole number from 2 to 8', () => {
+  assert.equal(multiplayer.DEFAULT_MAX_PLAYERS, 8);
+  assert.equal(multiplayer.parseMaxPlayers(' 4 '), 4);
+  assert.equal(multiplayer.parseMaxPlayers(2), 2);
+  assert.equal(multiplayer.parseMaxPlayers('8'), 8);
+  for (const text of ['1', '9', '0', '-3', '4.5', '1e1', '0x4', '', 'abc', null, 4.5])
+    assert.throws(() => multiplayer.parseMaxPlayers(text), /2 to 8/);
+});
+
+test('a probe answer with more players than a game takes is not a game\'s', () => {
+  assert.equal(multiplayer.readInfo(infoPacket(7, { players: 8, max: 8 }), 7).maxPlayers, 8);
+  assert.equal(multiplayer.readInfo(infoPacket(7, { players: 1, max: 9 }), 7), null);
+  assert.equal(multiplayer.readInfo(infoPacket(7, { players: 4, max: 3 }), 7), null);
 });
 
 test('ports are plain numbers', () => {

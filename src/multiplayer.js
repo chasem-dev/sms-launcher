@@ -19,6 +19,9 @@ const net = require('node:net');
 const os = require('node:os');
 
 const DEFAULT_PORT = 24002;
+// How many players a hosted game takes, the host included (the game's own
+// limit is MP_MAX_PLAYERS in ext/multiplayer/net/mp_net.h).
+const MIN_PLAYERS = 2, MAX_PLAYERS = 8, DEFAULT_MAX_PLAYERS = 8;
 const MAGIC = 0x504d4d53; // "SMMP", little-endian
 const PROTOCOL = 2;
 const PROBE_SIZE = 200;
@@ -96,6 +99,15 @@ function parsePort(text) {
   return value;
 }
 
+// The Multiplayer window's "Max players" -> a number of players, or a sentence saying what is wrong.
+function parseMaxPlayers(text) {
+  const digits = String(text ?? '').trim();
+  const value = /^\d{1,2}$/.test(digits) ? Number(digits) : NaN;
+  if (!Number.isInteger(value) || value < MIN_PLAYERS || value > MAX_PLAYERS)
+    throw new Error(`Max players must be a number from ${MIN_PLAYERS} to ${MAX_PLAYERS}.`);
+  return value;
+}
+
 // An address for the activity log, which players paste in public: enough to
 // tell which host it was, not enough to find them.
 function maskAddress(host) {
@@ -155,6 +167,8 @@ function readInfo(packet, nonce) {
     if (u8() !== INFO || u32() !== (nonce >>> 0)) return null;
     const info = { players: u8(), maxPlayers: u8(), open: u8() === 1, build: str(), name: str(), status: str(), protocol };
     if (at + 2 <= packet.length) info.protocol = u16();
+    // a game takes 1 to MAX_PLAYERS players: anything else is not a game's answer
+    if (info.maxPlayers < 1 || info.maxPlayers > MAX_PLAYERS || info.players > info.maxPlayers) return null;
     return info;
   } catch (_) { return null; }
 }
@@ -214,12 +228,14 @@ function joinProblem(info, localBuild = null) {
 }
 
 // The game's multiplayer settings, as environment variables.
-function environment(mode, { host, port, name }) {
-  if (mode === 'host') return { SMS_MULTIPLAYER: 'host', SMS_MULTIPLAYER_PORT: String(port), SMS_MULTIPLAYER_NAME: name };
+function environment(mode, { host, port, name, maxPlayers = DEFAULT_MAX_PLAYERS }) {
+  if (mode === 'host') return { SMS_MULTIPLAYER: 'host', SMS_MULTIPLAYER_PORT: String(port), SMS_MULTIPLAYER_NAME: name,
+    SMS_MULTIPLAYER_MAX_PLAYERS: String(parseMaxPlayers(maxPlayers)) };
   const address = net.isIPv6(host) ? `[${host}]:${port}` : `${host}:${port}`;
   return { SMS_MULTIPLAYER: 'join', SMS_MULTIPLAYER_ADDRESS: address, SMS_MULTIPLAYER_PORT: String(port),
     SMS_MULTIPLAYER_NAME: name };
 }
 
-module.exports = { DEFAULT_PORT, PROTOCOL, parseAddress, parsePort, playerName, probePacket, readInfo, probe,
+module.exports = { DEFAULT_PORT, MIN_PLAYERS, MAX_PLAYERS, DEFAULT_MAX_PLAYERS, PROTOCOL, parseAddress, parsePort,
+  parseMaxPlayers, playerName, probePacket, readInfo, probe,
   joinProblem, environment, inviteCode, parseInvite, maskAddress, lanAddresses, rememberHost, RECENT_HOSTS };

@@ -263,6 +263,7 @@ pre { height: 120px; margin: 0; padding: 12px; overflow: auto; border-radius: 8p
 .mp-field { display: grid; gap: 5px; color: #405a60; font-size: 12px; font-weight: 650; }
 .mp-address { flex: 1; }
 .mp-port { flex: 0 0 92px; }
+.mp-max { flex: 0 0 104px; }
 .mp-input { width: 100%; padding: 8px 10px; border: 1px solid #d3dedc; border-radius: 7px; background: #fff; color: #223940; font: inherit; font-size: 13px; }
 .settings-group .field .mp-input { width: 210px; }
 .mp-input:focus-visible { outline: 2px solid #17818a; outline-offset: 2px; }

@@ -188,12 +188,14 @@ function saveConfig() {
 function savedMultiplayer(saved) {
   const value = saved && typeof saved === 'object' ? saved : {};
   const portOr = text => { try { return multiplayer.parsePort(text); } catch (_) { return multiplayer.DEFAULT_PORT; } };
+  const mostOr = text => { try { return multiplayer.parseMaxPlayers(text); } catch (_) { return multiplayer.DEFAULT_MAX_PLAYERS; } };
   const recent = (Array.isArray(value.recent) ? value.recent : [])
     .filter(item => item && typeof item.address === 'string' && item.address && Number.isInteger(item.port) && item.port > 0 && item.port < 65536)
     .slice(0, multiplayer.RECENT_HOSTS)
     .map(item => ({ address: item.address.slice(0, 255), port: item.port, name: multiplayer.playerName(item.name, '') }));
   return { name: multiplayer.playerName(value.name, ''), address: typeof value.address === 'string' ? value.address.slice(0, 255) : '',
-    hostPort: portOr(value.hostPort), joinPort: portOr(value.joinPort), public: value.public === true, recent };
+    hostPort: portOr(value.hostPort), joinPort: portOr(value.joinPort), maxPlayers: mostOr(value.maxPlayers),
+    public: value.public === true, recent };
 }
 
 function loadConfig() {
@@ -950,14 +952,17 @@ async function launchGame(session = null, update = config.settings.autoUpdate) {
 }
 
 // The Multiplayer window's fields, kept for next time. Host Game and Join throw a sentence for a field that is wrong
-// (`strict`); saving as the player types keeps the last good port instead, so the other fields are still kept.
+// (`strict`); saving as the player types keeps the last good port or player count instead, so the other fields are
+// still kept.
 function saveMultiplayer(input = {}, { strict = true } = {}) {
-  const portField = (text, previous) => {
+  const checked = parse => (text, previous) => {
     if (text === undefined) return previous;
-    try { return multiplayer.parsePort(text); } catch (error) { if (strict) throw error; return previous; }
+    try { return parse(text); } catch (error) { if (strict) throw error; return previous; }
   };
+  const portField = checked(multiplayer.parsePort), mostField = checked(multiplayer.parseMaxPlayers);
   const value = { name: multiplayer.playerName(input.name, ''), address: String(input.address ?? config.multiplayer.address).trim().slice(0, 255),
     hostPort: portField(input.hostPort, config.multiplayer.hostPort), joinPort: portField(input.joinPort, config.multiplayer.joinPort),
+    maxPlayers: mostField(input.maxPlayers, config.multiplayer.maxPlayers ?? multiplayer.DEFAULT_MAX_PLAYERS),
     public: typeof input.public === 'boolean' ? input.public : config.multiplayer.public === true,
     recent: config.multiplayer.recent || [] };
   config.multiplayer = value;
@@ -1007,7 +1012,7 @@ async function hostGame(input) {
       : `Room code ${hostedRoom} (copied): friends join with it from their Multiplayer window.`);
     broadcast('activity', activityState());
   };
-  const session = { mode: 'host', env: multiplayer.environment('host', { port: settings.hostPort, name }),
+  const session = { mode: 'host', env: multiplayer.environment('host', { port: settings.hostPort, name, maxPlayers: settings.maxPlayers }),
     beforePlay: async () => {
       await natCheck?.catch(() => {});
       room = await rooms.host({ port: settings.hostPort, name, build: localGameBuild(), isPublic: settings.public, log,
@@ -1015,7 +1020,7 @@ async function hostGame(input) {
       Object.assign(session.env, { SMS_MULTIPLAYER_PORT: String(room.gamePort), SMS_MULTIPLAYER_LOCAL: '1',
         SMS_MULTIPLAYER_ROOM: room.code ? rooms.formatRoomCode(room.code) : '' });
     } };
-  log(`Hosting a multiplayer game on UDP port ${settings.hostPort}${settings.public ? ', listed publicly' : ''}.`);
+  log(`Hosting a multiplayer game for up to ${settings.maxPlayers} players on UDP port ${settings.hostPort}${settings.public ? ', listed publicly' : ''}.`);
   try { return await launchGame(session); }
   finally {
     room?.close();
@@ -1040,7 +1045,7 @@ async function joinRoom(code, settings) {
   const shown = rooms.formatRoomCode(code);
   const check = async build => {
     const info = await rooms.lookup(code);
-    const problem = multiplayer.joinProblem({ ...info, open: true, players: 0, maxPlayers: 4 }, build);
+    const problem = multiplayer.joinProblem({ ...info, open: true, players: 0, maxPlayers: multiplayer.MAX_PLAYERS }, build);
     if (problem) throw new Error(problem);
     return info;
   };

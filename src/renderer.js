@@ -1133,7 +1133,8 @@ async function showWhatsNew() {
 // --- Multiplayer (src/multiplayer.js): host a game, or join one by address and port. The fields are
 // kept for next time; Join asks the host's game first, so a wrong address is reported here.
 function multiplayerFields() {
-  return { name: $('mp-name').value, hostPort: $('mp-host-port').value, address: $('mp-address').value,
+  return { name: $('mp-name').value, hostPort: $('mp-host-port').value, maxPlayers: $('mp-max-players').value,
+    address: $('mp-address').value,
     joinPort: $('mp-join-port').value, public: $('mp-list-public').checked };
 }
 function setMultiplayerResult(text, error = false) {
@@ -1244,6 +1245,7 @@ $('open-multiplayer').addEventListener('click', () => {
   const saved = current?.config?.multiplayer || {};
   $('mp-name').value = saved.name || '';
   $('mp-host-port').value = String(saved.hostPort || 24002);
+  $('mp-max-players').value = String(saved.maxPlayers || 8);
   $('mp-address').value = saved.address || '';
   $('mp-join-port').value = String(saved.joinPort || 24002);
   $('mp-list-public').checked = saved.public === true;
@@ -1257,7 +1259,7 @@ $('open-multiplayer').addEventListener('click', () => {
   clearInterval(publicTimer);
   publicTimer = setInterval(() => { if ($('multiplayer').open) loadPublicGames(); }, PUBLIC_REFRESH);
 });
-for (const id of ['mp-name', 'mp-host-port', 'mp-address', 'mp-join-port', 'mp-list-public']) {
+for (const id of ['mp-name', 'mp-host-port', 'mp-max-players', 'mp-address', 'mp-join-port', 'mp-list-public']) {
   $(id).addEventListener('input', renderMultiplayer);
   // An unfinished port is kept as it was until it is a number.
   $(id).addEventListener('change', () => window.sms.saveMultiplayer(multiplayerFields())

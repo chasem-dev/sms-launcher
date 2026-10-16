@@ -37,7 +37,8 @@
       "Fixed the game sometimes crashing right after a cutscene, such as FLUDD's on the airstrip.",
       "Fixed boss fights starting over for everyone when the host lost a life in multiplayer: Petey Piranha, Eely-Mouth, Wiggler, King Boo, Mecha-Bowser, the Gatekeepers and the broken corners of Bowser's hot tub now stay as they were.",
       "Fixed a nozzle from a nozzle box disappearing for other players in multiplayer when someone else took theirs: everyone now gets their own.",
-      "Fixed coins and switches no longer being shared for a player who had gone back into the same level many times in multiplayer."
+      "Fixed coins and switches no longer being shared for a player who had gone back into the same level many times in multiplayer.",
+      "Fixed being left stranded in multiplayer when another player rode away on a mud boat in Noki Bay or Corona Mountain, or a leaf boat in Bianco Hills: everyone now has their own, and you see the others riding theirs."
     ]
   },
   "releases": [

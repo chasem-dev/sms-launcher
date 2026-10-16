@@ -1147,11 +1147,16 @@ const looksLikeInvite = text => /^[0-9a-z]{4}-?[0-9a-z]{4}-?[0-9a-z]{4}$/i.test(
 const looksLikeRoom = text => /^[0-9a-z]{3}[-\s]?[0-9a-z]{3}$/i.test(String(text).trim());
 // The public games last loaded (below), shown again as the buttons' state changes.
 let publicGames = null, publicTicket = 0, publicTimer = null;
+// Pings (src/main.js: pingGame): the typed game's, and each public game's by room code, kept across the list's refreshes.
+let pingingTyped = false;
+const publicPings = new Map(); // code -> { pending } or { ping, mode } or { failed }
+const pingHow = mode => ({ relay: ' through the relay', lan: ' over your local network', direct: ' direct' })[mode] || '';
 const PUBLIC_REFRESH = 15000;
 function renderMultiplayer() {
   const busy = Boolean(current?.active) || setupPending;
   $('mp-host').disabled = busy;
   $('mp-join').disabled = busy;
+  $('mp-ping').disabled = busy || pingingTyped || !$('mp-address').value.trim();
   $('mp-host-port-note').textContent = /^\d{1,5}$/.test($('mp-host-port').value.trim()) ? $('mp-host-port').value.trim() : '24002';
   $('mp-join-port').disabled = looksLikeInvite($('mp-address').value) || looksLikeRoom($('mp-address').value);
   if (publicGames) renderPublicGames(publicGames);
@@ -1190,8 +1195,17 @@ function renderPublicGames(games) {
     name.textContent = `${game.name}'s game`;
     const detail = document.createElement('small');
     const where = game.status ? game.status[0].toUpperCase() + game.status.slice(1) : '';
-    detail.textContent = [where, `${game.players} of ${game.maxPlayers} players`, game.problem].filter(Boolean).join(' · ');
+    const pinged = publicPings.get(game.code);
+    const ping = !pinged ? '' : pinged.pending ? 'Pinging…' : pinged.failed ? 'No answer to ping'
+      : `Ping ${pinged.ping} ms${pingHow(pinged.mode)}`;
+    detail.textContent = [where, `${game.players} of ${game.maxPlayers} players`, ping, game.problem].filter(Boolean).join(' · ');
     text.append(name, detail);
+    const pingButton = document.createElement('button');
+    pingButton.className = 'text-button mp-game-ping';
+    pingButton.textContent = 'Ping';
+    pingButton.disabled = busy || Boolean(pinged?.pending);
+    pingButton.setAttribute('aria-label', `Ping ${game.name}'s game`);
+    pingButton.addEventListener('click', () => pingPublicGame(game.code));
     const join = document.createElement('button');
     join.className = 'text-button mp-game-join';
     join.textContent = 'Join';
@@ -1203,8 +1217,39 @@ function renderPublicGames(games) {
       startMultiplayer('join');
     });
     item.classList.toggle('unavailable', Boolean(game.problem));
-    item.append(text, join);
+    const actions = document.createElement('span');
+    actions.className = 'mp-game-actions';
+    actions.append(pingButton, join);
+    item.append(text, actions);
     list.append(item);
+  }
+}
+async function pingPublicGame(code) {
+  publicPings.set(code, { pending: true });
+  renderMultiplayer();
+  try {
+    const result = await window.sms.pingGame({ address: code });
+    publicPings.set(code, { ping: result.ping, mode: result.mode });
+  } catch (_) {
+    publicPings.set(code, { failed: true });
+  }
+  renderMultiplayer();
+}
+// The Ping beside Join: the typed room code, invite code or address, and what the host's game says about itself.
+async function pingTypedGame() {
+  pingingTyped = true;
+  setMultiplayerResult("Pinging the host's game...");
+  renderMultiplayer();
+  try {
+    const result = await window.sms.pingGame({ address: $('mp-address').value, port: $('mp-join-port').value });
+    const where = result.status ? `, in ${result.status}` : '';
+    setMultiplayerResult(`Ping ${result.ping} ms${pingHow(result.mode)}. ${result.name}'s game: ${result.players} of `
+      + `${result.maxPlayers} players${where}.${result.problem ? ` ${result.problem}` : ''}`, Boolean(result.problem));
+  } catch (error) {
+    setMultiplayerResult(errorText(error), true);
+  } finally {
+    pingingTyped = false;
+    renderMultiplayer();
   }
 }
 $('mp-browser-refresh').addEventListener('click', loadPublicGames);
@@ -1344,6 +1389,7 @@ $('mp-nat-check').addEventListener('click', checkNat);
 $('mp-host-port').addEventListener('change', checkNat);
 $('mp-host').addEventListener('click', () => startMultiplayer('host'));
 $('mp-join').addEventListener('click', () => startMultiplayer('join'));
+$('mp-ping').addEventListener('click', pingTypedGame);
 
 $('changelog-show-all').addEventListener('click', () => renderChangelog(changelogShown, false));
 $('open-changelog').addEventListener('click', showChangelog);

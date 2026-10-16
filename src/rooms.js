@@ -180,7 +180,7 @@ function nextMessage(ws, type, closedText) {
   });
 }
 
-// --- Joining: the room's host's name and build, before anything starts
+// --- Joining: the room's host's name, build and versions, before anything starts
 
 async function lookup(code, { url = serverUrl(), fetchImpl = globalThis.fetch } = {}) {
   let response;
@@ -243,9 +243,9 @@ class Peer {
 }
 
 class HostRoom {
-  constructor({ port, name, build, isPublic = false, url = serverUrl(), WebSocketImpl = globalThis.WebSocket, log = () => {},
-    onRoom = () => {}, servers, lan }) {
-    Object.assign(this, { port, name, build, isPublic, url, WebSocketImpl, log, onRoom, servers, lan });
+  constructor({ port, name, build, version = '', launcher = '', isPublic = false, url = serverUrl(),
+    WebSocketImpl = globalThis.WebSocket, log = () => {}, onRoom = () => {}, servers, lan }) {
+    Object.assign(this, { port, name, build, version, launcher, isPublic, url, WebSocketImpl, log, onRoom, servers, lan });
     this.statusAt = 0;
     this.code = null;
     this.roomKey = null;
@@ -272,8 +272,8 @@ class HostRoom {
   }
 
   hello() {
-    return { type: 'hello', candidates: this.candidates, name: this.name, build: this.build, protocol: multiplayer.PROTOCOL,
-      public: this.isPublic };
+    return { type: 'hello', candidates: this.candidates, name: this.name, build: this.build, version: this.version,
+      launcher: this.launcher, protocol: multiplayer.PROTOCOL, public: this.isPublic };
   }
 
   async connect() {
@@ -323,22 +323,25 @@ class HostRoom {
       return;
     }
     if (msg.type === 'join' && Number.isInteger(msg.id) && /^[0-9a-f]{32}$/.test(msg.secret) && Array.isArray(msg.candidates)) {
+      // a check (someone's Ping) connects like a join, to time the real path, and goes again: nothing to say about it
+      const check = msg.check === true;
       this.joins.set(msg.id, { id: msg.id, secret: msg.secret, candidates: msg.candidates.filter(c => net.isIPv4(c?.address)),
-        name: multiplayer.playerName(msg.name, 'A player'), started: Date.now(), punchedAt: 0, reached: null, peer: null });
-      this.log(`${multiplayer.playerName(msg.name, 'A player')} is joining with your room code…`);
+        name: multiplayer.playerName(msg.name, 'A player'), check, started: Date.now(), punchedAt: 0, reached: null, peer: null });
+      if (!check) this.log(`${multiplayer.playerName(msg.name, 'A player')} is joining with your room code…`);
     } else if (msg.type === 'relay') {
       const join = this.joins.get(msg.id);
       if (!join) return;
       const peer = this.peerFor(join);
       if (!peer) return;
       peer.route = { relay: join.id };
-      this.log(msg.reason === 'lost'
+      if (!join.check) this.log(msg.reason === 'lost'
         ? `${join.name}'s direct connection stopped working, so they're now connected through the relay, which adds a little delay.`
         : `${join.name} is connected through the relay, which adds a little delay: your networks couldn't connect directly. `
           + `Forwarding UDP port ${this.port} on your router to this computer would let players connect directly.`);
     } else if (msg.type === 'leave') {
       const join = this.joins.get(msg.id);
-      if (join?.peer?.route.relay) this.dropPeer(join.peer);
+      // a check's forwarding goes with it, so checks never take a joining player's place
+      if (join?.peer && (join.peer.route.relay || join.check)) this.dropPeer(join.peer);
       this.joins.delete(msg.id);
     }
   }
@@ -373,7 +376,7 @@ class HostRoom {
       this.byAddress.set(key(from), peer);
       if (!join.reached) {
         join.reached = { address: from.address, port: from.port };
-        this.log(`${join.name} is connected ${pathName(from.address)}.`);
+        if (!join.check) this.log(`${join.name} is connected ${pathName(from.address)}.`);
       }
       return;
     }
@@ -481,8 +484,11 @@ function punch(socket, targets, secret, ms = PUNCH_FOR) {
 }
 
 class JoinLink {
-  constructor({ code, name, url = serverUrl(), WebSocketImpl = globalThis.WebSocket, log = () => {}, servers, lan, punchFor = PUNCH_FOR }) {
-    Object.assign(this, { code, name, url, WebSocketImpl, log, servers, lan, punchFor });
+  // `check`: only to time the way to the host's game (src/main.js: pingGame), so the host's launcher doesn't
+  // report it as a player joining
+  constructor({ code, name, check = false, url = serverUrl(), WebSocketImpl = globalThis.WebSocket, log = () => {}, servers, lan,
+    punchFor = PUNCH_FOR }) {
+    Object.assign(this, { code, name, check, url, WebSocketImpl, log, servers, lan, punchFor });
     this.hostAddresses = new Set();
     this.game = null;
     this.heard = this.sent = this.keptAt = 0;
@@ -495,7 +501,7 @@ class JoinLink {
       const list = await candidates(this.socket, { servers: this.servers, lan: this.lan });
       this.ws = await openSocket(`${this.url.replace(/^http/, 'ws')}/v1/rooms/${this.code}/join`, this.WebSocketImpl);
       const hostReply = nextMessage(this.ws, 'host', 'The host closed their game.');
-      send(this.ws, { type: 'hello', candidates: list, name: this.name });
+      send(this.ws, { type: 'hello', candidates: list, name: this.name, ...(this.check ? { check: true } : {}) });
       const { secret, candidates: targets } = await hostReply;
       this.secret = secret;
       const path = await punch(this.socket, (targets || []).filter(c => net.isIPv4(c?.address)), secret, this.punchFor);
@@ -511,7 +517,7 @@ class JoinLink {
       this.socket.on('message', (packet, from) => this.fromInternet(packet, from));
       this.ws.addEventListener('message', event => this.fromServer(readMessage(event.data)));
       this.ws.addEventListener('close', () => {
-        if (!this.closed && this.mode === 'relay') this.log('The relay closed: the host\'s game has probably closed.');
+        if (!this.closed && !this.check && this.mode === 'relay') this.log('The relay closed: the host\'s game has probably closed.');
       });
       this.heard = this.pingAt = Date.now();
       this.timer = setInterval(() => this.tick(), 250);

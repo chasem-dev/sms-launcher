@@ -31,6 +31,7 @@ contextBridge.exposeInMainWorld('sms', {
   hostGame: value => ipcRenderer.invoke('host-game', value),
   checkNat: value => ipcRenderer.invoke('check-nat', value),
   publicGames: () => ipcRenderer.invoke('public-games'),
+  pingGame: value => ipcRenderer.invoke('ping-game', value),
   forgetMultiplayerHost: value => ipcRenderer.invoke('forget-multiplayer-host', value),
   copyText: text => ipcRenderer.invoke('copy-text', text),
   joinGame: value => ipcRenderer.invoke('join-game', value),

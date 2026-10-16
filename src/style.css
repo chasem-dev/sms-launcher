@@ -268,6 +268,7 @@ pre { height: 120px; margin: 0; padding: 12px; overflow: auto; border-radius: 8p
 .settings-group .field .mp-input { width: 210px; }
 .mp-input:focus-visible { outline: 2px solid #17818a; outline-offset: 2px; }
 .mp-go { min-width: 120px; padding: 9px 18px; }
+.mp-ping { flex: none; padding: 9px 14px; }
 .mp-result { min-height: 1.4em; margin: 0; color: #405a60; font-size: 12px; line-height: 1.5; }
 .mp-result.error { color: #b3402d; }
 .mp-rules { margin: 0; line-height: 1.5; }
@@ -297,6 +298,8 @@ pre { height: 120px; margin: 0; padding: 12px; overflow: auto; border-radius: 8p
 .mp-game-text small { color: #6b7d82; font-size: 11px; }
 .mp-game.unavailable { opacity: .65; }
 .mp-game-join { flex: none; font-weight: 650; }
+.mp-game-actions { display: flex; flex: none; gap: 14px; }
+.mp-game-ping { flex: none; }
 .dark .mp-game { border-color: #33566a; background: #0f2636; }
 .dark .mp-game-text strong { color: #e1edf0; }
 .dark .mp-game-text small { color: #9fb7bd; }

@@ -11,7 +11,8 @@
 // shorter one, so nobody can use it to send someone else a bigger answer);
 // a hosting game answers type 2 (INFO) with the
 // same number, its player count, whether it takes more players, its build,
-// the host's name and where it is in the game.
+// the host's name and where it is in the game. Each ask has its own number,
+// so the time from it to its answer is the ping, even when a packet was lost.
 
 const dgram = require('node:dgram');
 const dns = require('node:dns');
@@ -189,7 +190,8 @@ function probeAddress(host, port, { timeout = 4000, attempts = 4 } = {}) {
   return new Promise((resolve, reject) => {
     const family = net.isIPv6(host) ? 'udp6' : 'udp4';
     const socket = dgram.createSocket(family);
-    const nonce = (Math.random() * 0xffffffff) >>> 0 || 1;
+    const first = (Math.random() * 0xffffffff) >>> 0;
+    const asked = new Map(); // number -> when it was sent
     let timer = null, retry = null, done = false;
     const finish = (error, info) => {
       if (done) return;
@@ -202,13 +204,19 @@ function probeAddress(host, port, { timeout = 4000, attempts = 4 } = {}) {
     socket.on('error', error => finish(new Error(error.code === 'ENOTFOUND' || error.code === 'EAI_AGAIN'
       ? `Couldn't find ${host}. Check the address.` : `Couldn't reach ${host}: ${error.message}`)));
     socket.on('message', message => {
-      const info = readInfo(message, nonce);
-      if (info) finish(null, info);
+      const nonce = message.length >= 11 ? message.readUInt32LE(7) : 0;
+      const sentAt = asked.get(nonce);
+      const info = sentAt === undefined ? null : readInfo(message, nonce);
+      if (info) finish(null, { ...info, ping: Math.max(0, Math.round(performance.now() - sentAt)) });
     });
-    const send = () => socket.send(probePacket(nonce), port, host, error => {
-      if (error) finish(new Error(error.code === 'ENOTFOUND' || error.code === 'EAI_AGAIN'
-        ? `Couldn't find ${host}. Check the address.` : `Couldn't reach ${host}: ${error.message}`));
-    });
+    const send = () => {
+      const nonce = (first + asked.size) >>> 0 || 1;
+      asked.set(nonce, performance.now());
+      socket.send(probePacket(nonce), port, host, error => {
+        if (error) finish(new Error(error.code === 'ENOTFOUND' || error.code === 'EAI_AGAIN'
+          ? `Couldn't find ${host}. Check the address.` : `Couldn't reach ${host}: ${error.message}`));
+      });
+    };
     send();
     // UDP can lose a packet; ask a few times within the timeout
     retry = setInterval(send, Math.max(250, Math.floor(timeout / attempts)));
@@ -217,14 +225,43 @@ function probeAddress(host, port, { timeout = 4000, attempts = 4 } = {}) {
   });
 }
 
-// Why joining `info` would fail, or null when it can be joined.
-function joinProblem(info, localBuild = null) {
-  if (info.protocol !== PROTOCOL || (localBuild && info.build && info.build !== localBuild))
-    return 'The host is playing a different version of the game. Update both games to the same version.';
+// A game's version for a player to read: "game 2026.10.15.1 (92158d9), launcher 0.1.61". `build` is the game's
+// own (commit[-eclipse], as the probe and the room server carry it); `version` and `launcher` are a launcher's.
+function describeVersion({ version, build, launcher } = {}) {
+  const commit = build ? String(build).replace(/-eclipse$/, '').slice(0, 7) : '';
+  const eclipse = /-eclipse$/.test(build || '') ? ' with Eclipse' : '';
+  const game = version ? `game ${version}${commit ? ` (${commit})` : ''}${eclipse}`
+    : commit ? `game build ${commit}${eclipse}` : 'an older launcher that doesn\'t say its version';
+  return launcher ? `${game}, launcher ${launcher}` : game;
+}
+
+// "42 ms" for a ping, or '' when there isn't one.
+function formatPing(ms) {
+  return Number.isFinite(ms) ? `${Math.max(1, Math.round(ms))} ms` : '';
+}
+
+// Why joining `info` would fail, or null when it can be joined. `local` is this player's { build, version,
+// launcher } (or only the build): a different build or protocol says which versions both sides have.
+function joinProblem(info, local = null) {
+  const mine = typeof local === 'string' || local === null ? { build: local } : local;
+  if (info.protocol !== PROTOCOL || (mine.build && info.build && info.build !== mine.build))
+    return versionProblem(info, mine);
   if (info.players >= info.maxPlayers) return `The game is full (${info.maxPlayers} players).`;
   // a host still on the title screen or choosing a file takes nobody yet
   if (!info.open) return 'The host is still choosing a save file. Try again once they\'re playing.';
   return null;
+}
+
+function versionProblem(host, mine) {
+  const plain = build => String(build || '').replace(/-eclipse$/, '');
+  // the same game, with Eclipse on one side only
+  if (host.protocol === PROTOCOL && host.build && mine.build && plain(host.build) === plain(mine.build))
+    return `The host has Super Mario Eclipse ${host.build.endsWith('-eclipse') ? 'on' : 'off'} and you have it `
+      + `${mine.build.endsWith('-eclipse') ? 'on' : 'off'}. Both players need the same Eclipse setting.`;
+  const mineKnown = mine.build || mine.version || mine.launcher;
+  return `The host is on a different version. Host: ${describeVersion(host)}.`
+    + (mineKnown ? ` You: ${describeVersion(mine)}.` : '')
+    + ' Update both launchers (on the same update channel) to play together.';
 }
 
 // The game's multiplayer settings, as environment variables.
@@ -237,5 +274,5 @@ function environment(mode, { host, port, name, maxPlayers = DEFAULT_MAX_PLAYERS 
 }
 
 module.exports = { DEFAULT_PORT, MIN_PLAYERS, MAX_PLAYERS, DEFAULT_MAX_PLAYERS, PROTOCOL, parseAddress, parsePort,
-  parseMaxPlayers, playerName, probePacket, readInfo, probe,
+  parseMaxPlayers, playerName, probePacket, readInfo, probe, describeVersion, formatPing,
   joinProblem, environment, inviteCode, parseInvite, maskAddress, lanAddresses, rememberHost, RECENT_HOSTS };

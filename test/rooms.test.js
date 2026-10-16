@@ -67,7 +67,8 @@ function roomServer({ code = 'KQ7M2D', secret = 'ab'.repeat(16) } = {}) {
       server.hostInfo = msg;
       ws.deliver(JSON.stringify({ type: 'room', code, key: 'cd'.repeat(16) }));
     } else if (msg.type === 'hello') {
-      server.host.deliver(JSON.stringify({ type: 'join', id: ws.id, secret, candidates: msg.candidates, name: msg.name }));
+      server.host.deliver(JSON.stringify({ type: 'join', id: ws.id, secret, candidates: msg.candidates, name: msg.name,
+        ...(msg.check === true ? { check: true } : {}) }));
       ws.deliver(JSON.stringify({ type: 'host', id: ws.id, secret, candidates: server.hostInfo.candidates, name: server.hostInfo.name }));
     } else if (ws === server.host && msg.type === 'status') {
       server.statuses = [...(server.statuses || []), msg];
@@ -148,14 +149,16 @@ test('a joiner reaches the host\'s game directly through the punched path', asyn
   const server = roomServer();
   const port = await freePort();
   const rooms_ = [];
-  const host = await rooms.host({ ...quiet, port, name: 'Chase', build: 'c8fb4a3e81a2', url: 'http://rooms.test',
-    WebSocketImpl: server.WebSocket, lan: ['127.0.0.1'], onRoom: code => rooms_.push(code) });
+  const host = await rooms.host({ ...quiet, port, name: 'Chase', build: 'c8fb4a3e81a2', version: '2026.10.15.1', launcher: '0.1.61',
+    url: 'http://rooms.test', WebSocketImpl: server.WebSocket, lan: ['127.0.0.1'], onRoom: code => rooms_.push(code) });
   const game = await fakeGame(host.gamePort);
   try {
     assert.equal(host.code, 'KQ7M2D');
     assert.deepEqual(rooms_, ['KQ7M2D']);
     assert.deepEqual(server.hostInfo.candidates, [{ address: '127.0.0.1', port }]);
     assert.equal(server.hostInfo.build, 'c8fb4a3e81a2');
+    assert.equal(server.hostInfo.version, '2026.10.15.1');
+    assert.equal(server.hostInfo.launcher, '0.1.61');
     const link = await rooms.join({ ...quiet, code: 'KQ7M2D', name: 'Luigi', url: 'http://rooms.test',
       WebSocketImpl: server.WebSocket, lan: ['127.0.0.1'] });
     try {
@@ -167,6 +170,30 @@ test('a joiner reaches the host\'s game directly through the punched path', asyn
       assert.equal(game.seen.at(-1).address, '127.0.0.1');
       assert.notEqual(game.seen.at(-1).port, port);
     } finally { link.close(); }
+  } finally {
+    game.close();
+    host.close();
+  }
+});
+
+test('a ping check reaches the host\'s game like a join, without the host hearing of a player, and lets go', async () => {
+  const server = roomServer();
+  const hostLog = [];
+  const host = await rooms.host({ ...quiet, log: line => hostLog.push(line), port: await freePort(), name: 'Chase', build: 'b',
+    url: 'http://rooms.test', WebSocketImpl: server.WebSocket, lan: ['127.0.0.1'] });
+  const game = await fakeGame(host.gamePort);
+  try {
+    const link = await rooms.join({ ...quiet, code: 'KQ7M2D', name: 'Luigi', check: true, url: 'http://rooms.test',
+      WebSocketImpl: server.WebSocket, lan: ['127.0.0.1'] });
+    try {
+      const info = await multiplayer.probe('127.0.0.1', link.localPort, { timeout: 2000 });
+      assert.equal(info.name, 'Chase');
+      assert.ok(Number.isInteger(info.ping));
+      assert.equal(host.peers.size, 1);
+    } finally { link.close(); }
+    await new Promise(resolve => setTimeout(resolve, 50));
+    assert.equal(host.peers.size, 0, 'the check\'s forwarding is closed when it leaves');
+    assert.deepEqual(hostLog, []);
   } finally {
     game.close();
     host.close();

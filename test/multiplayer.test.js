@@ -64,6 +64,7 @@ test('a probe reads the host\'s answer, asking again when a packet is lost', asy
     assert.equal(info.status, 'Bianco Hills');
     assert.equal(info.build, 'c8fb4a3e81a2');
     assert.ok(host.seen() >= 3);
+    assert.ok(Number.isInteger(info.ping) && info.ping >= 0 && info.ping < 1000, `ping ${info.ping}`);
     assert.equal(multiplayer.joinProblem(info, 'c8fb4a3e81a2'), null);
   } finally { host.close(); }
 });
@@ -88,6 +89,42 @@ test('no answer, a full game and another game version are reported for the playe
   assert.match(multiplayer.joinProblem(other, 'abc'), /different version/);
   assert.equal(multiplayer.joinProblem(other, null), null); // unknown local build: the game checks
   assert.match(multiplayer.joinProblem({ ...other, protocol: multiplayer.PROTOCOL + 1 }, null), /different version/);
+});
+
+test('the ping is timed from the ask that was answered, not the first one', async () => {
+  // the first two asks are lost; the third is answered 60 ms later
+  const socket = dgram.createSocket('udp4');
+  let seen = 0;
+  socket.on('message', (message, from) => {
+    if (++seen < 3) return;
+    setTimeout(() => socket.send(infoPacket(message.readUInt32LE(7)), from.port, from.address), 60);
+  });
+  await new Promise(resolve => socket.bind(0, '127.0.0.1', resolve));
+  try {
+    const info = await multiplayer.probe('127.0.0.1', socket.address().port, { timeout: 4000, attempts: 8 });
+    assert.ok(info.ping >= 50 && info.ping < 400, `ping ${info.ping}`);
+  } finally { socket.close(); }
+});
+
+test('a host on another version is told apart by both sides\' game and launcher versions', () => {
+  const host = { players: 1, maxPlayers: 8, open: true, build: '955abf3ab1c2', protocol: multiplayer.PROTOCOL,
+    version: '2026.10.16-beta.955abf3', launcher: '0.1.61-pr149.256' };
+  const mine = { build: '92158d913e8e', version: '2026.10.15.1', launcher: '0.1.61' };
+  assert.equal(multiplayer.joinProblem(host, mine), 'The host is on a different version. '
+    + 'Host: game 2026.10.16-beta.955abf3 (955abf3), launcher 0.1.61-pr149.256. '
+    + 'You: game 2026.10.15.1 (92158d9), launcher 0.1.61. Update both launchers (on the same update channel) to play together.');
+  // a host found by address says only its build
+  assert.match(multiplayer.joinProblem({ ...host, version: undefined, launcher: undefined }, mine),
+    /Host: game build 955abf3\. You: game 2026\.10\.15\.1 \(92158d9\), launcher 0\.1\.61\./);
+  // this player's game not built yet: only a protocol tells them apart
+  assert.equal(multiplayer.joinProblem(host, { ...mine, build: null }), null);
+  assert.match(multiplayer.joinProblem({ ...host, protocol: 1 }, { ...mine, build: null }), /Host: .*You: game 2026\.10\.15\.1, launcher 0\.1\.61\./);
+  // the same game, Eclipse on one side
+  assert.equal(multiplayer.joinProblem({ ...host, build: '92158d913e8e-eclipse' }, mine),
+    'The host has Super Mario Eclipse on and you have it off. Both players need the same Eclipse setting.');
+  assert.equal(multiplayer.describeVersion({ build: 'abc1234def56-eclipse', version: '2026.10.15.1' }), 'game 2026.10.15.1 (abc1234) with Eclipse');
+  assert.equal(multiplayer.formatPing(0.4), '1 ms');
+  assert.equal(multiplayer.formatPing(undefined), '');
 });
 
 test('the probe packet is the game\'s PROBE', () => {

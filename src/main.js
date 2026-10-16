@@ -978,6 +978,14 @@ function localGameBuild() {
   return `${installed.commit.slice(0, 12)}${config.settings.eclipse ? '-eclipse' : ''}`;
 }
 
+// This player's game build, game version and launcher version, to compare with a host's and to show both when they
+// differ. `built` false: the game is about to be built or updated, so its build is compared after that (null here).
+function localVersions(built = true) {
+  const installed = built && config.repo && game.installed(config.repo, config.settings);
+  return { build: built ? localGameBuild() : null, version: installed?.gameVersion || currentSource().version || null,
+    launcher: app.getVersion() };
+}
+
 // The network check (src/nat.js) holds the port a hosted game listens on for a few seconds: one runs at a time, and
 // Host Game waits for it to let go of the port.
 let natCheck = null, lastNat = null;
@@ -1015,7 +1023,8 @@ async function hostGame(input) {
   const session = { mode: 'host', env: multiplayer.environment('host', { port: settings.hostPort, name, maxPlayers: settings.maxPlayers }),
     beforePlay: async () => {
       await natCheck?.catch(() => {});
-      room = await rooms.host({ port: settings.hostPort, name, build: localGameBuild(), isPublic: settings.public, log,
+      const { build, version, launcher } = localVersions();
+      room = await rooms.host({ port: settings.hostPort, name, build, version, launcher, isPublic: settings.public, log,
         onRoom: showRoom });
       Object.assign(session.env, { SMS_MULTIPLAYER_PORT: String(room.gamePort), SMS_MULTIPLAYER_LOCAL: '1',
         SMS_MULTIPLAYER_ROOM: room.code ? rooms.formatRoomCode(room.code) : '' });
@@ -1033,31 +1042,63 @@ async function hostGame(input) {
 // full), or null.
 async function publicGames() {
   const list = await rooms.listPublic();
-  const build = localGameBuild();
+  const mine = localVersions();
   return list.map(room => ({ code: rooms.formatRoomCode(room.code), name: multiplayer.playerName(room.name, 'Host'),
     status: String(room.status || '').slice(0, 63), players: room.players, maxPlayers: room.maxPlayers, minutes: room.minutes,
-    problem: multiplayer.joinProblem(room, build) }));
+    problem: multiplayer.joinProblem(room, mine) }));
+}
+
+// "Ping": how long a host's game takes to answer, the way a join would reach it (for a room code: connected like a
+// join, directly or through the relay, then let go). Pings of the same game share one check.
+const pings = new Map();
+function pingGame(input = {}) {
+  const code = rooms.parseRoomCode(input.address);
+  const target = code ? null : multiplayer.parseAddress(input.address, input.port);
+  const id = code || `${target.host}:${target.port}`;
+  if (!pings.has(id)) pings.set(id, (async () => {
+    const mine = localVersions();
+    let info, mode = null;
+    if (code) {
+      const room = await rooms.lookup(code);
+      const link = await rooms.join({ code, name: multiplayer.playerName(config.multiplayer.name), check: true });
+      try { info = { ...room, ...await multiplayer.probe('127.0.0.1', link.localPort, { timeout: 3000 }) }; }
+      catch (_) { throw new Error('Reached the host, but their game didn\'t answer. Check that it\'s still running.'); }
+      finally { link.close(); }
+      mode = link.mode;
+    } else {
+      info = await multiplayer.probe(target.host, target.port, { timeout: 3000 });
+    }
+    return { name: multiplayer.playerName(info.name, 'Host'), players: info.players, maxPlayers: info.maxPlayers,
+      status: String(info.status || '').slice(0, 63), ping: info.ping, mode, problem: multiplayer.joinProblem(info, mine) };
+  })().finally(() => pings.delete(id)));
+  return pings.get(id);
+}
+
+// The log's line for a host's game: "Chase's game: 2 of 8 players, in Bianco Hills, ping 42 ms".
+function hostedLine(info, nobody = 'The host') {
+  return `${info.name || nobody}'s game: ${info.players} of ${info.maxPlayers} players${info.status ? `, in ${info.status}` : ''}`
+    + (Number.isFinite(info.ping) ? `, ping ${multiplayer.formatPing(info.ping)}` : '');
 }
 
 // Join with a room code: the room server says whose game it is and which build it runs, then the launcher connects
 // to the host's launcher (src/rooms.js) and the game joins through it, on this computer.
 async function joinRoom(code, settings) {
   const shown = rooms.formatRoomCode(code);
-  const check = async build => {
+  const check = async mine => {
     const info = await rooms.lookup(code);
-    const problem = multiplayer.joinProblem({ ...info, open: true, players: 0, maxPlayers: multiplayer.MAX_PLAYERS }, build);
+    const problem = multiplayer.joinProblem({ ...info, open: true, players: 0, maxPlayers: multiplayer.MAX_PLAYERS }, mine);
     if (problem) throw new Error(problem);
     return info;
   };
   log(`Looking for room ${shown}…`);
   const updateDue = !binaryReady() || (config.settings.autoUpdate && !game.isCurrent(config.repo, config.settings, currentSource()));
-  const info = await check(updateDue ? null : localGameBuild());
+  const info = await check(localVersions(!updateDue));
   log(`Found ${info.name || 'the host'}'s room. ${updateDue ? 'Updating the game first, then joining it.' : 'Connecting…'}`);
   const name = multiplayer.playerName(settings.name);
   let link = null;
   const session = { mode: 'join', env: {},
     beforePlay: async () => {
-      if (updateDue) await check(localGameBuild());
+      if (updateDue) await check(localVersions());
       link = await rooms.join({ code, name, log });
       log(link.mode === 'relay' ? 'Connected through the relay, which adds a little delay: your networks couldn\'t connect '
         + 'directly. If the host forwards their UDP port on their router, you\'ll connect directly.'
@@ -1065,10 +1106,10 @@ async function joinRoom(code, settings) {
       let hosted;
       try { hosted = await multiplayer.probe('127.0.0.1', link.localPort); }
       catch (_) { throw new Error('Reached the host, but their game didn\'t answer. Check that it\'s still running.'); }
-      const problem = multiplayer.joinProblem(hosted, localGameBuild());
+      // the room server's word on the host's versions, for a message about a different one
+      const problem = multiplayer.joinProblem({ ...info, ...hosted }, localVersions());
       if (problem) throw new Error(problem);
-      log(`${hosted.name || 'The host'}'s game: ${hosted.players} of ${hosted.maxPlayers} players`
-        + `${hosted.status ? `, in ${hosted.status}` : ''}. Starting the game to join it.`);
+      log(`${hostedLine(hosted)}. Starting the game to join it.`);
       session.env = multiplayer.environment('join', { host: '127.0.0.1', port: link.localPort, name });
     } };
   try { return await launchGame(session); }
@@ -1082,7 +1123,7 @@ async function joinGame(input) {
   const code = rooms.parseRoomCode(settings.address);
   if (code) return joinRoom(code, settings);
   const target = multiplayer.parseAddress(settings.address, settings.joinPort);
-  const find = async build => {
+  const find = async mine => {
     // the log is often pasted in public: the host's address is not written out in full
     log(`Looking for a multiplayer game at ${multiplayer.maskAddress(target.host)}:${target.port}…`);
     let info;
@@ -1094,18 +1135,18 @@ async function joinGame(input) {
           + 'from their Multiplayer window instead.');
       throw error;
     }
-    const problem = multiplayer.joinProblem(info, build);
+    const problem = multiplayer.joinProblem(info, mine);
     if (problem) throw new Error(problem);
     return info;
   };
   const updateDue = !binaryReady() || (config.settings.autoUpdate && !game.isCurrent(config.repo, config.settings, currentSource()));
-  const info = await find(updateDue ? null : localGameBuild());
+  const info = await find(localVersions(!updateDue));
   config.multiplayer.recent = multiplayer.rememberHost(config.multiplayer.recent, { ...target, name: info.name });
   saveConfig();
-  log(`Found ${info.name || 'the host'}'s game: ${info.players} of ${info.maxPlayers} players${info.status ? `, in ${info.status}` : ''}. `
+  log(`Found ${hostedLine(info, 'the host')}. `
     + (updateDue ? 'Updating the game first, then joining it.' : 'Starting the game to join it.'));
   return launchGame({ mode: 'join', env: multiplayer.environment('join', { ...target, name: multiplayer.playerName(settings.name) }),
-    beforePlay: updateDue ? () => find(localGameBuild()) : null });
+    beforePlay: updateDue ? () => find(localVersions()) : null });
 }
 
 // Why `--play` opens the launcher instead of the game, or null if the game can start as it is.
@@ -1467,6 +1508,7 @@ function registerHandlers() {
   // NAT type, checked from the port the player would host on (src/nat.js).
   ipcMain.handle('check-nat', (_event, input) => checkNat(input));
   ipcMain.handle('public-games', () => publicGames());
+  ipcMain.handle('ping-game', (_event, input) => pingGame(input));
   ipcMain.handle('host-game', (_event, input) => exclusive('Host multiplayer game', () => hostGame(input), true));
   ipcMain.handle('join-game', (_event, input) => exclusive('Join multiplayer game', () => joinGame(input), true));
   ipcMain.handle('clean-preview', () => exclusive('Preview cleanup', () => clean(true)));

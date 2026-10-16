@@ -33,12 +33,13 @@
       "Fixed Delfino Plaza's boats sometimes vanishing for a player who boards them in multiplayer.",
       "Multiplayer: when a joining player's game is back at file select without the host, it now says those files are on the multiplayer card and not your own saves, which are still there when you press Play.",
       "Fixed other joining players stuttering and jumping now and then in multiplayer: everyone now moves as smoothly as the host does.",
+      "Fixed boss fights starting over for everyone when the host lost a life in multiplayer: every boss, Shadow Mario's chases and the broken corners of Bowser's hot tub now stay as they were.",
       "Fixed a nozzle from a nozzle box disappearing for other players in multiplayer when someone else took theirs: everyone now gets their own.",
       "Fixed coins and switches no longer being shared for a player who had gone back into the same level many times in multiplayer.",
       "Fixed being left stranded in multiplayer when another player rode away on a mud boat in Noki Bay or Corona Mountain, or a leaf boat in Bianco Hills: everyone now has their own, and you see the others riding theirs.",
       "Mario can play in the colours you pick in the launcher's Customize Mario, with HD textures on or off.",
       "Fixed the game sometimes crashing right after a cutscene, such as FLUDD's on the airstrip.",
-      "Fixed boss fights starting over for everyone when the host lost a life in multiplayer: every boss, Shadow Mario's chases and the broken corners of Bowser's hot tub now stay as they were."
+      "Multiplayer: when the host goes back to the title screen, everyone else is told and plays on, and goes along again once the host is playing."
     ]
   },
   "releases": [

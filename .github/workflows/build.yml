@@ -2,7 +2,9 @@ name: Build launcher
 # Pull requests are built for each platform as a check. Previews are only
 # built when a maintainer asks:
 #   - run by hand with a pull request number: published as the moving
-#     pre-release "pr-<number>", with a comment on the pull request;
+#     pre-release "pr-<number>", with a comment on the pull request. Add a
+#     game branch (say feat/multiplayer) to play the newest commit of that
+#     branch instead of the game the pull request pins;
 #   - with "beta" (usually from refresh-beta.yml): main, with the newest
 #     commit of the game's branch, published as the moving pre-release "beta".
 # Players opt into either under Settings > Launcher > Launcher updates.
@@ -15,6 +17,10 @@ on:
         description: Pull request number to build and publish as a preview
         type: string
         default: ''
+      game:
+        description: With a pull request, the game branch to play (default the game it pins)
+        type: string
+        default: ''
       beta:
         description: Publish this build of main as the Beta channel
         type: boolean
@@ -22,6 +28,9 @@ on:
   workflow_call:
     inputs:
       pr:
+        type: string
+        default: ''
+      game:
         type: string
         default: ''
       beta:
@@ -44,6 +53,7 @@ jobs:
       pr: ${{ steps.plan.outputs.pr }}
       title: ${{ steps.plan.outputs.title }}
       game: ${{ steps.plan.outputs.game }}
+      game_branch: ${{ steps.plan.outputs.game_branch }}
       game_version: ${{ steps.plan.outputs.game_version }}
       previous: ${{ steps.plan.outputs.previous }}
       decomp: ${{ steps.plan.outputs.decomp }}
@@ -54,16 +64,33 @@ jobs:
           GH_REPO: ${{ github.repository }}
           PR: ${{ inputs.pr }}
           BETA: ${{ inputs.beta }}
+          GAME_BRANCH: ${{ inputs.game }}
           REF: ${{ github.ref }}
           SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
           out() { printf '%s=%s\n' "$1" "$2" >> "$GITHUB_OUTPUT"; }
+          if [ -n "$GAME_BRANCH" ] && [ -z "$PR" ]; then
+            echo "::error::A game branch is only for pull request previews."; exit 1
+          fi
           if [ -z "$PR" ] && [ "$BETA" != true ]; then
             out preview false; out sha "$SHA"; exit 0
           fi
           if [ -n "$PR" ] && [ "$BETA" = true ]; then
             echo "::error::Choose a pull request number or beta, not both."; exit 1
           fi
+          # The newest commit of a game branch and the decomp it pins, from the
+          # game repository src/game-release.json names at the launcher commit $2.
+          newest_game() {
+            pinned=$(gh api "repos/$GH_REPO/contents/src/game-release.json?ref=$2" -H 'Accept: application/vnd.github.raw')
+            game_repo=$(jq -r '.repository | sub("^https://github.com/"; "") | sub("\\.git$"; "")' <<<"$pinned")
+            branch=${1:-$(jq -r .branch <<<"$pinned")}
+            game=$(gh api "repos/$game_repo/commits/$(jq -rn --arg b "$branch" '$b|@uri')" --jq .sha)
+            decomp=$(gh api "repos/$game_repo/contents/decomp?ref=$game" --jq 'select(.type == "submodule") | .sha')
+            [[ "$game" =~ ^[0-9a-f]{40}$ && "$decomp" =~ ^[0-9a-f]{40}$ ]] \
+              || { echo "::error::Could not find the newest commit of $branch and its decomp in $game_repo."; exit 1; }
+            out game "$game"; out decomp "$decomp"; out game_branch "$branch"
+            echo "Game: $game_repo $branch ${game:0:7} (decomp ${decomp:0:7})"
+          }
           if [ -n "$PR" ]; then
             [[ "$PR" =~ ^[1-9][0-9]*$ ]] || { echo "::error::\"$PR\" is not a pull request number."; exit 1; }
             info=$(gh pr view "$PR" --json state,headRefOid,title,isCrossRepository) || exit 1
@@ -74,18 +101,16 @@ jobs:
             out preview true; out channel "pr-$PR"; out suffix "pr$PR"; out pr "$PR"
             out sha "$(jq -r .headRefOid <<<"$info")"
             out title "$(jq -r .title <<<"$info" | tr -d '\r\n' | cut -c1-200)"
+            if [ -n "$GAME_BRANCH" ]; then
+              newest_game "$GAME_BRANCH" "$(jq -r .headRefOid <<<"$info")"
+              out game_version "$(date -u +%Y.%m.%d)-pr$PR.${game:0:7}"
+            fi
           else
             [ "$REF" = refs/heads/main ] || { echo "::error::Run Beta from main."; exit 1; }
             out preview true; out channel beta; out suffix beta; out sha "$SHA"
             # Beta plays the newest game, not the commit main pins for the next Stable release.
-            pinned=$(gh api "repos/$GH_REPO/contents/src/game-release.json?ref=$SHA" -H 'Accept: application/vnd.github.raw')
-            game_repo=$(jq -r '.repository | sub("^https://github.com/"; "") | sub("\\.git$"; "")' <<<"$pinned")
-            game=$(gh api "repos/$game_repo/commits/$(jq -r .branch <<<"$pinned")" --jq .sha)
-            decomp=$(gh api "repos/$game_repo/contents/decomp?ref=$game" --jq 'select(.type == "submodule") | .sha')
-            [[ "$game" =~ ^[0-9a-f]{40}$ && "$decomp" =~ ^[0-9a-f]{40}$ ]] \
-              || { echo "::error::Could not find the newest game commit and its decomp in $game_repo."; exit 1; }
-            out game "$game"; out decomp "$decomp"; out game_version "$(date -u +%Y.%m.%d)-beta.${game:0:7}"
-            echo "Beta game: $game_repo ${game:0:7} (decomp ${decomp:0:7})"
+            newest_game "" "$SHA"
+            out game_version "$(date -u +%Y.%m.%d)-beta.${game:0:7}"
             # The launcher commit of the Beta this replaces, so Discord hears only what is new since.
             out previous "$(gh release view beta --json body --jq .body 2>/dev/null | sed -n 's/.*<!-- beta launcher=\([0-9a-f]*\) .*/\1/p')"
           fi
@@ -110,6 +135,7 @@ jobs:
       CHANNEL: ${{ needs.plan.outputs.channel }}
       SUFFIX: ${{ needs.plan.outputs.suffix }}
       GAME: ${{ needs.plan.outputs.game }}
+      GAME_BRANCH: ${{ needs.plan.outputs.game_branch }}
       GAME_VERSION: ${{ needs.plan.outputs.game_version }}
       DECOMP: ${{ needs.plan.outputs.decomp }}
     steps:
@@ -140,13 +166,13 @@ jobs:
             pkg.build.nsis.artifactName = "SMS-Launcher-Setup-${version}.${ext}";
             fs.writeFileSync("package.json", JSON.stringify(pkg, null, 2) + "\n");
             console.log(`Preview ${pkg.version} on channel ${CHANNEL}`);
-            const { GAME, GAME_VERSION, DECOMP } = process.env;
+            const { GAME, GAME_BRANCH, GAME_VERSION, DECOMP } = process.env;
             if (GAME) {
               const file = "src/game-release.json";
               const game = JSON.parse(fs.readFileSync(file, "utf8"));
-              Object.assign(game, { version: GAME_VERSION, commit: GAME, decomp: DECOMP });
+              Object.assign(game, { version: GAME_VERSION, branch: GAME_BRANCH, commit: GAME, decomp: DECOMP });
               fs.writeFileSync(file, JSON.stringify(game, null, 2) + "\n");
-              console.log(`Game ${game.version}: ${GAME} (decomp ${DECOMP})`);
+              console.log(`Game ${game.version}: ${GAME_BRANCH} ${GAME} (decomp ${DECOMP})`);
             }'
         env:
           RUN: ${{ github.run_number }}
@@ -223,12 +249,14 @@ jobs:
           PR: ${{ needs.plan.outputs.pr }}
           PR_TITLE: ${{ needs.plan.outputs.title }}
           GAME: ${{ needs.plan.outputs.game }}
+          GAME_BRANCH: ${{ needs.plan.outputs.game_branch }}
         run: |
           version=$(sed -n 's/^version: //p' dist/latest.yml)
           echo "version=$version" >> "$GITHUB_OUTPUT"
           if [ -n "$PR" ]; then
             title="Preview #$PR: $PR_TITLE"
-            notes="Preview build of #$PR at ${SHA:0:7} ($version). For testing only: open Settings > Launcher and choose \"Pull request #$PR\" under Launcher updates. Replaced by the next preview of this pull request and deleted when it closes."
+            game_note=${GAME:+ with game $GAME_BRANCH at ${GAME:0:7}}
+            notes="Preview build of #$PR at ${SHA:0:7} ($version)$game_note. For testing only: open Settings > Launcher and choose \"Pull request #$PR\" under Launcher updates. Replaced by the next preview of this pull request and deleted when it closes."
           else
             title="Beta $version · game ${GAME:0:7}"
             # refresh-beta.yml reads the marker to skip a rebuild when nothing changed.

@@ -31,9 +31,10 @@
       "Multiplayer: you can now see the Blooper another player is surfing on, and your own when you aren't Mario.",
       "Fixed other players being pulled into a cutscene at the start of the level when someone joined.",
       "Fixed Delfino Plaza's boats sometimes vanishing for a player who boards them in multiplayer.",
+      "Multiplayer: when a joining player's game is back at file select without the host, it now says those files are on the multiplayer card and not your own saves, which are still there when you press Play.",
       "Mario can play in the colours you pick in the launcher's Customize Mario, with HD textures on or off.",
       "Fixed the game sometimes crashing right after a cutscene, such as FLUDD's on the airstrip.",
-      "Multiplayer: when a joining player's game is back at file select without the host, it now says those files are on the multiplayer card and not your own saves, which are still there when you press Play."
+      "Fixed other joining players stuttering and jumping now and then in multiplayer: everyone now moves as smoothly as the host does."
     ]
   },
   "releases": [

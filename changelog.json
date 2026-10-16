@@ -32,9 +32,12 @@
       "Fixed other players being pulled into a cutscene at the start of the level when someone joined.",
       "Fixed Delfino Plaza's boats sometimes vanishing for a player who boards them in multiplayer.",
       "Multiplayer: when a joining player's game is back at file select without the host, it now says those files are on the multiplayer card and not your own saves, which are still there when you press Play.",
+      "Fixed other joining players stuttering and jumping now and then in multiplayer: everyone now moves as smoothly as the host does.",
       "Mario can play in the colours you pick in the launcher's Customize Mario, with HD textures on or off.",
       "Fixed the game sometimes crashing right after a cutscene, such as FLUDD's on the airstrip.",
-      "Fixed other joining players stuttering and jumping now and then in multiplayer: everyone now moves as smoothly as the host does."
+      "Fixed boss fights starting over for everyone when the host lost a life in multiplayer: Petey Piranha, Eely-Mouth, Wiggler, King Boo, Mecha-Bowser, the Gatekeepers and the broken corners of Bowser's hot tub now stay as they were.",
+      "Fixed a nozzle from a nozzle box disappearing for other players in multiplayer when someone else took theirs: everyone now gets their own.",
+      "Fixed coins and switches no longer being shared for a player who had gone back into the same level many times in multiplayer."
     ]
   },
   "releases": [

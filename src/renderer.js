@@ -519,7 +519,7 @@ function renderActivity(active) {
   $('stop').textContent = active?.label === 'Play Super Mario Sunshine' ? 'Stop game'
     : active?.label.startsWith('Build ') ? 'Stop build' : 'Stop task';
   $('view-build-log').textContent = active?.label.startsWith('Build ') ? 'View build log' : 'View activity';
-  $('task-status').textContent = active ? taskName(active.label)
+  $('task-status').textContent = active?.room ? `Hosting room ${active.room}` : active ? taskName(active.label)
     : current?.binaryReady && needsTextureDownload(current) ? 'HD setup needed'
     : current?.game.needsUpdate && current.config.completedSetup ? 'Update ready'
     : $('page-home').classList.contains('ready-mode') ? 'Ready to play' : 'Finish setup to play';
@@ -1130,6 +1130,267 @@ async function showWhatsNew() {
     await window.sms.markChangelogSeen();
   } catch (_) { /* the changelog button still works */ }
 }
+// --- Multiplayer (src/multiplayer.js): host a game, or join one by address and port. The fields are
+// kept for next time; Join asks the host's game first, so a wrong address is reported here.
+function multiplayerFields() {
+  return { name: $('mp-name').value, hostPort: $('mp-host-port').value, maxPlayers: $('mp-max-players').value,
+    address: $('mp-address').value,
+    joinPort: $('mp-join-port').value, public: $('mp-list-public').checked };
+}
+function setMultiplayerResult(text, error = false) {
+  $('mp-result').textContent = text;
+  $('mp-result').classList.toggle('error', error);
+}
+// An invite code carries its own port (src/multiplayer.js: inviteCode).
+const looksLikeInvite = text => /^[0-9a-z]{4}-?[0-9a-z]{4}-?[0-9a-z]{4}$/i.test(String(text).trim());
+// So does a room code (src/rooms.js): the host's launcher has the port.
+const looksLikeRoom = text => /^[0-9a-z]{3}[-\s]?[0-9a-z]{3}$/i.test(String(text).trim());
+// The public games last loaded (below), shown again as the buttons' state changes.
+let publicGames = null, publicTicket = 0, publicTimer = null;
+// Pings (src/main.js: pingGame): the typed game's, and each public game's by room code, kept across the list's refreshes.
+let pingingTyped = false;
+const publicPings = new Map(); // code -> { pending } or { ping, mode } or { failed }
+const pingHow = mode => ({ relay: ' through the relay', lan: ' over your local network', direct: ' direct' })[mode] || '';
+const PUBLIC_REFRESH = 15000;
+function renderMultiplayer() {
+  const busy = Boolean(current?.active) || setupPending;
+  $('mp-host').disabled = busy;
+  $('mp-join').disabled = busy;
+  $('mp-ping').disabled = busy || pingingTyped || !$('mp-address').value.trim();
+  $('mp-host-port-note').textContent = /^\d{1,5}$/.test($('mp-host-port').value.trim()) ? $('mp-host-port').value.trim() : '24002';
+  $('mp-join-port').disabled = looksLikeInvite($('mp-address').value) || looksLikeRoom($('mp-address').value);
+  if (publicGames) renderPublicGames(publicGames);
+}
+// Public games (src/rooms.js: listPublic): games whose hosts listed them, refreshed while the window is open.
+async function loadPublicGames() {
+  const ticket = ++publicTicket;
+  $('mp-browser-refresh').disabled = true;
+  try {
+    const games = await window.sms.publicGames();
+    if (ticket !== publicTicket) return;
+    publicGames = games;
+    renderPublicGames(games);
+  } catch (_) {
+    if (ticket !== publicTicket) return;
+    publicGames = null;
+    $('mp-browser-list').replaceChildren();
+    $('mp-browser-note').hidden = false;
+    $('mp-browser-note').textContent = "Couldn't load public games. Check your internet connection.";
+  } finally {
+    if (ticket === publicTicket) $('mp-browser-refresh').disabled = false;
+  }
+}
+function renderPublicGames(games) {
+  const busy = Boolean(current?.active) || setupPending;
+  const list = $('mp-browser-list');
+  list.replaceChildren();
+  $('mp-browser-note').hidden = games.length > 0;
+  $('mp-browser-note').textContent = 'No public games right now. Host one with "List my game publicly" on, and it shows here.';
+  for (const game of games) {
+    const item = document.createElement('li');
+    item.className = 'mp-game';
+    const text = document.createElement('span');
+    text.className = 'mp-game-text';
+    const name = document.createElement('strong');
+    name.textContent = `${game.name}'s game`;
+    const detail = document.createElement('small');
+    const where = game.status ? game.status[0].toUpperCase() + game.status.slice(1) : '';
+    const pinged = publicPings.get(game.code);
+    const ping = !pinged ? '' : pinged.pending ? 'Pinging…' : pinged.failed ? 'No answer to ping'
+      : `Ping ${pinged.ping} ms${pingHow(pinged.mode)}`;
+    detail.textContent = [where, `${game.players} of ${game.maxPlayers} players`, ping, game.problem].filter(Boolean).join(' · ');
+    text.append(name, detail);
+    const pingButton = document.createElement('button');
+    pingButton.className = 'text-button mp-game-ping';
+    pingButton.textContent = 'Ping';
+    pingButton.disabled = busy || Boolean(pinged?.pending);
+    pingButton.setAttribute('aria-label', `Ping ${game.name}'s game`);
+    pingButton.addEventListener('click', () => pingPublicGame(game.code));
+    const join = document.createElement('button');
+    join.className = 'text-button mp-game-join';
+    join.textContent = 'Join';
+    join.disabled = busy || Boolean(game.problem);
+    join.setAttribute('aria-label', `Join ${game.name}'s game`);
+    join.addEventListener('click', () => {
+      $('mp-address').value = game.code;
+      renderMultiplayer();
+      startMultiplayer('join');
+    });
+    item.classList.toggle('unavailable', Boolean(game.problem));
+    const actions = document.createElement('span');
+    actions.className = 'mp-game-actions';
+    actions.append(pingButton, join);
+    item.append(text, actions);
+    list.append(item);
+  }
+}
+async function pingPublicGame(code) {
+  publicPings.set(code, { pending: true });
+  renderMultiplayer();
+  try {
+    const result = await window.sms.pingGame({ address: code });
+    publicPings.set(code, { ping: result.ping, mode: result.mode });
+  } catch (_) {
+    publicPings.set(code, { failed: true });
+  }
+  renderMultiplayer();
+}
+// The Ping beside Join: the typed room code, invite code or address, and what the host's game says about itself.
+async function pingTypedGame() {
+  pingingTyped = true;
+  setMultiplayerResult("Pinging the host's game...");
+  renderMultiplayer();
+  try {
+    const result = await window.sms.pingGame({ address: $('mp-address').value, port: $('mp-join-port').value });
+    const where = result.status ? `, in ${result.status}` : '';
+    setMultiplayerResult(`Ping ${result.ping} ms${pingHow(result.mode)}. ${result.name}'s game: ${result.players} of `
+      + `${result.maxPlayers} players${where}.${result.problem ? ` ${result.problem}` : ''}`, Boolean(result.problem));
+  } catch (error) {
+    setMultiplayerResult(errorText(error), true);
+  } finally {
+    pingingTyped = false;
+    renderMultiplayer();
+  }
+}
+$('mp-browser-refresh').addEventListener('click', loadPublicGames);
+$('multiplayer').addEventListener('close', () => { clearInterval(publicTimer); publicTimer = null; });
+// The hosts joined lately: one press joins again; × forgets one.
+function renderRecentHosts(list = current?.config?.multiplayer?.recent || []) {
+  const holder = $('mp-recent-list');
+  holder.replaceChildren();
+  for (const host of list) {
+    const item = document.createElement('span');
+    item.className = 'mp-recent-item';
+    const join = document.createElement('button');
+    join.className = 'mp-recent-join';
+    join.textContent = host.name ? `${host.name}'s game` : `${host.address}:${host.port}`;
+    join.title = `Join ${host.address}:${host.port}`;
+    join.addEventListener('click', () => {
+      $('mp-address').value = host.address;
+      $('mp-join-port').value = String(host.port);
+      renderMultiplayer();
+      startMultiplayer('join');
+    });
+    const forget = document.createElement('button');
+    forget.className = 'mp-recent-forget';
+    forget.textContent = '×';
+    forget.setAttribute('aria-label', `Forget ${join.textContent}`);
+    forget.addEventListener('click', async () => {
+      const saved = await window.sms.forgetMultiplayerHost({ address: host.address, port: host.port });
+      if (current) current.config.multiplayer = saved;
+      renderRecentHosts(saved.recent);
+    });
+    item.append(join, forget);
+    holder.append(item);
+  }
+  $('mp-recent').hidden = list.length === 0;
+}
+$('open-multiplayer').addEventListener('click', () => {
+  closeModal();
+  const saved = current?.config?.multiplayer || {};
+  $('mp-name').value = saved.name || '';
+  $('mp-host-port').value = String(saved.hostPort || 24002);
+  $('mp-max-players').value = String(saved.maxPlayers || 8);
+  $('mp-address').value = saved.address || '';
+  $('mp-join-port').value = String(saved.joinPort || 24002);
+  $('mp-list-public').checked = saved.public === true;
+  setMultiplayerResult('');
+  renderRecentHosts();
+  renderMultiplayer();
+  $('multiplayer').showModal();
+  $(saved.address ? 'mp-join' : 'mp-name').focus();
+  checkNat();
+  loadPublicGames();
+  clearInterval(publicTimer);
+  publicTimer = setInterval(() => { if ($('multiplayer').open) loadPublicGames(); }, PUBLIC_REFRESH);
+});
+for (const id of ['mp-name', 'mp-host-port', 'mp-max-players', 'mp-address', 'mp-join-port', 'mp-list-public']) {
+  $(id).addEventListener('input', renderMultiplayer);
+  // An unfinished port is kept as it was until it is a number.
+  $(id).addEventListener('change', () => window.sms.saveMultiplayer(multiplayerFields())
+    .then(saved => { if (current) current.config.multiplayer = saved; }).catch(() => {}));
+}
+for (const id of ['mp-address', 'mp-join-port'])
+  $(id).addEventListener('keydown', event => { if (event.key === 'Enter') $('mp-join').click(); });
+$('mp-host-port').addEventListener('keydown', event => { if (event.key === 'Enter') $('mp-host').click(); });
+// Copy buttons in the network section: the invite code, the public address, the address on this network.
+for (const button of document.querySelectorAll('.mp-copy')) {
+  button.addEventListener('click', async () => {
+    await window.sms.copyText($(button.dataset.copy).textContent);
+    button.textContent = 'Copied';
+    setTimeout(() => { button.textContent = 'Copy'; }, 1500);
+  });
+}
+async function startMultiplayer(mode) {
+  if (!current?.binaryReady && !current?.repoReady) {
+    setMultiplayerResult('Set up the game first: close this and press the main button.', true);
+    return;
+  }
+  setMessage('');
+  setMultiplayerResult(mode === 'join' ? "Looking for the host's game..." : 'Starting the game...');
+  setupPending = true;
+  try {
+    if (current) refresh(current);
+    renderMultiplayer();
+    await (mode === 'host' ? window.sms.hostGame(multiplayerFields()) : window.sms.joinGame(multiplayerFields()));
+    await sync();
+  } catch (error) {
+    // The game had not started (or failed): say why here, where the player is.
+    const message = String(error.message || error).replace(/^Error invoking remote method '[^']+': (Error: )?/, '');
+    if ($('multiplayer').open) setMultiplayerResult(message, true);
+    else showError({ message });
+    await sync();
+  } finally {
+    setupPending = false;
+    if (current) refresh(current);
+    renderMultiplayer();
+  }
+}
+// NAT type (src/nat.js): what this network allows, from the port the player would host on.
+let natCheck = 0;
+async function checkNat() {
+  const ticket = ++natCheck;
+  $('mp-nat-badge').className = 'mp-nat-badge';
+  $('mp-nat-badge').textContent = 'Checking…';
+  $('mp-nat-text').textContent = 'Checking whether you can host and join from this network…';
+  $('mp-share').hidden = true;
+  $('mp-nat-check').disabled = true;
+  renderMultiplayer();
+  try {
+    const port = $('mp-host-port').value.trim() || '24002';
+    const result = await window.sms.checkNat({ port });
+    if (ticket !== natCheck) return;
+    $('mp-nat-badge').textContent = `NAT: ${result.label}`;
+    $('mp-nat-badge').classList.add(result.type);
+    $('mp-nat-text').textContent = result.portBusy
+      ? `${result.text} (Port ${port} is in use, so another port was checked.)` : result.text;
+    const share = result.share;
+    if (share) {
+      $('mp-share').hidden = false;
+      $('mp-share-note').textContent = result.canHost ? 'Friends can also join you with one of these instead of your room code:'
+        : `Friends join with your room code. These work instead once port ${share.port} is forwarded. (Forwarding can't `
+          + 'help if your internet provider shares one IP address among its customers, which is called CGNAT.)';
+      $('mp-invite-row').hidden = !share.invite;
+      $('mp-invite').textContent = share.invite || '';
+      $('mp-public').textContent = `${share.address}:${share.port}`;
+      $('mp-lan-row').hidden = !share.lan;
+      $('mp-lan').textContent = share.lan || '';
+    }
+  } catch (_) {
+    if (ticket !== natCheck) return;
+    $('mp-nat-badge').textContent = 'NAT: Unknown';
+    $('mp-nat-text').textContent = "Couldn't check your network. Are you online?";
+  } finally {
+    if (ticket === natCheck) $('mp-nat-check').disabled = false;
+    renderMultiplayer();
+  }
+}
+$('mp-nat-check').addEventListener('click', checkNat);
+$('mp-host-port').addEventListener('change', checkNat);
+$('mp-host').addEventListener('click', () => startMultiplayer('host'));
+$('mp-join').addEventListener('click', () => startMultiplayer('join'));
+$('mp-ping').addEventListener('click', pingTypedGame);
+
 $('changelog-show-all').addEventListener('click', () => renderChangelog(changelogShown, false));
 $('open-changelog').addEventListener('click', showChangelog);
 $('changelog-page').addEventListener('click', () => window.sms.openChangelogPage().catch(error => setMessage(errorText(error))));
@@ -1397,6 +1658,8 @@ window.sms.onActivity(value => {
   const changed = Boolean(value) !== Boolean(current?.active);
   // Update & play builds and then starts the game in one task: reread the versions once the new game boots.
   const gameStarted = value?.label === 'Play Super Mario Sunshine' && current?.active?.label !== value.label;
+  // Host Game and Join close their window once the game is starting.
+  if (gameStarted && $('multiplayer').open) $('multiplayer').close();
   if (current) current.active = value;
   renderActivity(value);
   // Lock the settings now: the next state (sync) can take a while to arrive.

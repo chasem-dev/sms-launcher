@@ -23,6 +23,9 @@ const telemetry = require('./telemetry');
 const discord = require('./discord');
 const presence = require('./presence');
 const changelog = require('./changelog');
+const multiplayer = require('./multiplayer');
+const nat = require('./nat');
+const rooms = require('./rooms');
 const { cleanOutputLine, createActivityReader } = require('./progress');
 const { createActivityLog } = require('./activity-log');
 const { observeProcess, exitDescription, failureMessage } = require('./process-output');
@@ -76,10 +79,13 @@ function broadcast(channel, data) {
   if (window && !window.isDestroyed()) window.webContents.send(channel, data);
 }
 
+// The room code friends join with, while hosting (shown under the play button).
+let hostedRoom = null;
+
 function activityState() {
   const task = active || operation;
   return task ? { label: task.label, detail: task.detail, percent: task.percent,
-    startedAt: task.startedAt, canStop: Boolean(active?.child) } : null;
+    startedAt: task.startedAt, canStop: Boolean(active?.child), room: hostedRoom } : null;
 }
 
 function log(message) {
@@ -179,6 +185,19 @@ function saveConfig() {
   fs.renameSync(temporary, file);
 }
 
+function savedMultiplayer(saved) {
+  const value = saved && typeof saved === 'object' ? saved : {};
+  const portOr = text => { try { return multiplayer.parsePort(text); } catch (_) { return multiplayer.DEFAULT_PORT; } };
+  const mostOr = text => { try { return multiplayer.parseMaxPlayers(text); } catch (_) { return multiplayer.DEFAULT_MAX_PLAYERS; } };
+  const recent = (Array.isArray(value.recent) ? value.recent : [])
+    .filter(item => item && typeof item.address === 'string' && item.address && Number.isInteger(item.port) && item.port > 0 && item.port < 65536)
+    .slice(0, multiplayer.RECENT_HOSTS)
+    .map(item => ({ address: item.address.slice(0, 255), port: item.port, name: multiplayer.playerName(item.name, '') }));
+  return { name: multiplayer.playerName(value.name, ''), address: typeof value.address === 'string' ? value.address.slice(0, 255) : '',
+    hostPort: portOr(value.hostPort), joinPort: portOr(value.joinPort), maxPlayers: mostOr(value.maxPlayers),
+    public: value.public === true, recent };
+}
+
 function loadConfig() {
   let saved = {};
   try { saved = portable.resolvedPaths(JSON.parse(fs.readFileSync(configFile(), 'utf8')), portableRoot); } catch (_) { /* first run */ }
@@ -202,7 +221,9 @@ function loadConfig() {
     // Whether the launcher has offered to fix a Steam shortcut without --no-sandbox.
     steamFixOffered: Boolean(saved.steamFixOffered),
     // Customize Mario: the colours the player chose and the Shine shirt.
-    marioLook: marioColors.normalizeLook(saved.marioLook)
+    marioLook: marioColors.normalizeLook(saved.marioLook),
+    // The Multiplayer window's fields, as last used.
+    multiplayer: savedMultiplayer(saved.multiplayer)
   };
   if (config.installId !== saved.installId) {
     try { saveConfig(); } catch (error) { log(`Could not save preferences: ${error.message}`); }
@@ -463,8 +484,16 @@ function currentSaveDirectory() {
   return process.env.SMS_SAVE_DIR ? saves.saveDirectory(config.repo) : config.saveDirectory || saves.saveDirectory(config.repo);
 }
 
+// An older launcher's multiplayer guest save, inside the card folder, out of the way of backups.
+function tidySaveDirectory() {
+  if (!config.repo && !config.saveDirectory && !process.env.SMS_SAVE_DIR) return; // not set up: no card yet
+  try { if (saves.moveOldGuestSaves(currentSaveDirectory())) log('Moved the multiplayer guest save out of your memory card folder.'); }
+  catch (error) { log(`Couldn't move the multiplayer guest save out of your memory card folder: ${error.message}`); }
+}
+
 function makeSaveBackup(reason) {
   if (active) throw new Error('Stop the running game or task before backing up saves.');
+  tidySaveDirectory();
   const result = saves.backupSaves(currentSaveDirectory(), saves.backupRoot(), reason);
   log(result.empty ? result.message : `Saved ${result.count} memory card file(s) to ${result.directory}`);
   return result;
@@ -800,7 +829,8 @@ async function displayInfo() {
   catch (_) { return { displays: [], error: 'The game reported your display in a way the launcher did not understand.' }; }
 }
 
-async function play(installation = null) {
+// `session`: a multiplayer game to host or join ({ mode: 'host' or 'join', env }: hostGame, joinGame), or null to play alone.
+async function play(installation = null, session = null) {
   const root = installation?.repo || requireRepo();
   // Controls, sound, display and picture choices are the player's, not the build's: an earlier install plays with them too.
   const settings = installation ? { ...installation.settings, ...playerSettings(config.settings) } : config.settings;
@@ -810,7 +840,9 @@ async function play(installation = null) {
     throw new Error('HD visuals need to be set up. Return to the main screen to finish setup, or turn them off in Settings.');
   const disc = port.gameDisc(root, rom, settings.eclipse);
   makeSaveBackup('before-play');
-  const saveDir = saves.prepareSaveDirectory(currentSaveDirectory());
+  // A player who joins plays the host's save: their own memory card stays out of it.
+  const saveDir = saves.prepareSaveDirectory(session?.mode === 'join'
+    ? saves.guestSaveDirectory(currentSaveDirectory()) : currentSaveDirectory());
   const recordedTools = game.toolRoot(root, settings);
   const env = recordedTools
     ? buildTools.environmentAtRoot(recordedTools, { ...port.buildEnvironment(settings, disc, root), SMS_SAVE_DIR: saveDir })
@@ -827,6 +859,7 @@ async function play(installation = null) {
   if (config.settings.discordPresence) env.SMS_PRESENCE = '1';
   const look = marioLookPack(rom, root, settings);
   if (look) env.SMS_MARIO_LOOK = look;
+  if (session) Object.assign(env, session.env);
   if (portableRoot && !env.SMS_GX_SHADER_CACHE) {
     // The game only makes the folder for its default location.
     env.SMS_GX_SHADER_CACHE = portable.shaderCache(portableRoot, settings.arch);
@@ -906,14 +939,214 @@ function stopPresence(startedAt) {
 }
 
 // Update & play asks for the update even when updates are not automatic.
-async function launchGame(update = config.settings.autoUpdate) {
+async function launchGame(session = null, update = config.settings.autoUpdate) {
   requireRepo();
   port.validateRom(config.rom);
   if (!binaryReady() || (update && !game.isCurrent(config.repo, config.settings, currentSource()))) await build();
   if (!port.hdVisualsInstalled(config.repo, config.settings)) await installTextures();
   else await updateTextureExtras(config.repo, config.settings);
   await updateLanguagePack(config.repo, config.settings);
-  return play();
+  // last checks, with the game as it will run (multiplayer: the network check is done, the host's version matches)
+  if (session?.beforePlay) await session.beforePlay();
+  return play(null, session);
+}
+
+// The Multiplayer window's fields, kept for next time. Host Game and Join throw a sentence for a field that is wrong
+// (`strict`); saving as the player types keeps the last good port or player count instead, so the other fields are
+// still kept.
+function saveMultiplayer(input = {}, { strict = true } = {}) {
+  const checked = parse => (text, previous) => {
+    if (text === undefined) return previous;
+    try { return parse(text); } catch (error) { if (strict) throw error; return previous; }
+  };
+  const portField = checked(multiplayer.parsePort), mostField = checked(multiplayer.parseMaxPlayers);
+  const value = { name: multiplayer.playerName(input.name, ''), address: String(input.address ?? config.multiplayer.address).trim().slice(0, 255),
+    hostPort: portField(input.hostPort, config.multiplayer.hostPort), joinPort: portField(input.joinPort, config.multiplayer.joinPort),
+    maxPlayers: mostField(input.maxPlayers, config.multiplayer.maxPlayers ?? multiplayer.DEFAULT_MAX_PLAYERS),
+    public: typeof input.public === 'boolean' ? input.public : config.multiplayer.public === true,
+    recent: config.multiplayer.recent || [] };
+  config.multiplayer = value;
+  saveConfig();
+  return value;
+}
+
+// The game build a host must also be running for this game to join it: the
+// game's commit (as the game names its build), with Eclipse marked.
+function localGameBuild() {
+  const installed = config.repo && game.installed(config.repo, config.settings);
+  if (!installed?.commit) return null;
+  return `${installed.commit.slice(0, 12)}${config.settings.eclipse ? '-eclipse' : ''}`;
+}
+
+// This player's game build, game version and launcher version, to compare with a host's and to show both when they
+// differ. `built` false: the game is about to be built or updated, so its build is compared after that (null here).
+function localVersions(built = true) {
+  const installed = built && config.repo && game.installed(config.repo, config.settings);
+  return { build: built ? localGameBuild() : null, version: installed?.gameVersion || currentSource().version || null,
+    launcher: app.getVersion() };
+}
+
+// The network check (src/nat.js) holds the port a hosted game listens on for a few seconds: one runs at a time, and
+// Host Game waits for it to let go of the port.
+let natCheck = null, lastNat = null;
+function checkNat(input) {
+  if (!natCheck) {
+    let port = multiplayer.DEFAULT_PORT;
+    try { port = multiplayer.parsePort(input?.port); } catch (_) { /* the default */ }
+    natCheck = nat.detect({ port }).then(result => {
+      // what to give friends: the public address with the port players reach (the hosting port, or the router's
+      // own when it showed the port open under another number), as an invite code too, and the address on this network
+      const reach = result.canHost && result.publicPort && !result.portBusy ? result.publicPort : port;
+      const lan = multiplayer.lanAddresses()[0] || null;
+      result.share = result.publicAddress ? { address: result.publicAddress, port: reach,
+        invite: multiplayer.inviteCode(result.publicAddress, reach), lan: lan && `${lan}:${port}` } : null;
+      lastNat = result;
+      return result;
+    }).finally(() => { natCheck = null; });
+  }
+  return natCheck;
+}
+
+// Host Game: plays like Play, with the game listening for players on this computer and the launcher passing their
+// packets on from the chosen port (src/rooms.js), so friends can join with a room code and no port forwarding.
+async function hostGame(input) {
+  const settings = saveMultiplayer(input);
+  const name = multiplayer.playerName(settings.name, 'Host');
+  let room = null;
+  const showRoom = (code, changed) => {
+    hostedRoom = rooms.formatRoomCode(code);
+    clipboard.writeText(hostedRoom);
+    log(changed ? `Your room code changed to ${hostedRoom} (copied). Give friends the new one.`
+      : `Room code ${hostedRoom} (copied): friends join with it from their Multiplayer window.`);
+    broadcast('activity', activityState());
+  };
+  const session = { mode: 'host', env: multiplayer.environment('host', { port: settings.hostPort, name, maxPlayers: settings.maxPlayers }),
+    beforePlay: async () => {
+      await natCheck?.catch(() => {});
+      const { build, version, launcher } = localVersions();
+      room = await rooms.host({ port: settings.hostPort, name, build, version, launcher, isPublic: settings.public, log,
+        onRoom: showRoom });
+      Object.assign(session.env, { SMS_MULTIPLAYER_PORT: String(room.gamePort), SMS_MULTIPLAYER_LOCAL: '1',
+        SMS_MULTIPLAYER_ROOM: room.code ? rooms.formatRoomCode(room.code) : '' });
+    } };
+  log(`Hosting a multiplayer game for up to ${settings.maxPlayers} players on UDP port ${settings.hostPort}${settings.public ? ', listed publicly' : ''}.`);
+  try { return await launchGame(session); }
+  finally {
+    room?.close();
+    hostedRoom = null;
+    broadcast('activity', activityState());
+  }
+}
+
+// The public list, for the Multiplayer window: each game with why it can't be joined from here (another version, or
+// full), or null.
+async function publicGames() {
+  const list = await rooms.listPublic();
+  const mine = localVersions();
+  return list.map(room => ({ code: rooms.formatRoomCode(room.code), name: multiplayer.playerName(room.name, 'Host'),
+    status: String(room.status || '').slice(0, 63), players: room.players, maxPlayers: room.maxPlayers, minutes: room.minutes,
+    problem: multiplayer.joinProblem(room, mine) }));
+}
+
+// "Ping": how long a host's game takes to answer, the way a join would reach it (for a room code: connected like a
+// join, directly or through the relay, then let go). Pings of the same game share one check.
+const pings = new Map();
+function pingGame(input = {}) {
+  const code = rooms.parseRoomCode(input.address);
+  const target = code ? null : multiplayer.parseAddress(input.address, input.port);
+  const id = code || `${target.host}:${target.port}`;
+  if (!pings.has(id)) pings.set(id, (async () => {
+    const mine = localVersions();
+    let info, mode = null;
+    if (code) {
+      const room = await rooms.lookup(code);
+      const link = await rooms.join({ code, name: multiplayer.playerName(config.multiplayer.name), check: true });
+      try { info = { ...room, ...await multiplayer.probe('127.0.0.1', link.localPort, { timeout: 3000 }) }; }
+      catch (_) { throw new Error('Reached the host, but their game didn\'t answer. Check that it\'s still running.'); }
+      finally { link.close(); }
+      mode = link.mode;
+    } else {
+      info = await multiplayer.probe(target.host, target.port, { timeout: 3000 });
+    }
+    return { name: multiplayer.playerName(info.name, 'Host'), players: info.players, maxPlayers: info.maxPlayers,
+      status: String(info.status || '').slice(0, 63), ping: info.ping, mode, problem: multiplayer.joinProblem(info, mine) };
+  })().finally(() => pings.delete(id)));
+  return pings.get(id);
+}
+
+// The log's line for a host's game: "Chase's game: 2 of 8 players, in Bianco Hills, ping 42 ms".
+function hostedLine(info, nobody = 'The host') {
+  return `${info.name || nobody}'s game: ${info.players} of ${info.maxPlayers} players${info.status ? `, in ${info.status}` : ''}`
+    + (Number.isFinite(info.ping) ? `, ping ${multiplayer.formatPing(info.ping)}` : '');
+}
+
+// Join with a room code: the room server says whose game it is and which build it runs, then the launcher connects
+// to the host's launcher (src/rooms.js) and the game joins through it, on this computer.
+async function joinRoom(code, settings) {
+  const shown = rooms.formatRoomCode(code);
+  const check = async mine => {
+    const info = await rooms.lookup(code);
+    const problem = multiplayer.joinProblem({ ...info, open: true, players: 0, maxPlayers: multiplayer.MAX_PLAYERS }, mine);
+    if (problem) throw new Error(problem);
+    return info;
+  };
+  log(`Looking for room ${shown}…`);
+  const updateDue = !binaryReady() || (config.settings.autoUpdate && !game.isCurrent(config.repo, config.settings, currentSource()));
+  const info = await check(localVersions(!updateDue));
+  log(`Found ${info.name || 'the host'}'s room. ${updateDue ? 'Updating the game first, then joining it.' : 'Connecting…'}`);
+  const name = multiplayer.playerName(settings.name);
+  let link = null;
+  const session = { mode: 'join', env: {},
+    beforePlay: async () => {
+      if (updateDue) await check(localVersions());
+      link = await rooms.join({ code, name, log });
+      log(link.mode === 'relay' ? 'Connected through the relay, which adds a little delay: your networks couldn\'t connect '
+        + 'directly. If the host forwards their UDP port on their router, you\'ll connect directly.'
+        : `Connected ${link.mode === 'lan' ? 'over your local network' : 'directly over the internet'}.`);
+      let hosted;
+      try { hosted = await multiplayer.probe('127.0.0.1', link.localPort); }
+      catch (_) { throw new Error('Reached the host, but their game didn\'t answer. Check that it\'s still running.'); }
+      // the room server's word on the host's versions, for a message about a different one
+      const problem = multiplayer.joinProblem({ ...info, ...hosted }, localVersions());
+      if (problem) throw new Error(problem);
+      log(`${hostedLine(hosted)}. Starting the game to join it.`);
+      session.env = multiplayer.environment('join', { host: '127.0.0.1', port: link.localPort, name });
+    } };
+  try { return await launchGame(session); }
+  finally { link?.close(); }
+}
+
+// Join: finds the host's game first, so a wrong address or a full game is reported before anything else happens.
+// The versions are compared with the game as it will run: after an update, if one is due, the host is asked again.
+async function joinGame(input) {
+  const settings = saveMultiplayer(input);
+  const code = rooms.parseRoomCode(settings.address);
+  if (code) return joinRoom(code, settings);
+  const target = multiplayer.parseAddress(settings.address, settings.joinPort);
+  const find = async mine => {
+    // the log is often pasted in public: the host's address is not written out in full
+    log(`Looking for a multiplayer game at ${multiplayer.maskAddress(target.host)}:${target.port}…`);
+    let info;
+    try { info = await multiplayer.probe(target.host, target.port); }
+    catch (error) {
+      // from inside the host's own network their public address usually doesn't answer (the router won't loop it back)
+      if (lastNat?.publicAddress && lastNat.publicAddress === target.host)
+        throw new Error(`${error.message} You and the host seem to be on the same network: use the "Same Wi-Fi" address `
+          + 'from their Multiplayer window instead.');
+      throw error;
+    }
+    const problem = multiplayer.joinProblem(info, mine);
+    if (problem) throw new Error(problem);
+    return info;
+  };
+  const updateDue = !binaryReady() || (config.settings.autoUpdate && !game.isCurrent(config.repo, config.settings, currentSource()));
+  const info = await find(localVersions(!updateDue));
+  config.multiplayer.recent = multiplayer.rememberHost(config.multiplayer.recent, { ...target, name: info.name });
+  saveConfig();
+  log(`Found ${hostedLine(info, 'the host')}. `
+    + (updateDue ? 'Updating the game first, then joining it.' : 'Starting the game to join it.'));
+  return launchGame({ mode: 'join', env: multiplayer.environment('join', { ...target, name: multiplayer.playerName(settings.name) }),
+    beforePlay: updateDue ? () => find(localVersions()) : null });
 }
 
 // Why `--play` opens the launcher instead of the game, or null if the game can start as it is.
@@ -1256,7 +1489,7 @@ function registerHandlers() {
     'update-port': ['Update game', updatePort], 'install-eclipse': ['Install Eclipse', () => installEclipse()],
     'install-textures': ['Install UHD textures', () => installTextures()], 'build': ['Build game', () => build(true)],
     'setup-game': ['Build game', setupGame], 'play': ['Play Super Mario Sunshine', playInstalled],
-    'launch-game': ['Prepare game', () => launchGame()], 'update-and-play': ['Prepare game', () => launchGame(true)],
+    'launch-game': ['Prepare game', () => launchGame()], 'update-and-play': ['Prepare game', () => launchGame(null, true)],
     'play-previous': ['Play Super Mario Sunshine', () => {
       if (!config.previousInstall) throw new Error('There is no previous version available.');
       return play(config.previousInstall);
@@ -1264,6 +1497,20 @@ function registerHandlers() {
   for (const [channel, [label, callback]] of Object.entries(actions))
     ipcMain.handle(channel, () => exclusive(label, callback, ['play', 'launch-game', 'update-and-play', 'play-previous'].includes(channel)));
   ipcMain.handle('set-game-source', (_event, input) => exclusive('Choose game source', () => chooseGameSource(input)));
+  ipcMain.handle('save-multiplayer', (_event, input) => saveMultiplayer(input, { strict: false }));
+  ipcMain.handle('forget-multiplayer-host', (_event, input) => {
+    config.multiplayer.recent = (config.multiplayer.recent || [])
+      .filter(item => !(item.address === input?.address && item.port === input?.port));
+    saveConfig();
+    return config.multiplayer;
+  });
+  ipcMain.handle('copy-text', (_event, text) => { clipboard.writeText(String(text ?? '').slice(0, 1000)); });
+  // NAT type, checked from the port the player would host on (src/nat.js).
+  ipcMain.handle('check-nat', (_event, input) => checkNat(input));
+  ipcMain.handle('public-games', () => publicGames());
+  ipcMain.handle('ping-game', (_event, input) => pingGame(input));
+  ipcMain.handle('host-game', (_event, input) => exclusive('Host multiplayer game', () => hostGame(input), true));
+  ipcMain.handle('join-game', (_event, input) => exclusive('Join multiplayer game', () => joinGame(input), true));
   ipcMain.handle('clean-preview', () => exclusive('Preview cleanup', () => clean(true)));
   ipcMain.handle('backup-saves', () => exclusive('Back up saves', () => makeSaveBackup('manual')));
   ipcMain.handle('steam-status', () => steamStatus());
@@ -1403,6 +1650,7 @@ function createWindow() {
 
 if (ownsInstance) app.whenReady().then(async () => {
   loadConfig();
+  tidySaveDirectory();
   registerHandlers();
   setupTelemetry();
   if (playOnStart && await playDirectly()) return app.quit();

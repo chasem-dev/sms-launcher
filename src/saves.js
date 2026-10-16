@@ -43,6 +43,26 @@ function prepareSaveDirectory(dir, platform = process.platform) {
   return gameSaveDirectory(dir, platform);
 }
 
+// A joining player's copy of the host's save (multiplayer): beside the memory card, like save states, so the
+// card folder holds only the player's own card files.
+const GUEST_FOLDER = 'multiplayer-guest';
+function guestSaveDirectory(saveDir) {
+  return path.join(path.dirname(saveDir), GUEST_FOLDER);
+}
+
+// Launchers before this one kept the guest copy inside the card folder, where backups refuse a folder: move it out
+// (or drop it, if there is one beside the card already: it is only a copy of a host's save). True when it moved.
+function moveOldGuestSaves(saveDir) {
+  const old = path.join(saveDir, GUEST_FOLDER);
+  let stat;
+  try { stat = fs.lstatSync(old); } catch (_) { return false; }
+  if (!stat.isDirectory()) return false;
+  const target = guestSaveDirectory(saveDir);
+  if (fs.existsSync(target)) fs.rmSync(old, { recursive: true, force: true });
+  else fs.renameSync(old, target);
+  return true;
+}
+
 function backupRoot(env = process.env, platform = process.platform) {
   const portableRoot = portable.root(env, platform);
   return portableRoot ? path.join(portableRoot, 'Save Backups') : path.join(os.homedir(), 'SMS Launcher Backups');
@@ -150,5 +170,5 @@ function moveBuildKeepingSaves(buildDirectory, destination, saveDir, backups = b
   return backup;
 }
 
-module.exports = { saveDirectory, gameSaveDirectory, prepareSaveDirectory, backupRoot, cleanupWouldRemoveSaves,
-  backupSaves, listBackups, restoreBackup, moveBuildKeepingSaves };
+module.exports = { saveDirectory, gameSaveDirectory, prepareSaveDirectory, guestSaveDirectory, moveOldGuestSaves, backupRoot,
+  cleanupWouldRemoveSaves, backupSaves, listBackups, restoreBackup, moveBuildKeepingSaves };

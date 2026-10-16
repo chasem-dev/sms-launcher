@@ -117,3 +117,27 @@ test('corrupted backup does not replace current progress', () => {
     assert.equal(fs.readFileSync(path.join(card, 'GMSE01.dat'), 'utf8'), 'safe');
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });
+
+test('a multiplayer guest save lives beside the memory card, not in it', () => {
+  assert.equal(saves.guestSaveDirectory(path.join('/data', 'sms-port', 'card-a')), path.join('/data', 'sms-port', 'multiplayer-guest'));
+});
+
+test('an older launcher\'s guest save is moved out of the card folder, so backups work again', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'sms-guest-'));
+  const card = path.join(root, 'card-a');
+  try {
+    fs.mkdirSync(path.join(card, 'multiplayer-guest'), { recursive: true });
+    fs.writeFileSync(path.join(card, 'super_mario_sunshine.dat'), 'mine');
+    fs.writeFileSync(path.join(card, 'multiplayer-guest', 'super_mario_sunshine.dat'), 'host');
+    assert.throws(() => saves.backupSaves(card, path.join(root, 'backups')), /unexpected folder: multiplayer-guest/);
+    assert.equal(saves.moveOldGuestSaves(card), true);
+    assert.equal(fs.readFileSync(path.join(root, 'multiplayer-guest', 'super_mario_sunshine.dat'), 'utf8'), 'host');
+    assert.equal(saves.backupSaves(card, path.join(root, 'backups')).count, 1);
+    assert.equal(saves.moveOldGuestSaves(card), false, 'nothing left to move');
+    // with a guest save beside the card already, the old copy is dropped
+    fs.mkdirSync(path.join(card, 'multiplayer-guest'));
+    assert.equal(saves.moveOldGuestSaves(card), true);
+    assert.equal(fs.existsSync(path.join(card, 'multiplayer-guest')), false);
+    assert.equal(fs.readFileSync(path.join(root, 'multiplayer-guest', 'super_mario_sunshine.dat'), 'utf8'), 'host');
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
+});

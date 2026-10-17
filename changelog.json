@@ -41,7 +41,14 @@
       "Fixed being left stranded in multiplayer when another player rode away on a mud boat in Noki Bay or Corona Mountain, or a leaf boat in Bianco Hills: everyone now has their own, and you see the others riding theirs.",
       "Multiplayer: when the host goes back to the title screen, everyone else is told and plays on, and goes along again once the host is playing.",
       "Fixed a Turbo nozzle door broken down by one player staying shut for everyone else in multiplayer.",
-      "Fixed a joining player's game being able to crash when Phantamanta appears or splits in multiplayer."
+      "Fixed a joining player's game being able to crash when Phantamanta appears or splits in multiplayer.",
+      "Fixed Gooper Blooper getting stuck flinching in multiplayer, with torn-off tentacles flailing and coming off again and again, so his face couldn't be pulled.",
+      "Fixed players sometimes falling through Bowser's hot tub in multiplayer. Falling out of the world anywhere now costs a life, as falling into a pit does, instead of falling forever.",
+      "Fixed the long wait when every player was out of lives in multiplayer: once everyone is watching, the group goes back to Delfino Plaza right after the last GAME OVER.",
+      "Multiplayer: a blue coin, a nozzle box or Yoshi hatching no longer asks a joining player to save, which they can't do: the host is asked instead.",
+      "Fixed other players being teleported to a blue coin, a Shine coming out or a switch's camera in multiplayer: everyone now watches from where they are.",
+      "Fixed a joining player being moved beside the start each time they closed the pause menu, a save prompt or the map in multiplayer.",
+      "Fixed a joining player who took a pipe, door or secret course entrance, such as Bianco Hills' in episode 3, first seeing the level's opening again and then an extra FLUDD movie in multiplayer."
     ]
   },
   "releases": [

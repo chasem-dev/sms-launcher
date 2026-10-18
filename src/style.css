@@ -225,7 +225,7 @@ pre { height: 120px; margin: 0; padding: 12px; overflow: auto; border-radius: 8p
 .launcher-modal:not([open]) { display: none; }
 .launcher-modal[open] { display: flex; flex-direction: column; }
 .launcher-modal::backdrop { background: #092b43ad; backdrop-filter: blur(6px); }
-/* A rail page that isn't Play: the dialogs' look, filling the space beside the rail. */
+/* A page that isn't Play: the dialogs' look, filling the space under the tabs. */
 .sheet { flex-direction: column; height: 100%; min-height: 0; overflow: hidden; border: 1px solid #d8e6e6; border-radius: 16px; background: #f8faf9; color: #17343d; box-shadow: 0 16px 50px #061f3566; }
 .sheet:not([hidden]) { display: flex; }
 .sheet > .modal-body { flex: 1; }
@@ -655,25 +655,20 @@ pre { height: 120px; margin: 0; padding: 12px; overflow: auto; border-radius: 8p
 .mario-nozzles { padding: 4px 0 10px; }
 .mario-nozzles[hidden] { display: none; }
 
-/* Side rail: the launcher's pages, with Settings and Discord at its foot. */
-.app-body { flex: 1; min-height: 0; display: flex; }
-.app-content { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-.rail { flex: 0 0 200px; display: flex; flex-direction: column; gap: 3px; min-height: 0; padding: 14px 10px 12px; overflow-y: auto; border-right: 1px solid #ffffff22; background: #072a40c7; backdrop-filter: blur(16px); }
-.rail-item { position: relative; display: flex; align-items: center; gap: 11px; width: 100%; padding: 10px 12px; border: 0; border-radius: 9px; background: transparent; color: #c4dfe6; font-size: 13.5px; font-weight: 650; text-align: left; }
-.rail-item svg { flex: none; width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
-.rail-item span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-.rail-item:hover { background: #ffffff12; color: #fff; }
-.rail-item.active { background: linear-gradient(90deg, #ffc75a2c, #ffc75a08); color: #ffe2a3; }
-.rail-item.active::before { position: absolute; left: 0; top: 9px; bottom: 9px; width: 3px; border-radius: 3px; background: #ffc75a; content: ''; }
-.rail-badge { margin-left: auto; padding: 2px 7px; border-radius: 999px; background: #48bb9b33; color: #a4edcf; font-size: 10px; font-style: normal; font-weight: 800; }
-.rail-spacer { flex: 1; }
-.rail-links { margin-top: 8px; padding-top: 10px; border-top: 1px solid #ffffff1a; }
-.rail-link { display: flex; align-items: center; gap: 10px; width: 100%; padding: 7px 8px; border: 0; border-radius: 9px; background: transparent; color: #c4dfe6; font-size: 12px; font-weight: 600; text-align: left; }
-.rail-link:hover { background: #ffffff10; color: #fff; }
-.rail-link-logo { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 7px; background: #5865f2; }
-.rail-link-logo svg { width: 15px; height: 15px; fill: #fff; }
-.rail-link-arrow { margin-left: auto; color: #ffda91; font-weight: 800; }
-@media (max-width: 960px) { .rail { flex-basis: 186px; padding-left: 8px; padding-right: 8px; } .rail-item { gap: 9px; padding: 9px 10px; font-size: 12.5px; } }
+/* Tabs along the top: the launcher's pages, with Settings and Discord at the right end. */
+.nav-bar { flex: none; display: flex; align-items: center; gap: 4px; height: 48px; padding: 0 22px; border-bottom: 1px solid #ffffff22; background: #072a40d9; backdrop-filter: blur(16px); }
+.nav-tab { position: relative; align-self: stretch; display: flex; align-items: center; gap: 8px; padding: 0 14px; border: 0; border-radius: 0; background: transparent; color: #c4dfe6; font-size: 13.5px; font-weight: 650; }
+.nav-tab svg { flex: none; width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.nav-tab:hover { background: #ffffff0d; color: #fff; }
+.nav-tab.active { background: linear-gradient(180deg, #ffc75a00, #ffc75a1c); color: #ffe2a3; box-shadow: inset 0 -3px 0 #ffc75a; }
+.nav-badge { padding: 2px 7px; border-radius: 999px; background: #48bb9b33; color: #a4edcf; font-size: 10px; font-style: normal; font-weight: 800; }
+.nav-spacer { flex: 1; }
+.nav-link { display: flex; align-items: center; gap: 9px; padding: 6px 10px; border: 0; border-radius: 9px; background: transparent; color: #c4dfe6; font-size: 12.5px; font-weight: 650; }
+.nav-link:hover { background: #ffffff10; color: #fff; }
+.nav-link-logo { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 7px; background: #5865f2; }
+.nav-link-logo svg { width: 15px; height: 15px; fill: #fff; }
+.nav-link-arrow { color: #ffda91; font-weight: 800; }
+@media (max-width: 1000px) { .nav-bar { padding: 0 14px; gap: 2px; } .nav-tab { padding: 0 10px; font-size: 13px; } .nav-link > span:not(.nav-link-logo) { display: none; } }
 
 /* The room this launcher hosts, under Play. */
 .play-room { display: flex; align-items: center; gap: 8px; width: max-content; max-width: 100%; margin: 12px auto 0; padding: 4px 5px 4px 12px; border: 1px solid #6eddb366; border-radius: 999px; background: #48bb9b22; color: #e6fbf3; font-size: 12px; font-weight: 600; }

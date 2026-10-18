@@ -77,7 +77,7 @@ Logos, menus, and movies stay at 30 fps.
 
 Turn on **Settings → Display → Full screen** to have the game fill your display on its next launch. **Full screen type** chooses Borderless (the default) or Exclusive, which switches your display to the **Exclusive resolution** while the game runs (for example 1920×1080 on a 4K screen). **Monitor** opens the game on the same monitor as the launcher or on the primary one. F11 or Alt+Enter switches full screen while playing.
 
-The launcher also works with a game controller. Move with the left stick or d-pad and press **A** to select. On a list, **A** steps to the next choice and **X** steps back; on a slider, left and right change the value. Press **B** to go back (to Play, from any other page) and **Start** to open or close Settings. **LB**/**RB** move between the side rail's pages, or between the Settings tabs on Settings, **View**/**Select** shows or hides the activity log, and the right stick scrolls. The launcher ignores the controller while the game is running and while **Controls** waits for a button to bind. Choosing a file or folder still opens your system's file picker, which needs a mouse or keyboard.
+The launcher also works with a game controller. Move with the left stick or d-pad and press **A** to select. On a list, **A** steps to the next choice and **X** steps back; on a slider, left and right change the value. Press **B** to go back (to Play, from any other page) and **Start** to open or close Settings. **LB**/**RB** move between the launcher's tabs, or between the Settings tabs on Settings, **View**/**Select** shows or hides the activity log, and the right stick scrolls. The launcher ignores the controller while the game is running and while **Controls** waits for a button to bind. Choosing a file or folder still opens your system's file picker, which needs a mouse or keyboard.
 
 **Settings → Display** also has **Picture fit** (keep its shape, stretch, or whole multiples of the original size), **Brightness**, **Vsync** (Off, On or Adaptive) and **Performance overlay**, which opens the game's frame-rate overlay at start (the backtick key toggles it in game).
 
@@ -132,7 +132,7 @@ Launcher updates download automatically when **Update automatically** is enabled
 
 To manage updates yourself, turn off **Update automatically** in **Settings → Launcher**. Use **Update game** in **Settings → Manage game** when you're ready.
 
-After the launcher updates, its changelog opens once to show what changed in the launcher and the game since you last opened it. Open it any time with **What's new** in the side rail.
+After the launcher updates, its changelog opens once to show what changed in the launcher and the game since you last opened it. Open it any time with the **What's new** tab.
 
 ### Join the Beta
 
@@ -156,7 +156,7 @@ The [Add to Steam](#add-to-steam) banner sets this up for you when you turn on *
 
 The launcher keeps your save location when you update or rebuild the game. It makes dated backups before and after playing, and before game updates or cleanup.
 
-On the **Saves & states** page in the side rail, you can:
+On the **Saves & states** tab, you can:
 
 - **Import a Dolphin save:** drop a `.gci` file into the Saved games panel, or choose **Choose .gci file**. Confirm the import, then start the game.
 - **Back up saves** whenever you want an extra copy.
@@ -171,7 +171,7 @@ A save state is the exact moment you're in. In a level, press **L1 + R1** (LB + 
 
 A state loads exactly, with everything where it was, in the game build that saved it. A state from another build (after a game update, or from someone else) takes you to the same level and spot instead, and the list marks it "position". Loading a state brings its progress too, so saving to the memory card afterwards saves that progress.
 
-States are `.smsstate` files in a **savestates** folder next to your memory card folder. The **Saves & states** page lists them with their pictures. From there, **Import a state** adds states others send you, **Show file** finds one to share, **Delete** removes one, and **Open save states folder** opens the folder. Save states are not part of save backups.
+States are `.smsstate` files in a **savestates** folder next to your memory card folder. The **Saves & states** tab lists them with their pictures. From there, **Import a state** adds states others send you, **Show file** finds one to share, **Delete** removes one, and **Open save states folder** opens the folder. Save states are not part of save backups.
 
 Export your North American Super Mario Sunshine save (`GMSE01`, `super_mario_sunshine`) from Dolphin's Memory Card Manager as a `.gci` file. The importer transfers the entire save, including all three slots. It installs the unchanged save data and the card metadata into the save folder shown in the launcher, including custom locations, on Windows, macOS, and Linux. A fresh card does not need to be created in-game first. Other games, regions, raw memory cards, and `.sav`/`.gcs` files are not supported.
 

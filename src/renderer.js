@@ -15,7 +15,7 @@ function closeModal() {
     if (dialog.open) dialog.close();
 }
 
-// --- Pages: the rail on the left picks one; Play is the home page. Each page can run code as it
+// --- Pages: the tabs along the top pick one; Play is the home page. Each page can run code as it
 // shows and hides (Customize Mario's module registers through window.smsOnPage).
 const pages = {
   play: { section: 'page-home', nav: 'nav-play' }, multiplayer: { section: 'multiplayer', nav: 'open-multiplayer' },
@@ -582,9 +582,9 @@ function renderConsoleState(active) {
   }
 }
 
-// The room this launcher hosts: under Play, at the top of Multiplayer and as Live in the rail.
+// The room this launcher hosts: under Play, at the top of Multiplayer and as Live on its tab.
 function renderRoom(room) {
-  for (const id of ['play-room', 'mp-room', 'rail-mp-badge']) $(id).hidden = !room;
+  for (const id of ['play-room', 'mp-room', 'nav-mp-badge']) $(id).hidden = !room;
   $('play-room-code').textContent = room || '';
   $('mp-room-code').textContent = room || '';
 }
@@ -1162,7 +1162,7 @@ function renderChangelog(data, onlyUnseen) {
   if (items.length) $('changelog-list').replaceChildren(...items);
   else $('changelog-list').textContent = 'No changes are listed yet.';
 }
-// What's new in the rail shows every release; after an update it shows only the new ones.
+// The What's new tab shows every release; after an update it shows only the new ones.
 let changelogUnseen = false;
 async function showChangelog() {
   if (changelogUnseen) { changelogUnseen = false; return; }
@@ -1767,7 +1767,7 @@ window.sms.onWindowState(renderWindowState);
 
 // --- Controller navigation (src/gamepad-nav.js).
 const openDialog = () => [...document.querySelectorAll('.launcher-modal[open]')].pop();
-// LB / RB step through the Settings tabs on Settings, and through the rail's pages elsewhere.
+// LB / RB step through the Settings tabs on Settings, and through the launcher's tabs elsewhere.
 function stepPage(step) {
   if (openDialog()) return;
   if (page === 'settings') {

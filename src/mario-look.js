@@ -13,7 +13,7 @@ const WRAP = [THREE.ClampToEdgeWrapping, THREE.RepeatWrapping, THREE.MirroredRep
 
 let viewer = null, model = null, look = Colors.normalizeLook(), saveTimer = null, loading = null;
 
-// The page is one of the rail's (renderer.js: showPage). Nothing of Mario's
+// The page is one of the launcher's tabs (renderer.js: showPage). Nothing of Mario's
 // view stays on the GPU while another page shows: the launcher keeps no WebGL
 // context while the game or a build runs.
 window.smsOnPage('mario', {

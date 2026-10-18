@@ -15,8 +15,39 @@ function closeModal() {
     if (dialog.open) dialog.close();
 }
 
-// Settings is one dialog with a tab per section; it reopens on the last one shown.
-const settingsTabs = ['gameplay', 'display', 'graphics', 'controls', 'manage', 'saves', 'launcher'];
+// --- Pages: the rail on the left picks one; Play is the home page. Each page can run code as it
+// shows and hides (Customize Mario's module registers through window.smsOnPage).
+const pages = {
+  play: { section: 'page-home', nav: 'nav-play' }, multiplayer: { section: 'multiplayer', nav: 'open-multiplayer' },
+  mario: { section: 'mario-look', nav: 'customize-mario' }, saves: { section: 'page-saves', nav: 'nav-saves' },
+  changelog: { section: 'changelog', nav: 'open-changelog' }, settings: { section: 'page-settings', nav: 'settings-cog' }
+};
+const pageOrder = Object.keys(pages);
+let page = 'play';
+const pageHooks = {};
+function onPage(name, hooks) { pageHooks[name] = { ...pageHooks[name], ...hooks }; }
+window.smsOnPage = onPage;
+function showPage(name) {
+  if (!pages[name]) return;
+  const previous = page;
+  if (name !== previous) {
+    page = name;
+    pageHooks[previous]?.hide?.();
+  }
+  for (const [key, item] of Object.entries(pages)) {
+    $(item.section).hidden = key !== name;
+    $(item.nav).classList.toggle('active', key === name);
+    if (key === name) $(item.nav).setAttribute('aria-current', 'page');
+    else $(item.nav).removeAttribute('aria-current');
+  }
+  if (name !== previous) pageHooks[name]?.show?.();
+  // An expanded log covers the page: picking one shrinks it back to the drawer.
+  if (consoleExpanded) { consoleExpanded = false; setConsoleOpen(true); }
+}
+for (const [name, item] of Object.entries(pages)) $(item.nav).addEventListener('click', () => showPage(name));
+
+// Settings is one page with a tab per section; it reopens on the last one shown.
+const settingsTabs = ['gameplay', 'display', 'graphics', 'controls', 'manage', 'launcher'];
 let settingsTab = 'gameplay';
 function showSettingsTab(name) {
   if (settingsTab === 'controls' && name !== 'controls') stopCapture();
@@ -29,17 +60,17 @@ function showSettingsTab(name) {
   $('settings-panes').scrollTop = 0;
   if (name === 'controls') { renderBindings(); loadGcAdapter(); }
   if (name === 'launcher') loadUpdateChannels();
-  if (name === 'saves') loadSaveStates();
 }
 for (const tab of settingsTabs) $(`tab-${tab}`).addEventListener('click', () => showSettingsTab(tab));
-$('page-settings').addEventListener('close', () => stopCapture());
-
-$('settings-cog').addEventListener('click', () => {
-  showSettingsTab(settingsTab);
-  $('page-settings').showModal();
-  $(`tab-${settingsTab}`).focus();
-  loadDisplayInfo();
+onPage('settings', {
+  show() {
+    showSettingsTab(settingsTab);
+    $(`tab-${settingsTab}`).focus();
+    loadDisplayInfo();
+  },
+  hide: () => stopCapture()
 });
+onPage('saves', { show: () => loadSaveStates() });
 
 // --- Controls: key and controller bindings (src/bindings.js). keyBindings and padBindings hold only the
 // controls the player changed.
@@ -299,12 +330,15 @@ function showActivityLog() {
   log.scrollTop = log.scrollHeight;
   log.focus();
 }
+// The activity log is a drawer under the page, opened from the status bar on any page. It pushes the
+// page up rather than covering it; expanded, it takes the page's whole height.
 function setConsoleOpen(open) {
   consoleOpen = open;
   if (!open) consoleExpanded = false;
-  $('console-body').hidden = !open;
-  $('activity-log').classList.toggle('is-open', open);
+  $('activity-log').hidden = !open;
   $('activity-log').classList.toggle('is-expanded', consoleExpanded);
+  $('shell').classList.toggle('log-expanded', open && consoleExpanded);
+  $('toggle-activity-log').classList.toggle('is-open', open);
   $('toggle-activity-log').setAttribute('aria-expanded', String(open));
   $('toggle-activity-log').title = open ? 'Hide activity log' : 'Show activity log';
   $('expand-activity-log').setAttribute('aria-pressed', String(consoleExpanded));
@@ -319,6 +353,7 @@ function setConsoleFollowing(follow) {
   if (follow) $('log').scrollTop = $('log').scrollHeight;
 }
 $('toggle-activity-log').addEventListener('click', () => setConsoleOpen(!consoleOpen));
+$('close-activity-log').addEventListener('click', () => setConsoleOpen(false));
 $('expand-activity-log').addEventListener('click', () => {
   consoleExpanded = !consoleExpanded;
   setConsoleOpen(true);
@@ -505,15 +540,17 @@ function renderPlayMenu(data) {
   $('play-more-hint').textContent = `▾ for ${others.join(' or ')}`;
 }
 
+// A task shows its progress under Play and in the status bar; the activity log opens by itself only
+// when something fails (setMessage, appendLog).
 function renderActivity(active) {
-  if (active && !consoleWasActive) {
-    consoleFailed = false;
-    setConsoleOpen(true);
-  }
+  if (active && !consoleWasActive) consoleFailed = false;
   consoleWasActive = Boolean(active);
   renderConsoleState(active);
+  renderRoom(active?.room);
   const working = Boolean(active) && active.label !== 'Play Super Mario Sunshine';
   $('task-progress').hidden = !working;
+  $('status-progress').hidden = !working || !Number.isFinite(active.percent);
+  if (!$('status-progress').hidden) $('status-progress-fill').style.width = `${active.percent}%`;
   $('activity-label').textContent = taskName(active?.label);
   $('stop').hidden = !active?.canStop;
   $('stop').textContent = active?.label === 'Play Super Mario Sunshine' ? 'Stop game'
@@ -539,14 +576,31 @@ function renderActivity(active) {
 function renderConsoleState(active) {
   const badge = $('console-state');
   badge.textContent = consoleFailed ? 'Error' : active ? 'Live' : 'Idle';
-  badge.classList.toggle('is-live', Boolean(active) && !consoleFailed);
-  badge.classList.toggle('is-error', consoleFailed);
+  for (const element of [badge, $('toggle-activity-log')]) {
+    element.classList.toggle('is-live', Boolean(active) && !consoleFailed);
+    element.classList.toggle('is-error', consoleFailed);
+  }
 }
+
+// The room this launcher hosts: under Play, at the top of Multiplayer and as Live in the rail.
+function renderRoom(room) {
+  for (const id of ['play-room', 'mp-room', 'rail-mp-badge']) $(id).hidden = !room;
+  $('play-room-code').textContent = room || '';
+  $('mp-room-code').textContent = room || '';
+}
+for (const id of ['play-room-copy', 'mp-room-copy']) $(id).addEventListener('click', async () => {
+  const button = $(id), room = current?.active?.room;
+  if (!room) return;
+  try { await window.sms.copyText(room); button.textContent = 'Copied'; }
+  catch (error) { showError(error); return; }
+  setTimeout(() => { button.textContent = 'Copy'; }, 1500);
+});
 
 // Customize Mario needs a disc to read Mario from. It only uses WebGL while
 // open, and says so there if the computer can't draw him.
 function showCustomizeMario() {
   $('customize-mario').hidden = !current?.romReady;
+  if ($('customize-mario').hidden && page === 'mario') showPage('play');
 }
 
 function refresh(data) {
@@ -818,7 +872,7 @@ function showError(error) { closeModal(); setMessage(errorText(error), true); }
 async function action(method) {
   setMessage('');
   try {
-    if (['installPort', 'installEclipse', 'installTextures', 'build', 'setupGame', 'launchGame', 'updateAndPlay', 'updatePort', 'play', 'playPrevious', 'clean', 'cleanPreview'].includes(method)) closeModal();
+    if (['installPort', 'installEclipse', 'installTextures', 'build', 'setupGame', 'launchGame', 'updateAndPlay', 'updatePort', 'play', 'playPrevious', 'clean', 'cleanPreview'].includes(method)) { closeModal(); showPage('play'); }
     const result = await window.sms[method]();
     if (result && result.config) refresh(result);
     await sync();
@@ -1108,24 +1162,27 @@ function renderChangelog(data, onlyUnseen) {
   if (items.length) $('changelog-list').replaceChildren(...items);
   else $('changelog-list').textContent = 'No changes are listed yet.';
 }
+// What's new in the rail shows every release; after an update it shows only the new ones.
+let changelogUnseen = false;
 async function showChangelog() {
-  closeModal();
+  if (changelogUnseen) { changelogUnseen = false; return; }
   $('changelog-title').textContent = 'Changelog';
   $('changelog-subtitle').textContent = 'Launcher and game updates';
   $('changelog-show-all').hidden = true;
   $('changelog-list').textContent = 'Loading…';
-  $('changelog').showModal();
   try { renderChangelog(await window.sms.changelog(), false); }
   catch (_) { $('changelog-list').textContent = "The changelog couldn't be loaded. Try again later."; }
 }
-// Opens once per update. Over another window or a running task it waits for the next start.
+onPage('changelog', { show: showChangelog });
+// Opens once per update. Away from Play, over another window or during a running task it waits for the next start.
 async function showWhatsNew() {
   try {
     const data = await window.sms.changelog();
     if (data.unseen.length || data.beta?.unseen) {
-      if (current?.active || [...document.querySelectorAll('.launcher-modal')].some(dialog => dialog.open)) return;
+      if (current?.active || page !== 'play' || [...document.querySelectorAll('.launcher-modal')].some(dialog => dialog.open)) return;
       renderChangelog(data, true);
-      $('changelog').showModal();
+      changelogUnseen = true;
+      showPage('changelog');
     }
     await window.sms.markChangelogSeen();
   } catch (_) { /* the changelog button still works */ }
@@ -1253,7 +1310,6 @@ async function pingTypedGame() {
   }
 }
 $('mp-browser-refresh').addEventListener('click', loadPublicGames);
-$('multiplayer').addEventListener('close', () => { clearInterval(publicTimer); publicTimer = null; });
 // The hosts joined lately: one press joins again; × forgets one.
 function renderRecentHosts(list = current?.config?.multiplayer?.recent || []) {
   const holder = $('mp-recent-list');
@@ -1285,8 +1341,7 @@ function renderRecentHosts(list = current?.config?.multiplayer?.recent || []) {
   }
   $('mp-recent').hidden = list.length === 0;
 }
-$('open-multiplayer').addEventListener('click', () => {
-  closeModal();
+function showMultiplayer() {
   const saved = current?.config?.multiplayer || {};
   $('mp-name').value = saved.name || '';
   $('mp-host-port').value = String(saved.hostPort || 24002);
@@ -1297,13 +1352,13 @@ $('open-multiplayer').addEventListener('click', () => {
   setMultiplayerResult('');
   renderRecentHosts();
   renderMultiplayer();
-  $('multiplayer').showModal();
   $(saved.address ? 'mp-join' : 'mp-name').focus();
   checkNat();
   loadPublicGames();
   clearInterval(publicTimer);
-  publicTimer = setInterval(() => { if ($('multiplayer').open) loadPublicGames(); }, PUBLIC_REFRESH);
-});
+  publicTimer = setInterval(() => { if (page === 'multiplayer') loadPublicGames(); }, PUBLIC_REFRESH);
+}
+onPage('multiplayer', { show: showMultiplayer, hide() { clearInterval(publicTimer); publicTimer = null; } });
 for (const id of ['mp-name', 'mp-host-port', 'mp-max-players', 'mp-address', 'mp-join-port', 'mp-list-public']) {
   $(id).addEventListener('input', renderMultiplayer);
   // An unfinished port is kept as it was until it is a number.
@@ -1323,7 +1378,7 @@ for (const button of document.querySelectorAll('.mp-copy')) {
 }
 async function startMultiplayer(mode) {
   if (!current?.binaryReady && !current?.repoReady) {
-    setMultiplayerResult('Set up the game first: close this and press the main button.', true);
+    setMultiplayerResult('Set up the game first: go to Play and press the main button.', true);
     return;
   }
   setMessage('');
@@ -1337,7 +1392,7 @@ async function startMultiplayer(mode) {
   } catch (error) {
     // The game had not started (or failed): say why here, where the player is.
     const message = String(error.message || error).replace(/^Error invoking remote method '[^']+': (Error: )?/, '');
-    if ($('multiplayer').open) setMultiplayerResult(message, true);
+    if (page === 'multiplayer') setMultiplayerResult(message, true);
     else showError({ message });
     await sync();
   } finally {
@@ -1392,7 +1447,6 @@ $('mp-join').addEventListener('click', () => startMultiplayer('join'));
 $('mp-ping').addEventListener('click', pingTypedGame);
 
 $('changelog-show-all').addEventListener('click', () => renderChangelog(changelogShown, false));
-$('open-changelog').addEventListener('click', showChangelog);
 $('changelog-page').addEventListener('click', () => window.sms.openChangelogPage().catch(error => setMessage(errorText(error))));
 $('play').addEventListener('click', () => {
   if (wizardStep === 0) { if (!offerSteam()) runWizardAction('launchGame'); }
@@ -1458,7 +1512,7 @@ async function importDolphinSave(files) {
   }
 }
 $('import-dolphin-save').addEventListener('click', () => importDolphinSave());
-// Steam, under the Discord banner: Add to Steam while the launcher can add
+// Steam, the banner on Play: Add to Steam while the launcher can add
 // itself and is not in the library yet, then a tick once it is there. Selecting
 // the tick updates the shortcut's artwork and Skip Launcher. A shortcut made by
 // hand without --no-sandbox, which won't open in Game Mode, shows a fix instead.
@@ -1524,7 +1578,7 @@ function offerSteam() {
 }
 // Opening the launcher offers once to fix a shortcut without --no-sandbox.
 function offerSteamFix() {
-  if (!steam.offerFix || current?.active || [...document.querySelectorAll('.launcher-modal')].some(dialog => dialog.open)) return;
+  if (!steam.offerFix || current?.active || page !== 'play' || [...document.querySelectorAll('.launcher-modal')].some(dialog => dialog.open)) return;
   steam.offerFix = false;
   window.sms.steamOffered('fix').catch(() => {});
   openSteamDialog('fix');
@@ -1658,8 +1712,8 @@ window.sms.onActivity(value => {
   const changed = Boolean(value) !== Boolean(current?.active);
   // Update & play builds and then starts the game in one task: reread the versions once the new game boots.
   const gameStarted = value?.label === 'Play Super Mario Sunshine' && current?.active?.label !== value.label;
-  // Host Game and Join close their window once the game is starting.
-  if (gameStarted && $('multiplayer').open) $('multiplayer').close();
+  // Host Game and Join go back to Play once the game is starting, where the room code shows.
+  if (gameStarted && page === 'multiplayer') showPage('play');
   if (current) current.active = value;
   renderActivity(value);
   // Lock the settings now: the next state (sync) can take a while to arrive.
@@ -1713,33 +1767,48 @@ window.sms.onWindowState(renderWindowState);
 
 // --- Controller navigation (src/gamepad-nav.js).
 const openDialog = () => [...document.querySelectorAll('.launcher-modal[open]')].pop();
-// LB / RB step through the Settings tabs.
-function stepSettingsTab(step) {
-  if (!$('page-settings').open) return;
-  const target = settingsTabs[settingsTabs.indexOf(settingsTab) + step];
+// LB / RB step through the Settings tabs on Settings, and through the rail's pages elsewhere.
+function stepPage(step) {
+  if (openDialog()) return;
+  if (page === 'settings') {
+    const target = settingsTabs[settingsTabs.indexOf(settingsTab) + step];
+    if (!target) return;
+    showSettingsTab(target);
+    $(`tab-${target}`).focus();
+    return;
+  }
+  const shown = pageOrder.filter(name => !$(pages[name].nav).hidden);
+  const target = shown[shown.indexOf(page) + step];
   if (!target) return;
-  showSettingsTab(target);
-  $(`tab-${target}`).focus();
+  showPage(target);
+  $(pages[target].nav).focus();
 }
 function gamepadBack() {
   const dialog = openDialog();
   if (closePlayMenu()) return;
   if (dialog) dialog.close();
   else if (consoleOpen) setConsoleOpen(false);
+  else if (page !== 'play') { showPage('play'); $('nav-play').focus(); }
   else [...document.querySelectorAll('[data-setup-back]')].find(button => !button.disabled && button.offsetParent)?.click();
 }
+// Escape goes back to Play, as it closed these pages when they were dialogs. Controls' key capture
+// takes Escape first, and an open dialog closes itself.
+window.addEventListener('keydown', event => {
+  if (event.key !== 'Escape' || event.defaultPrevented || capture || openDialog() || page === 'play') return;
+  showPage('play');
+});
 window.smsGamepadNav.start({
   document, window,
   regions: '.switch, .field',
-  defaultFocus: () => [$('play'), $('settings-cog')],
+  defaultFocus: () => [page === 'settings' ? $(`tab-${settingsTab}`) : page === 'play' ? $('play') : $(pages[page].nav), $('play'), $('settings-cog')],
   // The game reads the same controller, and Controls waits for a button to bind.
   paused: () => current?.active?.label === 'Play Super Mario Sunshine' || Boolean(capture),
   actions: {
     back: gamepadBack,
-    menu: () => openDialog() ? closeModal() : $('settings-cog').click(),
+    menu: () => openDialog() ? closeModal() : showPage(page === 'settings' ? 'play' : 'settings'),
     view: () => consoleOpen ? setConsoleOpen(false) : showActivityLog(),
-    previous: () => stepSettingsTab(-1),
-    next: () => stepSettingsTab(1)
+    previous: () => stepPage(-1),
+    next: () => stepPage(1)
   }
 });
 window.sms.windowState().then(renderWindowState).catch(showError);

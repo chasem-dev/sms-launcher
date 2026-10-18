@@ -21,9 +21,21 @@
     </header>
 
     <div id="message" class="message" role="status" hidden><span id="message-text"></span><button id="message-view-log" class="message-log-button" hidden>View activity</button></div>
-    <main class="viewport">
+    <div class="app-body">
+      <nav class="rail" aria-label="Launcher">
+        <button id="nav-play" class="rail-item active" aria-current="page"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6.5 4.5v11l9-5.5z"/></svg><span>Play</span></button>
+        <button id="open-multiplayer" class="rail-item" title="Host a game or join one"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="7.2" cy="6.6" r="2.6"/><path d="M2.6 16.4c.4-3 2.2-4.7 4.6-4.7s4.2 1.7 4.6 4.7"/><circle cx="13.8" cy="7.4" r="2.2"/><path d="M12.6 11.9c.4-.1.8-.2 1.2-.2 2 0 3.5 1.4 3.8 4"/></svg><span>Multiplayer</span><em id="rail-mp-badge" class="rail-badge" hidden>Live</em></button>
+        <button id="customize-mario" class="rail-item" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 1 0 0 18c1.1 0 1.8-.8 1.8-1.7 0-.5-.2-.9-.5-1.2-.3-.3-.5-.7-.5-1.2 0-.9.8-1.7 1.7-1.7h2A4.5 4.5 0 0 0 21 10.7C21 6.4 17 3 12 3z"/><circle cx="7.5" cy="11" r="1.1"/><circle cx="10.5" cy="7" r="1.1"/><circle cx="15" cy="7.4" r="1.1"/></svg><span>Customize Mario</span></button>
+        <button id="nav-saves" class="rail-item"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 3h10l3 3v11H4z"/><path d="M7 3v4h6V3M7 17v-5h7v5"/></svg><span>Saves &amp; states</span></button>
+        <button id="open-changelog" class="rail-item"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 2.8h7.2L15.5 6v11.2H5z"/><path d="M12 2.8V6h3.5M7.6 9.2h5.3M7.6 11.9h5.3M7.6 14.6h3.4"/></svg><span>What's new</span></button>
+        <span class="rail-spacer" aria-hidden="true"></span>
+        <button id="settings-cog" class="rail-item"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M8.7 2.8h2.6l.4 1.8 1.6.7 1.6-1 1.8 1.8-1 1.6.7 1.6 1.8.4v2.6l-1.8.4-.7 1.6 1 1.6-1.8 1.8-1.6-1-1.6.7-.4 1.8H8.7l-.4-1.8-1.6-.7-1.6 1-1.8-1.8 1-1.6-.7-1.6-1.8-.4V8.7l1.8-.4.7-1.6-1-1.6 1.8-1.8 1.6 1 1.6-.7z"/><circle cx="10" cy="10" r="2.3"/></svg><span>Settings</span></button>
+        <div class="rail-links"><button id="discord" class="rail-link" aria-label="Join our Discord server (opens in your browser)"><span class="rail-link-logo" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M20.317 4.37a19.79 19.79 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.865-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.74 19.74 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.11 13.11 0 0 1-1.872-.892.077.077 0 0 1-.008-.128c.126-.094.252-.192.372-.291a.074.074 0 0 1 .078-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .079.009c.12.099.246.198.373.292a.077.077 0 0 1-.007.127 12.3 12.3 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.029 19.84 19.84 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.331c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/></svg></span><span>Discord</span><span class="rail-link-arrow" aria-hidden="true">↗</span></button></div>
+      </nav>
+      <div class="app-content">
+        <main class="viewport">
       <section id="page-home" class="page home-page" aria-label="Launch game">
-        <div class="intro"><div><p class="eyebrow">SUPER MARIO SUNSHINE</p><h1 id="home-title">Set up your game</h1><p id="home-description">A few quick steps, then you're ready to play.</p><p id="eclipse-disclaimer" class="eclipse-disclaimer" hidden>Super Mario Eclipse is a fan project. This launcher isn't affiliated with its official team.</p></div><div class="intro-banners"><button id="discord" class="discord-banner" aria-label="Join our Discord server (opens in your browser)"><span class="discord-logo" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M20.317 4.37a19.79 19.79 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.865-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.74 19.74 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.11 13.11 0 0 1-1.872-.892.077.077 0 0 1-.008-.128c.126-.094.252-.192.372-.291a.074.074 0 0 1 .078-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .079.009c.12.099.246.198.373.292a.077.077 0 0 1-.007.127 12.3 12.3 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.029 19.84 19.84 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.331c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/></svg></span><span class="discord-copy"><strong>Join our Discord</strong><small>Get help, share clips and hear about updates</small></span><span class="discord-arrow" aria-hidden="true">↗</span></button><button id="customize-mario" class="discord-banner mario-banner" hidden aria-label="Customize Mario's colours"><span class="discord-logo mario-logo" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 0 18c1.1 0 1.8-.8 1.8-1.7 0-.5-.2-.9-.5-1.2-.3-.3-.5-.7-.5-1.2 0-.9.8-1.7 1.7-1.7h2A4.5 4.5 0 0 0 21 10.7C21 6.4 17 3 12 3z"/><circle cx="7.5" cy="11" r="1.4" fill="#e3322c"/><circle cx="10.5" cy="7" r="1.4" fill="#2f6fd6"/><circle cx="15" cy="7.4" r="1.4" fill="#f2cc22"/></svg></span><span class="discord-copy"><strong>Customize Mario</strong><small>Pick his colours, from your own disc</small></span><span class="discord-arrow" aria-hidden="true">→</span></button><button id="add-to-steam" class="discord-banner steam-banner" hidden aria-label="Add the launcher to your Steam library"><span class="discord-logo steam-logo" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M11.979 0C5.678 0 .511 4.86.022 11.037l6.432 2.658c.545-.371 1.203-.59 1.912-.59.063 0 .125.004.188.006l2.861-4.142V8.91c0-2.495 2.028-4.524 4.524-4.524 2.494 0 4.524 2.031 4.524 4.527s-2.03 4.525-4.524 4.525h-.105l-4.076 2.911c0 .052.004.105.004.159 0 1.875-1.515 3.396-3.39 3.396-1.635 0-3.016-1.173-3.331-2.727L.436 15.27C1.862 20.307 6.486 24 11.979 24c6.627 0 11.999-5.373 11.999-12S18.605 0 11.979 0zM7.54 18.21l-1.473-.61c.262.543.714.999 1.314 1.25 1.297.539 2.793-.076 3.332-1.375.263-.63.264-1.319.005-1.949s-.75-1.121-1.377-1.383c-.624-.26-1.29-.249-1.878-.03l1.523.63c.956.4 1.409 1.5 1.009 2.455-.397.957-1.497 1.41-2.454 1.012H7.54zm11.415-9.303c0-1.662-1.353-3.015-3.015-3.015-1.665 0-3.015 1.353-3.015 3.015 0 1.665 1.35 3.015 3.015 3.015 1.663 0 3.015-1.35 3.015-3.015zm-5.273-.005c0-1.252 1.013-2.266 2.265-2.266 1.249 0 2.266 1.014 2.266 2.266 0 1.251-1.017 2.265-2.266 2.265-1.253 0-2.265-1.014-2.265-2.265z"/></svg></span><span class="discord-copy"><strong id="steam-banner-title">Add to Steam</strong><small id="steam-banner-detail">Play from your Steam library or Steam Deck, with artwork</small></span><span id="steam-banner-mark" class="discord-arrow" aria-hidden="true">+</span></button></div></div>
+        <div class="intro"><div><p class="eyebrow">SUPER MARIO SUNSHINE</p><h1 id="home-title">Set up your game</h1><p id="home-description">A few quick steps, then you're ready to play.</p><p id="eclipse-disclaimer" class="eclipse-disclaimer" hidden>Super Mario Eclipse is a fan project. This launcher isn't affiliated with its official team.</p></div><div class="intro-banners"><button id="add-to-steam" class="discord-banner steam-banner" hidden aria-label="Add the launcher to your Steam library"><span class="discord-logo steam-logo" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M11.979 0C5.678 0 .511 4.86.022 11.037l6.432 2.658c.545-.371 1.203-.59 1.912-.59.063 0 .125.004.188.006l2.861-4.142V8.91c0-2.495 2.028-4.524 4.524-4.524 2.494 0 4.524 2.031 4.524 4.527s-2.03 4.525-4.524 4.525h-.105l-4.076 2.911c0 .052.004.105.004.159 0 1.875-1.515 3.396-3.39 3.396-1.635 0-3.016-1.173-3.331-2.727L.436 15.27C1.862 20.307 6.486 24 11.979 24c6.627 0 11.999-5.373 11.999-12S18.605 0 11.979 0zM7.54 18.21l-1.473-.61c.262.543.714.999 1.314 1.25 1.297.539 2.793-.076 3.332-1.375.263-.63.264-1.319.005-1.949s-.75-1.121-1.377-1.383c-.624-.26-1.29-.249-1.878-.03l1.523.63c.956.4 1.409 1.5 1.009 2.455-.397.957-1.497 1.41-2.454 1.012H7.54zm11.415-9.303c0-1.662-1.353-3.015-3.015-3.015-1.665 0-3.015 1.353-3.015 3.015 0 1.665 1.35 3.015 3.015 3.015 1.663 0 3.015-1.35 3.015-3.015zm-5.273-.005c0-1.252 1.013-2.266 2.265-2.266 1.249 0 2.266 1.014 2.266 2.266 0 1.251-1.017 2.265-2.266 2.265-1.253 0-2.265-1.014-2.265-2.265z"/></svg></span><span class="discord-copy"><strong id="steam-banner-title">Add to Steam</strong><small id="steam-banner-detail">Play from your Steam library or Steam Deck, with artwork</small></span><span id="steam-banner-mark" class="discord-arrow" aria-hidden="true">+</span></button></div></div>
 
         <div id="setup-flow" class="setup-flow">
           <div class="setup-progress" role="group" aria-label="Setup progress"><span id="step-count">Step 1 of 3</span><div class="setup-progress-track" aria-hidden="true"><i></i><i></i><i></i></div></div>
@@ -50,16 +62,90 @@
         <div class="hero-spacer" aria-hidden="true"></div>
 
         <section class="launch-panel" aria-label="Play game">
-          <div class="launch-primary"><button id="play" class="play">Continue</button><button id="play-more" class="play-more" popovertarget="play-menu" aria-haspopup="menu" aria-expanded="false" aria-label="More ways to play" title="More ways to play" hidden><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5.5 8l4.5 4.5L14.5 8"/></svg></button><button id="settings-cog" class="settings-cog" aria-label="Open settings" title="Settings"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M8.7 2.8h2.6l.4 1.8 1.6.7 1.6-1 1.8 1.8-1 1.6.7 1.6 1.8.4v2.6l-1.8.4-.7 1.6 1 1.6-1.8 1.8-1.6-1-1.6.7-.4 1.8H8.7l-.4-1.8-1.6-.7-1.6 1-1.8-1.8 1-1.6-.7-1.6-1.8-.4V8.7l1.8-.4.7-1.6-1-1.6 1.8-1.8 1.6 1 1.6-.7z"/><circle cx="10" cy="10" r="2.3"/></svg></button><button id="open-multiplayer" class="settings-cog multiplayer-button" aria-label="Multiplayer: host a game or join one" title="Multiplayer"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="7.2" cy="6.6" r="2.6"/><path d="M2.6 16.4c.4-3 2.2-4.7 4.6-4.7s4.2 1.7 4.6 4.7"/><circle cx="13.8" cy="7.4" r="2.2"/><path d="M12.6 11.9c.4-.1.8-.2 1.2-.2 2 0 3.5 1.4 3.8 4"/></svg></button><button id="open-changelog" class="settings-cog changelog-button" aria-label="Open changelog" title="Changelog"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 2.8h7.2L15.5 6v11.2H5z"/><path d="M12 2.8V6h3.5M7.6 9.2h5.3M7.6 11.9h5.3M7.6 14.6h3.4"/></svg></button></div>
+          <div class="launch-primary"><button id="play" class="play">Continue</button><button id="play-more" class="play-more" popovertarget="play-menu" aria-haspopup="menu" aria-expanded="false" aria-label="More ways to play" title="More ways to play" hidden><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5.5 8l4.5 4.5L14.5 8"/></svg></button></div>
           
-          <p id="play-more-hint" class="play-more-hint" hidden></p><div id="play-menu" class="play-menu" popover role="menu" aria-label="Ways to play"><button id="menu-default" class="play-menu-item" role="menuitem" data-kind="update"><svg viewBox="0 0 20 20" aria-hidden="true" class="for-update"><path d="M15.5 8.5A6 6 0 0 0 4.6 6.2M4.5 3v3.4h3.4M4.5 11.5a6 6 0 0 0 10.9 2.3M15.5 17v-3.4h-3.4"/></svg><svg viewBox="0 0 20 20" aria-hidden="true" class="for-play"><path d="M6.5 4.5v11l9-5.5z"/></svg><svg viewBox="0 0 20 20" aria-hidden="true" class="for-hd"><rect x="2.8" y="4.5" width="14.4" height="11" rx="2"/><path d="M6 8v4M9 8v4M6 10h3M11.5 8v4h1.3a2 2 0 0 0 0-4z"/></svg><span><strong id="menu-default-label">Update &amp; play</strong><small id="menu-default-detail"></small></span><em>Default</em></button><button id="menu-update-play" class="play-menu-item" role="menuitem"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M15.5 8.5A6 6 0 0 0 4.6 6.2M4.5 3v3.4h3.4M4.5 11.5a6 6 0 0 0 10.9 2.3M15.5 17v-3.4h-3.4"/></svg><span><strong>Update &amp; play</strong><small id="menu-update-play-detail"></small></span></button><button id="menu-update-only" class="play-menu-item" role="menuitem"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3v9.5M6 8.8l4 4 4-4M4 16.5h12"/></svg><span><strong>Update only</strong><small id="menu-update-only-detail"></small></span></button><button id="menu-play-now" class="play-menu-item" role="menuitem"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6.5 4.5v11l9-5.5z"/></svg><span><strong>Play now</strong><small id="menu-play-now-detail"></small></span></button><p id="play-menu-note">The default follows <b>Update automatically</b> in Settings.</p></div><div class="task-progress" id="task-progress" role="status" hidden><div class="progress-summary"><span class="spinner" aria-hidden="true"></span><strong id="progress-title">Working…</strong><span id="progress-time"></span><span id="progress-percent"></span></div><p id="progress-detail">Starting…</p><div class="progress-track" id="progress-track" role="progressbar" aria-label="Task progress"><span id="progress-fill"></span></div><button id="view-build-log" class="progress-log-button">View build log</button></div>
+          <p id="play-more-hint" class="play-more-hint" hidden></p><p id="play-room" class="play-room" role="status" hidden><span class="play-room-dot" aria-hidden="true"></span>Hosting room <code id="play-room-code"></code><button id="play-room-copy" class="play-room-copy" aria-label="Copy room code">Copy</button></p><div id="play-menu" class="play-menu" popover role="menu" aria-label="Ways to play"><button id="menu-default" class="play-menu-item" role="menuitem" data-kind="update"><svg viewBox="0 0 20 20" aria-hidden="true" class="for-update"><path d="M15.5 8.5A6 6 0 0 0 4.6 6.2M4.5 3v3.4h3.4M4.5 11.5a6 6 0 0 0 10.9 2.3M15.5 17v-3.4h-3.4"/></svg><svg viewBox="0 0 20 20" aria-hidden="true" class="for-play"><path d="M6.5 4.5v11l9-5.5z"/></svg><svg viewBox="0 0 20 20" aria-hidden="true" class="for-hd"><rect x="2.8" y="4.5" width="14.4" height="11" rx="2"/><path d="M6 8v4M9 8v4M6 10h3M11.5 8v4h1.3a2 2 0 0 0 0-4z"/></svg><span><strong id="menu-default-label">Update &amp; play</strong><small id="menu-default-detail"></small></span><em>Default</em></button><button id="menu-update-play" class="play-menu-item" role="menuitem"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M15.5 8.5A6 6 0 0 0 4.6 6.2M4.5 3v3.4h3.4M4.5 11.5a6 6 0 0 0 10.9 2.3M15.5 17v-3.4h-3.4"/></svg><span><strong>Update &amp; play</strong><small id="menu-update-play-detail"></small></span></button><button id="menu-update-only" class="play-menu-item" role="menuitem"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3v9.5M6 8.8l4 4 4-4M4 16.5h12"/></svg><span><strong>Update only</strong><small id="menu-update-only-detail"></small></span></button><button id="menu-play-now" class="play-menu-item" role="menuitem"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6.5 4.5v11l9-5.5z"/></svg><span><strong>Play now</strong><small id="menu-play-now-detail"></small></span></button><p id="play-menu-note">The default follows <b>Update automatically</b> in Settings.</p></div><div class="task-progress" id="task-progress" role="status" hidden><div class="progress-summary"><span class="spinner" aria-hidden="true"></span><strong id="progress-title">Working…</strong><span id="progress-time"></span><span id="progress-percent"></span></div><p id="progress-detail">Starting…</p><div class="progress-track" id="progress-track" role="progressbar" aria-label="Task progress"><span id="progress-fill"></span></div><button id="view-build-log" class="progress-log-button">View build log</button></div>
         </section>
 
       </section>
-    </main>
-
-    <dialog id="page-settings" class="launcher-modal settings-modal" aria-label="Settings">
-      <div class="modal-head"><div><h1>Settings</h1><p>Changes save automatically.</p></div><button class="modal-close" data-close-modal aria-label="Close settings">×</button></div>
+      <section id="multiplayer" class="page sheet multiplayer-page" aria-labelledby="multiplayer-title" hidden>
+      <div class="modal-head"><div><h1 id="multiplayer-title">Multiplayer</h1><p>Up to 8 players share the host's save and play the host's level together.</p></div></div>
+      <div class="modal-body mp-body">
+        <section id="mp-room" class="mp-section mp-room" aria-labelledby="mp-room-title" hidden><div class="mp-room-text"><h2 id="mp-room-title">Your room</h2><p class="helper">Send this code to friends. It's on the game's pause screen too.</p></div><code id="mp-room-code" class="mp-room-code"></code><button id="mp-room-copy" class="solid">Copy</button></section>
+        <p id="mp-result" class="mp-result" role="status" aria-live="polite"></p>
+        <div class="mp-columns"><div class="mp-column">
+        <div class="settings-group">
+          <label class="field"><span>Your name<small>The others see it in their player list.</small></span><input id="mp-name" class="mp-input" type="text" maxlength="23" spellcheck="false" autocomplete="off" placeholder="Player"></label>
+        </div>
+        <section class="mp-section mp-network" aria-labelledby="mp-network-title">
+          <div class="mp-network-head"><h2 id="mp-network-title">Your network</h2><span id="mp-nat-badge" class="mp-nat-badge">Checking…</span><button id="mp-nat-check" class="text-button">Check again</button></div>
+          <p id="mp-nat-text" class="helper" role="status" aria-live="polite">Checking whether you can host and join from this network…</p>
+          <div id="mp-share" class="mp-share" hidden>
+            <p id="mp-share-note" class="helper"></p>
+            <div id="mp-invite-row" class="mp-share-row"><span class="mp-share-label">Invite code</span><code id="mp-invite" class="mp-share-value"></code><button class="text-button mp-copy" data-copy="mp-invite" aria-label="Copy invite code">Copy</button></div>
+            <div class="mp-share-row"><span class="mp-share-label">Address</span><code id="mp-public" class="mp-share-value"></code><button class="text-button mp-copy" data-copy="mp-public" aria-label="Copy public address">Copy</button></div>
+            <div id="mp-lan-row" class="mp-share-row"><span class="mp-share-label">Same Wi-Fi</span><code id="mp-lan" class="mp-share-value"></code><button class="text-button mp-copy" data-copy="mp-lan" aria-label="Copy address for the same Wi-Fi">Copy</button></div>
+          </div>
+          <p class="helper mp-stun-note">The check asks public STUN servers (Google, Cloudflare and stunprotocol.org) how your network looks from outside; like any website, they see your IP address.</p>
+        </section>
+        <section class="mp-section" aria-labelledby="mp-host-title">
+          <h2 id="mp-host-title">Host a game</h2>
+          <p class="helper">You play as Mario on your own save; players who join add to it. When your game starts, its room code is copied for you to send to friends, and shows here, under Play and on the game's pause screen. No port forwarding needed. (Friends joining with your address instead need UDP port <strong id="mp-host-port-note">24002</strong> forwarded to this computer.)</p>
+          <label class="switch mp-public-switch"><span><strong>List my game publicly</strong><small>Anyone can see your name and where you are in the game, and join you on your save. Your address isn't shown.</small></span><input id="mp-list-public" type="checkbox"><i></i></label>
+          <div class="mp-row"><label class="mp-field mp-port">Port<input id="mp-host-port" class="mp-input" type="text" inputmode="numeric" maxlength="5" spellcheck="false" autocomplete="off"></label><label class="mp-field mp-max">Max players<select id="mp-max-players" class="mp-input"><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8" selected>8</option></select></label><button id="mp-host" class="solid mp-go">Host Game</button></div>
+        </section>
+        </div><div class="mp-column">
+        <section class="mp-section" aria-labelledby="mp-join-title">
+          <h2 id="mp-join-title">Join a game</h2>
+          <p class="helper">The host presses Host Game first and sends you their room code. You join as Luigi, Wario, Metal Mario or a Mario in his own colours, and go straight to wherever the host is.</p>
+          <div id="mp-recent" class="mp-recent" hidden><span class="mp-recent-label">Recent</span><div id="mp-recent-list" class="mp-recent-list"></div></div>
+          <div class="mp-row"><label class="mp-field mp-address">Room code, invite code or IP address<input id="mp-address" class="mp-input" type="text" spellcheck="false" autocomplete="off" placeholder="KQ7-M2D" aria-describedby="mp-result"></label><label class="mp-field mp-port">Port<input id="mp-join-port" class="mp-input" type="text" inputmode="numeric" maxlength="5" spellcheck="false" autocomplete="off" aria-describedby="mp-result"></label><button id="mp-ping" class="subtle mp-ping" title="How long the host's game takes to answer">Ping</button><button id="mp-join" class="solid mp-go">Join</button></div>
+        </section>
+        <section class="mp-section" aria-labelledby="mp-browser-title">
+          <div class="mp-browser-head"><h2 id="mp-browser-title">Public games</h2><button id="mp-browser-refresh" class="text-button">Refresh</button></div>
+          <p id="mp-browser-note" class="helper" role="status" aria-live="polite">Looking for public games…</p>
+          <ul id="mp-browser-list" class="mp-browser-list" aria-labelledby="mp-browser-title"></ul>
+        </section>
+        </div></div>
+        <p class="helper mp-rules">Shines, blue coins, red coins, coins and lives are shared, and everyone sees the host's enemies and each other's water. Only the host can take everyone to another area. A Shine collected by anyone takes everyone back out together. Out of lives, you watch the others until everyone is out, then the level starts again. Save states are off while playing together.</p>
+      </div>
+      </section>
+      <section id="mario-look" class="page sheet mario-look-page" aria-label="Customize Mario" hidden>
+      <div class="modal-head"><div><h1>Customize Mario</h1><p>Mario as he is on your disc. Drag to turn him around, scroll to zoom.</p></div></div>
+      <div class="mario-look-body">
+        <div class="mario-stage-wrap"><canvas id="mario-stage" class="mario-stage" tabindex="0" aria-label="Mario, drag or use the arrow keys to turn him"></canvas><div id="mario-status" class="mario-status" role="status" hidden><span class="mario-loader" aria-hidden="true"></span><span id="mario-status-text"></span></div><p class="mario-preview-note">Your colours show in the game the next time it starts.</p></div>
+        <div class="mario-panel"><div id="mario-presets" class="mario-presets" role="group" aria-label="Presets"></div><div id="mario-regions"></div></div>
+      </div>
+      </section>
+      <section id="page-saves" class="page sheet saves-page" aria-labelledby="saves-title" hidden>
+      <div class="modal-head"><div><h1 id="saves-title">Saves &amp; states</h1><p>Your saved games, their backups, and save states.</p></div></div>
+      <div class="modal-body">
+          <div id="pane-saves" class="settings-pane saves-pane">
+            <h2 class="group-title">Saved games</h2>
+            <div class="settings-group">
+              <p class="small-path" id="save-path"></p>
+              <div class="actions"><button class="subtle" id="backup-saves">Back up saves</button><button class="subtle" id="open-backups">Open backup folder</button></div>
+              <div class="path-row"><label class="backup-picker"><span>Restore a backup</span><select id="backup-list"></select></label><button class="subtle" id="restore-saves">Restore backup</button></div>
+            </div>
+            <h2 class="group-title">Save states</h2>
+            <div class="settings-group save-states">
+              <p class="row-note lead" id="save-state-help"></p>
+              <div id="save-state-list" class="save-state-list"></div>
+              <div class="actions"><button class="subtle" id="import-save-state">Import a state</button><button class="subtle" id="open-save-states">Open save states folder</button></div>
+              <p id="save-state-result" class="helper" role="status" aria-live="polite"></p>
+            </div>
+            <h2 class="group-title">Import</h2>
+            <div id="dolphin-save-drop" class="dolphin-save-drop" aria-disabled="false"><strong>Import a Dolphin save</strong><p class="helper">Drop your North American Sunshine or Super Mario Eclipse .gci saves here, or the folder they are in, or choose them. Eclipse's progress is in 04-GMSE-super_mario_sunshine.gci. Your current saves are backed up before importing.</p><button class="subtle" id="import-dolphin-save">Choose .gci file</button></div>
+            <div id="dolphin-import-result" class="helper" role="status" aria-live="polite"></div>
+          </div>
+      </div>
+      </section>
+      <section id="changelog" class="page sheet changelog-page" aria-labelledby="changelog-title" hidden>
+      <div class="modal-head"><div><h1 id="changelog-title">Changelog</h1><p id="changelog-subtitle">Launcher and game updates</p></div></div>
+      <div class="modal-body"><div id="changelog-list" class="changelog-list" aria-live="polite"></div><div class="actions changelog-actions"><button class="subtle" id="changelog-show-all" hidden>Show all releases</button><button class="text-button" id="changelog-page">View on GitHub ↗</button></div></div>
+      </section>
+      <section id="page-settings" class="page sheet settings-page" aria-label="Settings" hidden>
+      <div class="modal-head"><div><h1>Settings</h1><p>Changes save automatically.</p></div></div>
       <div class="settings-layout">
         <nav class="settings-nav" role="tablist" aria-label="Settings sections" aria-orientation="vertical">
           <button id="tab-gameplay" class="settings-tab" role="tab" aria-controls="pane-gameplay" aria-selected="true"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m10 2.8 2.2 4.5 5 .7-3.6 3.5.9 5-4.5-2.4-4.5 2.4.9-5L2.8 8l5-.7z"/></svg>Gameplay</button>
@@ -67,7 +153,6 @@
           <button id="tab-graphics" class="settings-tab" role="tab" aria-controls="pane-graphics" aria-selected="false"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="2.5" y="3.5" width="15" height="13" rx="2"/><circle cx="7.5" cy="8" r="1.5"/><path d="m3 15 4.5-4.5 3 3 2.5-2.5 4.5 4.5"/></svg>Graphics</button>
           <button id="tab-controls" class="settings-tab" role="tab" aria-controls="pane-controls" aria-selected="false"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6 6.5h8a4 4 0 0 1 3.9 4.8l-.6 3a2 2 0 0 1-3.4 1L12 13.5H8l-1.9 1.8a2 2 0 0 1-3.4-1l-.6-3A4 4 0 0 1 6 6.5z"/><path d="M6.5 9v3M5 10.5h3M12.5 9.5h.1M14.5 11.5h.1"/></svg>Controls</button>
           <button id="tab-manage" class="settings-tab" role="tab" aria-controls="pane-manage" aria-selected="false"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 4h12M4 10h12M4 16h12"/><circle cx="8" cy="4" r="2"/><circle cx="13" cy="10" r="2"/><circle cx="7" cy="16" r="2"/></svg>Manage game</button>
-          <button id="tab-saves" class="settings-tab" role="tab" aria-controls="pane-saves" aria-selected="false"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 3h10l3 3v11H4z"/><path d="M7 3v4h6V3M7 17v-5h7v5"/></svg>Saves</button>
           <button id="tab-launcher" class="settings-tab" role="tab" aria-controls="pane-launcher" aria-selected="false"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="7.5"/><path d="M10 9v5M10 6.2v.1"/></svg>Launcher</button>
         </nav>
 
@@ -193,25 +278,6 @@
             <div class="settings-group source-group"><details id="game-source"><summary><h2>Game source <small>Advanced</small></h2></summary><p class="helper">Build from another sms-pc-port or decomp fork, branch, tag or commit, for testing. Leave a row empty to keep this release's, or enter only a branch, tag or commit to use our fork's. Your saves stay where they are.</p><div class="source-grid"><label>Game repository<input id="source-port-repository" type="text" spellcheck="false" autocomplete="off" placeholder="https://github.com/chasem-dev/sms-pc-port.git"></label><label>Branch, tag or commit<input id="source-port-ref" type="text" spellcheck="false" autocomplete="off" placeholder="main"></label><label>Decomp repository<input id="source-decomp-repository" type="text" spellcheck="false" autocomplete="off" placeholder="https://github.com/chasem-dev/sms-english.git"></label><label>Branch, tag or commit<input id="source-decomp-ref" type="text" spellcheck="false" autocomplete="off" placeholder="main"></label></div><div class="actions"><button class="subtle" id="apply-game-source">Use this source</button><button class="subtle" id="reset-game-source">Use this release's</button></div><p id="game-source-note" class="helper"></p></details></div>
           </section>
 
-          <section id="pane-saves" class="settings-pane" role="tabpanel" aria-labelledby="tab-saves" hidden>
-            <h2 class="group-title">Saved games</h2>
-            <div class="settings-group">
-              <p class="small-path" id="save-path"></p>
-              <div class="actions"><button class="subtle" id="backup-saves">Back up saves</button><button class="subtle" id="open-backups">Open backup folder</button></div>
-              <div class="path-row"><label class="backup-picker"><span>Restore a backup</span><select id="backup-list"></select></label><button class="subtle" id="restore-saves">Restore backup</button></div>
-            </div>
-            <h2 class="group-title">Save states</h2>
-            <div class="settings-group save-states">
-              <p class="row-note lead" id="save-state-help"></p>
-              <div id="save-state-list" class="save-state-list"></div>
-              <div class="actions"><button class="subtle" id="import-save-state">Import a state</button><button class="subtle" id="open-save-states">Open save states folder</button></div>
-              <p id="save-state-result" class="helper" role="status" aria-live="polite"></p>
-            </div>
-            <h2 class="group-title">Import</h2>
-            <div id="dolphin-save-drop" class="dolphin-save-drop" aria-disabled="false"><strong>Import a Dolphin save</strong><p class="helper">Drop your North American Sunshine or Super Mario Eclipse .gci saves here, or the folder they are in, or choose them. Eclipse's progress is in 04-GMSE-super_mario_sunshine.gci. Your current saves are backed up before importing.</p><button class="subtle" id="import-dolphin-save">Choose .gci file</button></div>
-            <div id="dolphin-import-result" class="helper" role="status" aria-live="polite"></div>
-          </section>
-
           <section id="pane-launcher" class="settings-pane" role="tabpanel" aria-labelledby="tab-launcher" hidden>
             <h2 class="group-title">Appearance</h2>
             <div class="settings-group">
@@ -235,59 +301,17 @@
           </section>
         </div>
       </div>
-    </dialog>
-
-    <dialog id="mario-look" class="launcher-modal mario-look-modal" aria-label="Customize Mario">
-      <div class="modal-head"><div><h1>Customize Mario</h1><p>Mario as he is on your disc. Drag to turn him around, scroll to zoom.</p></div><button class="modal-close" data-close-modal aria-label="Close Customize Mario">×</button></div>
-      <div class="mario-look-body">
-        <div class="mario-stage-wrap"><canvas id="mario-stage" class="mario-stage" tabindex="0" aria-label="Mario, drag or use the arrow keys to turn him"></canvas><div id="mario-status" class="mario-status" role="status" hidden><span class="mario-loader" aria-hidden="true"></span><span id="mario-status-text"></span></div><p class="mario-preview-note">Your colours show in the game the next time it starts.</p></div>
-        <div class="mario-panel"><div id="mario-presets" class="mario-presets" role="group" aria-label="Presets"></div><div id="mario-regions"></div></div>
-      </div>
-    </dialog>
-
-    <dialog id="multiplayer" class="launcher-modal multiplayer-modal" aria-labelledby="multiplayer-title">
-      <div class="modal-head"><div><h1 id="multiplayer-title">Multiplayer</h1><p>Up to 8 players share the host's save and play the host's level together.</p></div><button class="modal-close" data-close-modal aria-label="Close multiplayer">×</button></div>
-      <div class="modal-body">
-        <div class="settings-group">
-          <label class="field"><span>Your name<small>The others see it in their player list.</small></span><input id="mp-name" class="mp-input" type="text" maxlength="23" spellcheck="false" autocomplete="off" placeholder="Player"></label>
-        </div>
-        <section class="mp-section mp-network" aria-labelledby="mp-network-title">
-          <div class="mp-network-head"><h2 id="mp-network-title">Your network</h2><span id="mp-nat-badge" class="mp-nat-badge">Checking…</span><button id="mp-nat-check" class="text-button">Check again</button></div>
-          <p id="mp-nat-text" class="helper" role="status" aria-live="polite">Checking whether you can host and join from this network…</p>
-          <div id="mp-share" class="mp-share" hidden>
-            <p id="mp-share-note" class="helper"></p>
-            <div id="mp-invite-row" class="mp-share-row"><span class="mp-share-label">Invite code</span><code id="mp-invite" class="mp-share-value"></code><button class="text-button mp-copy" data-copy="mp-invite" aria-label="Copy invite code">Copy</button></div>
-            <div class="mp-share-row"><span class="mp-share-label">Address</span><code id="mp-public" class="mp-share-value"></code><button class="text-button mp-copy" data-copy="mp-public" aria-label="Copy public address">Copy</button></div>
-            <div id="mp-lan-row" class="mp-share-row"><span class="mp-share-label">Same Wi-Fi</span><code id="mp-lan" class="mp-share-value"></code><button class="text-button mp-copy" data-copy="mp-lan" aria-label="Copy address for the same Wi-Fi">Copy</button></div>
+      </section>
+        </main>
+        <section id="activity-log" class="activity-drawer" aria-label="Activity log" hidden>
+          <div class="console-header"><svg class="console-symbol" viewBox="0 0 20 20" aria-hidden="true"><path d="m4 5 4 4-4 4m6 0h6"/></svg><strong>Activity log</strong><span id="activity-label" class="console-summary">Nothing running</span><div class="console-actions"><button id="copy-activity-log" class="console-button">Copy log</button><button id="save-activity-log" class="console-button">Save log</button><button id="stop" class="console-button console-stop" hidden>Stop task</button><button id="expand-activity-log" class="console-button console-expand" aria-label="Expand activity log" title="Expand activity log" aria-pressed="false"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 8V4h4m4 0h4v4m0 4v4h-4m-4 0H4v-4"/></svg></button><button id="close-activity-log" class="console-button console-close" aria-label="Hide activity log" title="Hide activity log"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 5l10 10M15 5L5 15"/></svg></button></div></div>
+          <div id="console-body" class="console-body">
+        <div class="console-output-wrap"><pre id="log" tabindex="0" aria-label="Activity output"></pre><p id="console-empty" class="console-empty"><strong>Ready when you are.</strong><span>Setup and game output will appear here.</span></p></div>
+        <div class="console-footer"><span id="console-entry-count">0 entries</span><span class="console-retention">Showing up to 700 · Copy and Save include the full run</span><span id="copy-log-result" role="status" aria-live="polite"></span><button id="follow-activity-log" class="console-follow" aria-pressed="true">Follow output</button></div>
           </div>
-          <p class="helper mp-stun-note">The check asks public STUN servers (Google, Cloudflare and stunprotocol.org) how your network looks from outside; like any website, they see your IP address.</p>
         </section>
-        <section class="mp-section" aria-labelledby="mp-host-title">
-          <h2 id="mp-host-title">Host a game</h2>
-          <p class="helper">You play as Mario on your own save; players who join add to it. When your game starts, its room code is copied for you to send to friends, and shows under the play button and on the game's pause screen. No port forwarding needed. (Friends joining with your address instead need UDP port <strong id="mp-host-port-note">24002</strong> forwarded to this computer.)</p>
-          <label class="switch mp-public-switch"><span><strong>List my game publicly</strong><small>Anyone can see your name and where you are in the game, and join you on your save. Your address isn't shown.</small></span><input id="mp-list-public" type="checkbox"><i></i></label>
-          <div class="mp-row"><label class="mp-field mp-port">Port<input id="mp-host-port" class="mp-input" type="text" inputmode="numeric" maxlength="5" spellcheck="false" autocomplete="off"></label><label class="mp-field mp-max">Max players<select id="mp-max-players" class="mp-input"><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8" selected>8</option></select></label><button id="mp-host" class="solid mp-go">Host Game</button></div>
-        </section>
-        <section class="mp-section" aria-labelledby="mp-join-title">
-          <h2 id="mp-join-title">Join a game</h2>
-          <p class="helper">The host presses Host Game first and sends you their room code. You join as Luigi, Wario, Metal Mario or a Mario in his own colours, and go straight to wherever the host is.</p>
-          <div id="mp-recent" class="mp-recent" hidden><span class="mp-recent-label">Recent</span><div id="mp-recent-list" class="mp-recent-list"></div></div>
-          <div class="mp-row"><label class="mp-field mp-address">Room code, invite code or IP address<input id="mp-address" class="mp-input" type="text" spellcheck="false" autocomplete="off" placeholder="KQ7-M2D" aria-describedby="mp-result"></label><label class="mp-field mp-port">Port<input id="mp-join-port" class="mp-input" type="text" inputmode="numeric" maxlength="5" spellcheck="false" autocomplete="off" aria-describedby="mp-result"></label><button id="mp-ping" class="subtle mp-ping" title="How long the host's game takes to answer">Ping</button><button id="mp-join" class="solid mp-go">Join</button></div>
-        </section>
-        <section class="mp-section" aria-labelledby="mp-browser-title">
-          <div class="mp-browser-head"><h2 id="mp-browser-title">Public games</h2><button id="mp-browser-refresh" class="text-button">Refresh</button></div>
-          <p id="mp-browser-note" class="helper" role="status" aria-live="polite">Looking for public games…</p>
-          <ul id="mp-browser-list" class="mp-browser-list" aria-labelledby="mp-browser-title"></ul>
-        </section>
-        <p id="mp-result" class="mp-result" role="status" aria-live="polite"></p>
-        <p class="helper mp-rules">Shines, blue coins, red coins, coins and lives are shared, and everyone sees the host's enemies and each other's water. Only the host can take everyone to another area. A Shine collected by anyone takes everyone back out together. Out of lives, you watch the others until everyone is out, then the level starts again. Save states are off while playing together.</p>
       </div>
-    </dialog>
-
-    <dialog id="changelog" class="launcher-modal changelog-modal" aria-label="Changelog">
-      <div class="modal-head"><div><h1 id="changelog-title">Changelog</h1><p id="changelog-subtitle">Launcher and game updates</p></div><button class="modal-close" data-close-modal aria-label="Close changelog">×</button></div>
-      <div class="modal-body"><div id="changelog-list" class="changelog-list" aria-live="polite"></div><div class="actions changelog-actions"><button class="subtle" id="changelog-show-all" hidden>Show all releases</button><button class="text-button" id="changelog-page">View on GitHub ↗</button></div></div>
-    </dialog>
+    </div>
 
     <dialog id="steam-add" class="launcher-modal steam-modal" aria-labelledby="steam-add-kicker steam-add-title">
       <div class="steam-bar"><span class="steam-brand" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M11.979 0C5.678 0 .511 4.86.022 11.037l6.432 2.658c.545-.371 1.203-.59 1.912-.59.063 0 .125.004.188.006l2.861-4.142V8.91c0-2.495 2.028-4.524 4.524-4.524 2.494 0 4.524 2.031 4.524 4.527s-2.03 4.525-4.524 4.525h-.105l-4.076 2.911c0 .052.004.105.004.159 0 1.875-1.515 3.396-3.39 3.396-1.635 0-3.016-1.173-3.331-2.727L.436 15.27C1.862 20.307 6.486 24 11.979 24c6.627 0 11.999-5.373 11.999-12S18.605 0 11.979 0zM7.54 18.21l-1.473-.61c.262.543.714.999 1.314 1.25 1.297.539 2.793-.076 3.332-1.375.263-.63.264-1.319.005-1.949s-.75-1.121-1.377-1.383c-.624-.26-1.29-.249-1.878-.03l1.523.63c.956.4 1.409 1.5 1.009 2.455-.397.957-1.497 1.41-2.454 1.012H7.54zm11.415-9.303c0-1.662-1.353-3.015-3.015-3.015-1.665 0-3.015 1.353-3.015 3.015 0 1.665 1.35 3.015 3.015 3.015 1.663 0 3.015-1.35 3.015-3.015zm-5.273-.005c0-1.252 1.013-2.266 2.265-2.266 1.249 0 2.266 1.014 2.266 2.266 0 1.251-1.017 2.265-2.266 2.265-1.253 0-2.265-1.014-2.265-2.265z"/></svg>STEAM</span><button class="modal-close" data-close-modal aria-label="Close Add to Steam">×</button></div>
@@ -314,18 +338,7 @@
       </div>
     </dialog>
 
-    <section id="activity-log" class="activity-dock" aria-label="Activity log">
-      <div class="console-header">
-        <button id="toggle-activity-log" class="console-toggle" aria-expanded="false" aria-controls="console-body" title="Show activity log"><svg class="console-symbol" viewBox="0 0 20 20" aria-hidden="true"><path d="m4 5 4 4-4 4m6 0h6"/></svg><strong>Activity log</strong><span id="console-state" class="console-state">Idle</span><svg class="console-chevron" viewBox="0 0 20 20" aria-hidden="true"><path d="m5 12 5-5 5 5"/></svg></button>
-        <span id="activity-label" class="console-summary">Nothing running</span>
-        <div class="console-actions"><button id="copy-activity-log" class="console-button">Copy log</button><button id="save-activity-log" class="console-button">Save log</button><button id="stop" class="console-button console-stop" hidden>Stop task</button><button id="expand-activity-log" class="console-button console-expand" aria-label="Expand activity log" title="Expand activity log" aria-pressed="false"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 8V4h4m4 0h4v4m0 4v4h-4m-4 0H4v-4"/></svg></button></div>
-      </div>
-      <div id="console-body" class="console-body" hidden>
-        <div class="console-output-wrap"><pre id="log" tabindex="0" aria-label="Activity output"></pre><p id="console-empty" class="console-empty"><strong>Ready when you are.</strong><span>Setup and game output will appear here.</span></p></div>
-        <div class="console-footer"><span id="console-entry-count">0 entries</span><span class="console-retention">Showing up to 700 · Copy and Save include the full run</span><span id="copy-log-result" role="status" aria-live="polite"></span><button id="follow-activity-log" class="console-follow" aria-pressed="true">Follow output</button></div>
-      </div>
-    </section>
-    <footer class="statusbar"><span class="status-dot" aria-hidden="true"></span><span id="task-status">Loading…</span><span class="status-separator">·</span><span id="app-update">Checking for updates…</span><button id="check-updates" class="status-icon" aria-label="Check for launcher and game updates" title="Check for updates"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.64-6.36L21 8"/><path d="M21 3v5h-5"/></svg></button><button id="install-app-update" class="status-link" hidden>Install now</button><span class="gamepad-hints" aria-hidden="true"><kbd>A</kbd> Select <kbd>B</kbd> Back <kbd>Start</kbd> Settings</span><span class="byo">Bring your own ROM · No game data included</span></footer>
+    <footer class="statusbar"><span class="status-dot" aria-hidden="true"></span><span id="task-status">Loading…</span><span id="status-progress" class="status-progress" hidden><i id="status-progress-fill"></i></span><span class="status-separator">·</span><span id="app-update">Checking for updates…</span><button id="check-updates" class="status-icon" aria-label="Check for launcher and game updates" title="Check for updates"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.64-6.36L21 8"/><path d="M21 3v5h-5"/></svg></button><button id="install-app-update" class="status-link" hidden>Install now</button><span class="gamepad-hints" aria-hidden="true"><kbd>A</kbd> Select <kbd>B</kbd> Back <kbd>Start</kbd> Settings</span><span class="byo">Bring your own ROM · No game data included</span><button id="toggle-activity-log" class="log-toggle" aria-expanded="false" aria-controls="activity-log" title="Show activity log"><svg class="console-symbol" viewBox="0 0 20 20" aria-hidden="true"><path d="m4 5 4 4-4 4m6 0h6"/></svg>Activity log<span id="console-state" class="console-state">Idle</span><svg class="console-chevron" viewBox="0 0 20 20" aria-hidden="true"><path d="m5 12 5-5 5 5"/></svg></button></footer>
   </div>
   <script src="bindings.js"></script>
   <script src="prompts.js"></script>

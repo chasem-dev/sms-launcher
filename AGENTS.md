@@ -2,7 +2,7 @@
 
 ## Update the changelog in every commit
 
-[`changelog.json`](changelog.json) is the changelog players read in the launcher: it opens by itself after an update, and from the button beside Settings. Installed launchers fetch it from `main`, so whatever you merge there is what players see.
+[`changelog.json`](changelog.json) is the changelog players read in the launcher: it opens by itself after an update, and from What's new in the side rail. Installed launchers fetch it from `main`, so whatever you merge there is what players see.
 
 **Every commit to this repo updates `changelog.json` in that same commit.** That covers features, fixes, settings, wording and layout tweaks, packaging and update-flow changes, one-line fixes, and follow-up commits that change what an earlier line describes (reword that line). It applies to every agent and every session, Claude Code and Codex included, however small the change. Don't leave it for a later commit or for whoever cuts the release.
 

@@ -225,6 +225,10 @@ pre { height: 120px; margin: 0; padding: 12px; overflow: auto; border-radius: 8p
 .launcher-modal:not([open]) { display: none; }
 .launcher-modal[open] { display: flex; flex-direction: column; }
 .launcher-modal::backdrop { background: #092b43ad; backdrop-filter: blur(6px); }
+/* A rail page that isn't Play: the dialogs' look, filling the space beside the rail. */
+.sheet { flex-direction: column; height: 100%; min-height: 0; overflow: hidden; border: 1px solid #d8e6e6; border-radius: 16px; background: #f8faf9; color: #17343d; box-shadow: 0 16px 50px #061f3566; }
+.sheet:not([hidden]) { display: flex; }
+.sheet > .modal-body { flex: 1; }
 .modal-head { flex: none; display: flex; align-items: start; justify-content: space-between; padding: 20px 24px 17px; border-bottom: 1px solid #dce7e6; background: #fff; }
 .modal-head .eyebrow { color: #207889; }
 .modal-head h1 { font-size: 25px; }
@@ -253,9 +257,20 @@ pre { height: 120px; margin: 0; padding: 12px; overflow: auto; border-radius: 8p
 .controls-note p { color: #405a60; font-size: 13px; line-height: 1.45; }
 .controls-note p + p { margin-top: 6px; }
 .modal-body { min-height: 0; overflow: auto; padding: 18px 24px 24px; }
-.changelog-modal { width: min(660px, calc(100% - 36px)); }
-.multiplayer-modal { width: min(620px, calc(100% - 36px)); }
-.multiplayer-modal .modal-body { display: grid; grid-auto-rows: max-content; gap: 14px; }
+.changelog-page .changelog-list, .changelog-page .changelog-actions { max-width: 760px; }
+.saves-page .settings-pane { max-width: 760px; }
+/* Multiplayer: your room on top, then two columns that stack when the page is narrow. */
+.mp-body { display: grid; grid-auto-rows: max-content; gap: 14px; container-type: inline-size; }
+.mp-columns { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); align-items: start; gap: 14px; }
+.mp-column { display: grid; gap: 14px; min-width: 0; }
+@container (max-width: 700px) { .mp-columns { grid-template-columns: minmax(0, 1fr); } }
+.mp-result:empty { display: none; }
+.mp-room { display: flex; align-items: center; gap: 16px; border-color: #9fd8cb; background: #f1fbf7; }
+.mp-room-text { flex: 1; min-width: 0; }
+.mp-room .helper { margin: 0; }
+.mp-room-code { padding: 7px 14px; border-radius: 10px; background: #fff; color: #17343d; font: 800 24px/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; letter-spacing: .12em; user-select: all; }
+.dark .mp-room { border-color: #2b5a4c; background: #102c2a; }
+.dark .mp-room-code { background: #0d2231; color: #ffe2a3; }
 .mp-section { padding: 14px 16px 16px; border: 1px solid #dfe9e8; border-radius: 12px; background: #fff; }
 .mp-section h2 { margin: 0 0 6px; }
 .mp-section .helper { margin: 0 0 12px; font-size: 12px; line-height: 1.5; }
@@ -267,7 +282,7 @@ pre { height: 120px; margin: 0; padding: 12px; overflow: auto; border-radius: 8p
 .mp-input { width: 100%; padding: 8px 10px; border: 1px solid #d3dedc; border-radius: 7px; background: #fff; color: #223940; font: inherit; font-size: 13px; }
 .settings-group .field .mp-input { width: 210px; }
 .mp-input:focus-visible { outline: 2px solid #17818a; outline-offset: 2px; }
-.mp-go { min-width: 120px; padding: 9px 18px; }
+.mp-go { min-width: 96px; padding: 9px 16px; }
 .mp-ping { flex: none; padding: 9px 14px; }
 .mp-result { min-height: 1.4em; margin: 0; color: #405a60; font-size: 12px; line-height: 1.5; }
 .mp-result.error { color: #b3402d; }
@@ -335,15 +350,13 @@ pre { height: 120px; margin: 0; padding: 12px; overflow: auto; border-radius: 8p
 .changelog-actions { justify-content: space-between; margin-top: 14px; }
 .viewport { overflow: auto; }
 .home-page { height: auto; min-height: 100%; }
-.activity-dock { flex: none; color: #d7e9ed; background: #0b2537; border-top: 1px solid #719aaa66; box-shadow: 0 -8px 28px #061e3433; }
+.activity-drawer { flex: none; display: flex; flex-direction: column; color: #d7e9ed; background: #0b2537; border-top: 1px solid #719aaa66; box-shadow: 0 -8px 28px #061e3433; }
 .console-header { display: flex; align-items: center; gap: 18px; min-height: 52px; padding: 0 26px; background: #102f43; }
-.console-toggle { display: flex; align-items: center; gap: 10px; flex: none; padding: 8px 0; color: #f1f9fb; background: transparent; border-radius: 4px; }
-.console-toggle strong { font-size: 13px; }
-.console-toggle:hover { color: #ffda91; }
-.console-toggle svg, .console-expand svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.console-header strong { flex: none; color: #f1f9fb; font-size: 13px; }
+.console-header > svg, .console-expand svg, .console-close svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
 .console-symbol { color: #8ed9d2; }
 .console-chevron { transition: transform .15s; }
-.is-open .console-chevron { transform: rotate(180deg); }
+.log-toggle.is-open .console-chevron { transform: rotate(180deg); }
 .console-state { border: 1px solid #8baab133; border-radius: 5px; padding: 2px 6px; color: #9cb5bf; background: #ffffff06; font-size: 10px; font-weight: 600; }
 .console-state.is-live { color: #a4edcf; border-color: #6eddb344; background: #48bb9b16; }
 .console-state.is-live::before { content: ''; display: inline-block; width: 5px; height: 5px; margin-right: 5px; border-radius: 50%; background: #8ce3bb; }
@@ -355,9 +368,11 @@ pre { height: 120px; margin: 0; padding: 12px; overflow: auto; border-radius: 8p
 .console-expand { display: grid; place-items: center; width: 31px; padding: 5px; }
 .console-stop { color: #ffcfbe; border-color: #e3916c55; }
 .console-body { display: flex; flex-direction: column; height: clamp(170px, 27vh, 250px); }
-.is-expanded .console-body { height: clamp(250px, 44vh, 600px); }
+.activity-drawer.is-expanded { flex: 1; min-height: 0; }
+.activity-drawer.is-expanded .console-body { flex: 1; height: auto; min-height: 0; }
+.shell.log-expanded .viewport { display: none; }
 .console-output-wrap { position: relative; flex: 1; min-height: 0; }
-.activity-dock pre { height: 100%; margin: 0; padding: 14px 26px; border-radius: 0; color: #dce9ef; background: #0b2537; font: 12px/1.8 ui-monospace, SFMono-Regular, Consolas, monospace; white-space: pre-wrap; overflow-wrap: anywhere; scrollbar-color: #456174 #0b2537; }
+.activity-drawer pre { height: 100%; margin: 0; padding: 14px 26px; border-radius: 0; color: #dce9ef; background: #0b2537; font: 12px/1.8 ui-monospace, SFMono-Regular, Consolas, monospace; white-space: pre-wrap; overflow-wrap: anywhere; scrollbar-color: #456174 #0b2537; }
 .log-line { display: inline; }
 .log-launcher { color: #97d7d0; }
 .log-stderr { color: #ecd3a1; }
@@ -370,9 +385,9 @@ pre { height: 120px; margin: 0; padding: 12px; overflow: auto; border-radius: 8p
 .console-follow { flex: none; margin-left: auto; padding: 4px 7px; color: #bdd7df; background: transparent; font-size: 10px; }
 .console-follow[aria-pressed="true"] { color: #a4edcf; }
 .console-follow::before { content: '↓'; margin-right: 5px; }
-@media (max-width: 920px) { .console-header, .activity-dock pre, .console-footer { padding-left: 18px; padding-right: 18px; } .console-header { gap: 12px; } .console-retention { display: none; } }
-@media (max-height: 720px) { .console-body { height: 170px; } .is-expanded .console-body { height: 260px; } }
-.launcher-modal .panel { background: #fff; border-color: #dfe9e8; }
+@media (max-width: 920px) { .console-header, .activity-drawer pre, .console-footer { padding-left: 18px; padding-right: 18px; } .console-header { gap: 12px; } .console-retention { display: none; } }
+@media (max-height: 720px) { .console-body { height: 170px; } }
+:is(.launcher-modal, .sheet) .panel { background: #fff; border-color: #dfe9e8; }
 .version-list { margin: 7px 0 0; font-size: 12px; }
 .version-list > div { display: flex; align-items: baseline; justify-content: space-between; gap: 18px; padding: 7px 0; }
 .version-list > div + div { border-top: 1px solid #e6ebea; }
@@ -418,8 +433,7 @@ pre { height: 120px; margin: 0; padding: 12px; overflow: auto; border-radius: 8p
 .dolphin-save-drop[aria-disabled="true"] { opacity: .55; }
 
 /* Settings: a sidebar of tabs beside one scrolling pane of grouped rows. */
-.settings-modal { width: min(920px, calc(100% - 36px)); height: min(680px, calc(100% - 48px)); max-height: none; }
-.settings-modal .modal-head { padding: 16px 20px 14px; }
+.settings-page .modal-head { padding: 16px 20px 14px; }
 .settings-layout { flex: 1; min-height: 0; display: grid; grid-template-columns: 184px 1fr; }
 .settings-nav { display: flex; flex-direction: column; gap: 2px; padding: 12px 10px; overflow-y: auto; border-right: 1px solid #dce7e6; background: #f1f6f5; }
 .settings-tab { display: flex; align-items: center; gap: 10px; width: 100%; padding: 9px 12px; border: 0; border-radius: 8px; background: transparent; color: #4a656c; font-size: 13px; font-weight: 600; text-align: left; }
@@ -496,7 +510,7 @@ pre { height: 120px; margin: 0; padding: 12px; overflow: auto; border-radius: 8p
 
 /* Dark mode (Settings → Launcher): the dialogs and notices take the backdrop's deep blue. */
 .dark { color-scheme: dark; }
-.dark .launcher-modal { border-color: #2f5468; background: #0d2231; color: #e3eff2; }
+.dark :is(.launcher-modal, .sheet) { border-color: #2f5468; background: #0d2231; color: #e3eff2; }
 .dark .modal-head { border-color: #2a5163; background: radial-gradient(circle at 88% -60%, #29a8b355 0, #29a8b300 45%), linear-gradient(120deg, #143d58, #0e5866); }
 .dark .modal-head p:last-child { color: #b9dde3; }
 .dark .modal-close { border-color: #ffffff30; background: #ffffff14; color: #e6f6f9; }
@@ -507,7 +521,7 @@ pre { height: 120px; margin: 0; padding: 12px; overflow: auto; border-radius: 8p
 .dark .settings-tab { position: relative; }
 .dark .settings-tab.active { background: linear-gradient(90deg, #ffc75a1f, #ffc75a08); color: #ffe2a3; box-shadow: none; }
 .dark .settings-tab.active::before { position: absolute; left: 0; top: 8px; bottom: 8px; width: 3px; border-radius: 3px; background: #ffc75a; content: ''; }
-.dark :is(.settings-group, .changelog-release, .mac-command, .launcher-modal .panel) { border-color: #2a4d61; border-top-color: #36637a; background: linear-gradient(180deg, #17364b, #132e40); box-shadow: 0 6px 18px #0004; }
+.dark :is(.settings-group, .changelog-release, .mac-command, :is(.launcher-modal, .sheet) .panel) { border-color: #2a4d61; border-top-color: #36637a; background: linear-gradient(180deg, #17364b, #132e40); box-shadow: 0 6px 18px #0004; }
 .dark :is(.settings-group > *, .binding-row, .version-list > div + div, .switch, .field) { border-color: #23404f; }
 .dark :is(.switch strong, .settings-group .field > span, .settings-group .range-field strong, .path-row strong, .backup-picker span,
   .changelog-release h2, .binding-row.changed > span:first-child, .binding-modes button[aria-pressed="true"]) { color: #e6f2f4; }
@@ -560,14 +574,14 @@ pre { height: 120px; margin: 0; padding: 12px; overflow: auto; border-radius: 8p
 .gamepad-active :is(button, select, input, summary, pre, a):focus { outline: 3px solid #ffc75a; outline-offset: 3px; }
 .gamepad-active .switch input:focus { outline: none; }
 .gamepad-active .switch:focus-within { outline: 3px solid #ffc75a; outline-offset: 3px; border-radius: 6px; }
-.gamepad-active .launcher-modal :is(button, select, input, summary, pre, a):focus,
-.gamepad-active .launcher-modal .switch:focus-within { outline-color: #0f7f8a; }
+.gamepad-active :is(.launcher-modal, .sheet) :is(button, select, input, summary, pre, a):focus,
+.gamepad-active :is(.launcher-modal, .sheet) .switch:focus-within { outline-color: #0f7f8a; }
 .gamepad-hints { display: none; align-items: center; gap: 5px; margin-left: auto; color: #d2eaf0; white-space: nowrap; }
 .gamepad-hints kbd { margin-left: 7px; padding: 1px 5px; border: 1px solid #ffffff55; border-radius: 4px; background: #ffffff1a; color: #fff; font-family: inherit; font-size: 10px; font-weight: 700; line-height: 1.4; }
 .gamepad-active .gamepad-hints { display: flex; }
 .gamepad-active .byo { margin-left: 14px; }
-.gamepad-active .dark .launcher-modal :is(button, select, input, summary, pre, a):focus,
-.gamepad-active .dark .launcher-modal .switch:focus-within { outline-color: #ffc75a; }
+.gamepad-active .dark :is(.launcher-modal, .sheet) :is(button, select, input, summary, pre, a):focus,
+.gamepad-active .dark :is(.launcher-modal, .sheet) .switch:focus-within { outline-color: #ffc75a; }
 
 /* Steam: the banner's tick once the launcher is in the library (or a warning while
    its shortcut lacks --no-sandbox), and the Add to Steam dialog dressed as
@@ -606,7 +620,6 @@ pre { height: 120px; margin: 0; padding: 12px; overflow: auto; border-radius: 8p
 /* Customize Mario */
 .mario-logo { background: linear-gradient(135deg, #e3322c, #b8211c); }
 .mario-logo svg { fill: #fff; }
-.mario-look-modal { width: min(1040px, calc(100% - 36px)); height: min(680px, calc(100% - 56px)); max-height: none; }
 .mario-look-body { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) 330px; }
 .mario-stage-wrap { position: relative; min-height: 0; overflow: hidden; background: radial-gradient(ellipse 70% 55% at 50% 42%, #ffffff 0%, #dff1f4 55%, #b9dde4 100%); }
 .mario-stage-wrap::after { position: absolute; left: 50%; bottom: 13%; width: 38%; height: 6%; border-radius: 50%; background: radial-gradient(closest-side, #1a46564d, transparent); transform: translateX(-50%); content: ''; pointer-events: none; }
@@ -641,3 +654,45 @@ pre { height: 120px; margin: 0; padding: 12px; overflow: auto; border-radius: 8p
 .mario-aloha { padding: 8px 0; }
 .mario-nozzles { padding: 4px 0 10px; }
 .mario-nozzles[hidden] { display: none; }
+
+/* Side rail: the launcher's pages, with Settings and Discord at its foot. */
+.app-body { flex: 1; min-height: 0; display: flex; }
+.app-content { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.rail { flex: 0 0 200px; display: flex; flex-direction: column; gap: 3px; min-height: 0; padding: 14px 10px 12px; overflow-y: auto; border-right: 1px solid #ffffff22; background: #072a40c7; backdrop-filter: blur(16px); }
+.rail-item { position: relative; display: flex; align-items: center; gap: 11px; width: 100%; padding: 10px 12px; border: 0; border-radius: 9px; background: transparent; color: #c4dfe6; font-size: 13.5px; font-weight: 650; text-align: left; }
+.rail-item svg { flex: none; width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.rail-item span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.rail-item:hover { background: #ffffff12; color: #fff; }
+.rail-item.active { background: linear-gradient(90deg, #ffc75a2c, #ffc75a08); color: #ffe2a3; }
+.rail-item.active::before { position: absolute; left: 0; top: 9px; bottom: 9px; width: 3px; border-radius: 3px; background: #ffc75a; content: ''; }
+.rail-badge { margin-left: auto; padding: 2px 7px; border-radius: 999px; background: #48bb9b33; color: #a4edcf; font-size: 10px; font-style: normal; font-weight: 800; }
+.rail-spacer { flex: 1; }
+.rail-links { margin-top: 8px; padding-top: 10px; border-top: 1px solid #ffffff1a; }
+.rail-link { display: flex; align-items: center; gap: 10px; width: 100%; padding: 7px 8px; border: 0; border-radius: 9px; background: transparent; color: #c4dfe6; font-size: 12px; font-weight: 600; text-align: left; }
+.rail-link:hover { background: #ffffff10; color: #fff; }
+.rail-link-logo { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 7px; background: #5865f2; }
+.rail-link-logo svg { width: 15px; height: 15px; fill: #fff; }
+.rail-link-arrow { margin-left: auto; color: #ffda91; font-weight: 800; }
+@media (max-width: 960px) { .rail { flex-basis: 186px; padding-left: 8px; padding-right: 8px; } .rail-item { gap: 9px; padding: 9px 10px; font-size: 12.5px; } }
+
+/* The room this launcher hosts, under Play. */
+.play-room { display: flex; align-items: center; gap: 8px; width: max-content; max-width: 100%; margin: 12px auto 0; padding: 4px 5px 4px 12px; border: 1px solid #6eddb366; border-radius: 999px; background: #48bb9b22; color: #e6fbf3; font-size: 12px; font-weight: 600; }
+.play-room-dot { width: 7px; height: 7px; border-radius: 50%; background: #8ce3bb; }
+.play-room code { padding: 1px 8px; border-radius: 6px; background: #ffffff1c; color: #fff; font: 700 13px/1.4 ui-monospace, SFMono-Regular, Consolas, monospace; letter-spacing: .06em; }
+.play-room-copy { padding: 3px 11px; border-radius: 999px; background: #ffffff1f; color: #ffda91; font-size: 12px; }
+.play-room-copy:hover { background: #ffffff33; }
+
+/* Status bar: a task's progress, and the button that opens the activity log on any page. */
+.status-progress { flex: none; width: 90px; height: 4px; overflow: hidden; border-radius: 4px; background: #ffffff30; }
+.status-progress i { display: block; height: 100%; width: 0; border-radius: inherit; background: #ffce6d; transition: width .25s ease; }
+.log-toggle { flex: none; display: inline-flex; align-items: center; gap: 7px; margin-left: 14px; padding: 4px 8px 4px 9px; border: 1px solid #8baab155; border-radius: 7px; background: #ffffff0a; color: #e3f1f4; font-size: 11px; font-weight: 600; }
+.log-toggle:hover { background: #ffffff1a; }
+.log-toggle svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.log-toggle .console-chevron { width: 12px; height: 12px; transition: transform .15s; }
+.log-toggle .console-state { padding: 1px 6px; }
+.log-toggle.is-live { border-color: #6eddb366; background: #48bb9b18; }
+.log-toggle.is-error { border-color: #e57d7388; background: #d95c5630; color: #ffd0cb; }
+.activity-drawer .console-header { gap: 12px; min-height: 46px; padding: 0 18px 0 22px; }
+.activity-drawer .console-symbol { flex: none; }
+.console-close { display: grid; place-items: center; width: 31px; padding: 5px; }
+.activity-drawer .console-body { height: clamp(170px, 34vh, 320px); }

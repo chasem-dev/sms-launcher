@@ -61,16 +61,18 @@ async function renderer(data = state(), copyError = null, notes = { releases: []
     play: async () => { calls.push('play'); }, launchGame: async () => { calls.push('launchGame'); },
     updateAndPlay: async () => { calls.push('updateAndPlay'); },
     updatePort: async () => { calls.push('updatePort'); data.game = { ...data.game, needsUpdate: false, installedVersion: data.game.availableVersion }; },
+    checkNat: async () => ({ label: 'Open', type: 'open', text: 'You can host and join.' }), publicGames: async () => [],
+    copyText: async text => { calls.push(['copyText', text]); },
     steamStatus: async () => ({ ...steam }), steamOffered: async prompt => { calls.push(`steamOffered:${prompt}`); },
     addToSteam: async options => { calls.push(['addToSteam', options]); steam = { ...steam, inSteam: true, needsFix: false, offer: false, offerFix: false };
       return { added: true, play: options.play, name: 'Super Mario Sunshine', artwork: 5, total: 5 }; }
   };
-  const context = vm.createContext({ console, setInterval() {}, requestAnimationFrame: callback => setImmediate(callback),
+  const context = vm.createContext({ console, setInterval() {}, clearInterval() {}, requestAnimationFrame: callback => setImmediate(callback),
     window: { sms, smsActivityLog: require('../src/activity-log'), smsRumble: require('../src/rumble'), smsGamepadNav: { start: options => Object.assign(gamepad, options) },
       addEventListener() {} }, document: {
     getElementById(id) { assert.ok(elements.has(id), `Missing HTML element ${id}`); return elements.get(id); },
     querySelectorAll(selector) {
-      const modals = ['page-settings', 'changelog', 'mac-tools-help'].map(id => elements.get(id));
+      const modals = ['steam-add', 'mac-tools-help'].map(id => elements.get(id));
       return selector === '.launcher-modal' ? modals : selector === '.launcher-modal[open]' ? modals.filter(modal => modal.open) : [];
     }, createElement: () => element()
   } });
@@ -233,39 +235,47 @@ test('Copy log reports failures in the activity panel and allows retry', async (
   assert.equal(ui.elements.get('copy-activity-log').disabled, false);
 });
 
-test('the dock is always accessible, opens for tasks, and respects collapse until the next task', async () => {
+test('the status bar opens the log on any page, and a task shows its progress without opening it', async () => {
   const ui = await renderer();
-  assert.equal(ui.elements.get('console-body').hidden, true);
+  const log = ui.elements.get('activity-log');
+  assert.equal(log.hidden, true);
   await ui.click('toggle-activity-log');
-  assert.equal(ui.elements.get('console-body').hidden, false);
+  assert.equal(log.hidden, false);
   assert.equal(ui.elements.get('toggle-activity-log')['aria-expanded'], 'true');
-  await ui.click('toggle-activity-log');
-  const task = { label: 'Build Sunshine port', startedAt: Date.now(), canStop: true };
+  await ui.click('settings-cog');
+  assert.equal(log.hidden, false);
+  await ui.click('close-activity-log');
+  assert.equal(log.hidden, true);
+  const task = { label: 'Build Sunshine port', startedAt: Date.now(), canStop: true, percent: 42 };
   await ui.emitActivity(task);
-  assert.equal(ui.elements.get('console-body').hidden, false);
+  assert.equal(log.hidden, true);
   assert.equal(ui.elements.get('console-state').textContent, 'Live');
+  assert.equal(ui.elements.get('toggle-activity-log').classList.contains('is-live'), true);
+  assert.equal(ui.elements.get('status-progress').hidden, false);
+  assert.equal(ui.elements.get('status-progress-fill').style.width, '42%');
   assert.equal(ui.elements.get('stop').hidden, false);
-  await ui.click('toggle-activity-log');
-  await ui.emitActivity({ ...task, detail: 'Compiling…' });
-  assert.equal(ui.elements.get('console-body').hidden, true);
+  await ui.click('view-build-log');
+  assert.equal(log.hidden, false);
   await ui.emitActivity(null);
-  await ui.emitActivity(task);
-  assert.equal(ui.elements.get('console-body').hidden, false);
+  assert.equal(ui.elements.get('status-progress').hidden, true);
 });
 
-test('the dock opens for reported failures and expands without treating stderr as a crash', async () => {
+test('the log opens for reported failures and expands without treating stderr as a crash', async () => {
   const ui = await renderer();
   await ui.emitLog({ id: 1, sequence: 1, stream: 'stderr', text: 'Could not find customStages.bin' });
   assert.equal(ui.elements.get('console-state').textContent, 'Idle');
-  assert.equal(ui.elements.get('console-body').hidden, true);
+  assert.equal(ui.elements.get('activity-log').hidden, true);
   await ui.emitLog({ id: 2, sequence: 2, stream: 'launcher', text: '✕ Game exited with code 7.' });
   assert.equal(ui.elements.get('console-state').textContent, 'Error');
-  assert.equal(ui.elements.get('console-body').hidden, false);
+  assert.equal(ui.elements.get('toggle-activity-log').classList.contains('is-error'), true);
+  assert.equal(ui.elements.get('activity-log').hidden, false);
   await ui.click('expand-activity-log');
   assert.equal(ui.elements.get('activity-log').classList.contains('is-expanded'), true);
+  assert.equal(ui.elements.get('shell').classList.contains('log-expanded'), true);
   assert.equal(ui.elements.get('expand-activity-log')['aria-label'], 'Restore activity log');
   await ui.click('toggle-activity-log');
   assert.equal(ui.elements.get('activity-log').classList.contains('is-expanded'), false);
+  assert.equal(ui.elements.get('shell').classList.contains('log-expanded'), false);
   await ui.resetLog(3);
   assert.equal(ui.elements.get('console-state').textContent, 'Idle');
 });
@@ -362,7 +372,7 @@ const notes = {
 
 test('the changelog opens once after an update with only the new releases', async () => {
   const ui = await renderer(state(), null, notes);
-  assert.equal(ui.elements.get('changelog').open, true);
+  assert.equal(ui.elements.get('changelog').hidden, false);
   assert.equal(ui.elements.get('changelog-title').textContent, 'Updated to v0.1.39');
   assert.equal(ui.elements.get('changelog-show-all').hidden, false);
   assert.equal(ui.changelogSeen.length, 1);
@@ -373,17 +383,17 @@ test('the changelog opens once after an update with only the new releases', asyn
 
 test('nothing new means no popup, and a running task postpones it to the next start', async () => {
   const quiet = await renderer(state(), null, { ...notes, unseen: [] });
-  assert.equal(quiet.elements.get('changelog').open, false);
+  assert.equal(quiet.elements.get('changelog').hidden, true);
   assert.equal(quiet.changelogSeen.length, 1);
   const busy = await renderer({ ...state(), active: { label: 'Build Sunshine port', startedAt: Date.now() } }, null, notes);
-  assert.equal(busy.elements.get('changelog').open, false);
+  assert.equal(busy.elements.get('changelog').hidden, true);
   assert.equal(busy.changelogSeen.length, 0);
 });
 
-test('the main menu changelog button shows every release', async () => {
+test("What's new in the rail shows every release", async () => {
   const ui = await renderer(state(), null, { ...notes, unseen: [] });
   await ui.click('open-changelog');
-  assert.equal(ui.elements.get('changelog').open, true);
+  assert.equal(ui.elements.get('changelog').hidden, false);
   assert.equal(ui.elements.get('changelog-title').textContent, 'Changelog');
   assert.equal(ui.elements.get('changelog-show-all').hidden, true);
 });
@@ -391,12 +401,12 @@ test('the main menu changelog button shows every release', async () => {
 test('Beta builds see new Beta notes first, and only Beta notes when no release is new', async () => {
   const beta = { launcher: ['Beta launcher change'], game: ['Beta game change'], unseen: true };
   const ui = await renderer(state(), null, { ...notes, unseen: [], beta });
-  assert.equal(ui.elements.get('changelog').open, true);
+  assert.equal(ui.elements.get('changelog').hidden, false);
   assert.equal(ui.elements.get('changelog-title').textContent, "What's new in Beta");
   assert.equal(ui.elements.get('changelog-show-all').hidden, false);
   assert.equal(ui.changelogSeen.length, 1);
   const seen = await renderer(state(), null, { ...notes, unseen: [], beta: { ...beta, unseen: false } });
-  assert.equal(seen.elements.get('changelog').open, false);
+  assert.equal(seen.elements.get('changelog').hidden, true);
   await seen.click('open-changelog');
   assert.equal(seen.elements.get('changelog-title').textContent, 'Changelog');
 });
@@ -404,11 +414,12 @@ test('Beta builds see new Beta notes first, and only Beta notes when no release 
 test('controller buttons open settings, step through its tabs, go back and pause while the game runs', async () => {
   const view = await renderer(state());
   const { elements, gamepad } = view;
-  const tabs = ['gameplay', 'display', 'graphics', 'controls', 'manage', 'saves', 'launcher'];
+  const tabs = ['gameplay', 'display', 'graphics', 'controls', 'manage', 'launcher'];
   const shown = () => tabs.filter(name => !elements.get(`pane-${name}`).hidden);
   assert.equal(gamepad.paused(), false);
   gamepad.actions.menu();
-  assert.equal(elements.get('page-settings').open, true);
+  assert.equal(elements.get('page-settings').hidden, false);
+  assert.equal(elements.get('page-home').hidden, true);
   assert.deepEqual(shown(), ['gameplay']);
   gamepad.actions.previous();
   assert.deepEqual(shown(), ['gameplay']);
@@ -419,20 +430,26 @@ test('controller buttons open settings, step through its tabs, go back and pause
   assert.equal(elements.get('tab-launcher')['aria-selected'], 'true');
   assert.equal(elements.get('tab-gameplay')['aria-selected'], 'false');
   gamepad.actions.previous();
-  assert.deepEqual(shown(), ['saves']);
+  assert.deepEqual(shown(), ['manage']);
   gamepad.actions.back();
-  assert.equal(elements.get('page-settings').open, false);
+  assert.equal(elements.get('page-settings').hidden, true);
+  assert.equal(elements.get('page-home').hidden, false);
   // Settings reopens on the tab it closed on.
   gamepad.actions.menu();
-  assert.deepEqual(shown(), ['saves']);
+  assert.deepEqual(shown(), ['manage']);
   await view.click('tab-controls');
   assert.deepEqual(shown(), ['controls']);
+  gamepad.actions.menu();
+  assert.equal(elements.get('page-settings').hidden, true);
+  // Away from Settings, LB and RB step through the rail's pages.
+  gamepad.actions.next();
+  assert.equal(elements.get('multiplayer').hidden, false);
   gamepad.actions.back();
-  assert.equal(elements.get('page-settings').open, false);
+  assert.equal(elements.get('page-home').hidden, false);
   gamepad.actions.view();
-  assert.equal(elements.get('console-body').hidden, false);
+  assert.equal(elements.get('activity-log').hidden, false);
   gamepad.actions.back();
-  assert.equal(elements.get('console-body').hidden, true);
+  assert.equal(elements.get('activity-log').hidden, true);
   await view.emitActivity({ label: 'Play Super Mario Sunshine', startedAt: Date.now() });
   assert.equal(gamepad.paused(), true);
 });
@@ -522,4 +539,32 @@ test('the Customize Mario banner shows once a disc is chosen', async () => {
   const noDisc = state();
   noDisc.romReady = false;
   assert.equal((await renderer(noDisc)).elements.get('customize-mario').hidden, true);
+});
+
+test('the rail shows one page at a time and marks it', async () => {
+  const ui = await renderer();
+  const sections = ['page-home', 'multiplayer', 'mario-look', 'page-saves', 'changelog', 'page-settings'];
+  const visible = () => sections.filter(id => !ui.elements.get(id).hidden);
+  assert.deepEqual(visible(), ['page-home']);
+  for (const [nav, section] of [['nav-saves', 'page-saves'], ['open-multiplayer', 'multiplayer'], ['customize-mario', 'mario-look'],
+    ['settings-cog', 'page-settings'], ['nav-play', 'page-home']]) {
+    await ui.click(nav);
+    assert.deepEqual(visible(), [section]);
+    assert.equal(ui.elements.get(nav).classList.contains('active'), true);
+    assert.equal(ui.elements.get(nav)['aria-current'], 'page');
+  }
+  assert.equal(ui.elements.get('settings-cog').classList.contains('active'), false);
+});
+
+test('a hosted room shows under Play, on Multiplayer and in the rail, and goes when the game ends', async () => {
+  const ui = await renderer();
+  for (const id of ['play-room', 'mp-room', 'rail-mp-badge']) assert.equal(ui.elements.get(id).hidden, true);
+  await ui.click('open-multiplayer');
+  await ui.emitActivity({ label: 'Play Super Mario Sunshine', startedAt: Date.now(), room: 'KQ7M2D' });
+  for (const id of ['play-room', 'mp-room', 'rail-mp-badge']) assert.equal(ui.elements.get(id).hidden, false);
+  assert.equal(ui.elements.get('play-room-code').textContent, 'KQ7M2D');
+  // Hosting from Multiplayer goes back to Play once the game starts.
+  assert.equal(ui.elements.get('page-home').hidden, false);
+  await ui.emitActivity(null);
+  for (const id of ['play-room', 'mp-room', 'rail-mp-badge']) assert.equal(ui.elements.get(id).hidden, true);
 });

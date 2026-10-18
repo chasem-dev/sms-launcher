@@ -79,7 +79,7 @@ function broadcast(channel, data) {
   if (window && !window.isDestroyed()) window.webContents.send(channel, data);
 }
 
-// The room code friends join with, while hosting (shown under the play button).
+// The room code friends join with, while hosting (shown under Play, on Multiplayer and in the status bar).
 let hostedRoom = null;
 
 function activityState() {

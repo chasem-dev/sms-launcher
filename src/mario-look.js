@@ -4,7 +4,7 @@ import * as THREE from '../node_modules/three/build/three.module.js';
 
 const Colors = window.SmsMarioColors;
 const $ = id => document.getElementById(id);
-const dialog = $('mario-look');
+const page = $('mario-look');
 const GROUPS = [
   { title: 'Outfit', regions: ['hat', 'emblem', 'emblemLetter', 'shirt', 'overalls', 'buttons', 'gloves', 'shoes'] },
   { title: 'Face', regions: ['skin', 'hair', 'eyebrows', 'mustache', 'eyes'] },
@@ -13,17 +13,19 @@ const WRAP = [THREE.ClampToEdgeWrapping, THREE.RepeatWrapping, THREE.MirroredRep
 
 let viewer = null, model = null, look = Colors.normalizeLook(), saveTimer = null, loading = null;
 
-$('customize-mario').addEventListener('click', () => {
-  dialog.showModal();
-  if (model) show();
-  else loading ||= load();
-});
-// Nothing of Mario's view stays on the GPU while the dialog is closed: the
-// launcher keeps no WebGL context while the game or a build runs.
-dialog.addEventListener('close', () => {
-  viewer?.dispose();
-  viewer = null;
-  if (saveTimer) { clearTimeout(saveTimer); save(); }
+// The page is one of the rail's (renderer.js: showPage). Nothing of Mario's
+// view stays on the GPU while another page shows: the launcher keeps no WebGL
+// context while the game or a build runs.
+window.smsOnPage('mario', {
+  show() {
+    if (model) show();
+    else loading ||= load();
+  },
+  hide() {
+    viewer?.dispose();
+    viewer = null;
+    if (saveTimer) { clearTimeout(saveTimer); save(); }
+  }
 });
 
 async function load() {
@@ -33,7 +35,7 @@ async function load() {
     model = result.model;
     look = Colors.normalizeLook(result.look);
     renderControls();
-    if (dialog.open) show();
+    if (!page.hidden) show();
     else setStatus('');
   } catch (error) {
     setStatus(error.message || String(error));

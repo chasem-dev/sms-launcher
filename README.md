@@ -77,7 +77,7 @@ Logos, menus, and movies stay at 30 fps.
 
 Turn on **Settings → Display → Full screen** to have the game fill your display on its next launch. **Full screen type** chooses Borderless (the default) or Exclusive, which switches your display to the **Exclusive resolution** while the game runs (for example 1920×1080 on a 4K screen). **Monitor** opens the game on the same monitor as the launcher or on the primary one. F11 or Alt+Enter switches full screen while playing.
 
-The launcher also works with a game controller. Move with the left stick or d-pad and press **A** to select. On a list, **A** steps to the next choice and **X** steps back; on a slider, left and right change the value. Press **B** to go back and **Start** to open or close Settings. **LB**/**RB** move between the Settings tabs, **View**/**Select** shows or hides the activity log, and the right stick scrolls. The launcher ignores the controller while the game is running and while **Controls** waits for a button to bind. Choosing a file or folder still opens your system's file picker, which needs a mouse or keyboard.
+The launcher also works with a game controller. Move with the left stick or d-pad and press **A** to select. On a list, **A** steps to the next choice and **X** steps back; on a slider, left and right change the value. Press **B** to go back (to Play, from any other page) and **Start** to open or close Settings. **LB**/**RB** move between the side rail's pages, or between the Settings tabs on Settings, **View**/**Select** shows or hides the activity log, and the right stick scrolls. The launcher ignores the controller while the game is running and while **Controls** waits for a button to bind. Choosing a file or folder still opens your system's file picker, which needs a mouse or keyboard.
 
 **Settings → Display** also has **Picture fit** (keep its shape, stretch, or whole multiples of the original size), **Brightness**, **Vsync** (Off, On or Adaptive) and **Performance overlay**, which opens the game's frame-rate overlay at start (the backtick key toggles it in game).
 
@@ -132,7 +132,7 @@ Launcher updates download automatically when **Update automatically** is enabled
 
 To manage updates yourself, turn off **Update automatically** in **Settings → Launcher**. Use **Update game** in **Settings → Manage game** when you're ready.
 
-After the launcher updates, its changelog opens once to show what changed in the launcher and the game since you last opened it. Open it any time with the changelog button beside the Settings cog.
+After the launcher updates, its changelog opens once to show what changed in the launcher and the game since you last opened it. Open it any time with **What's new** in the side rail.
 
 ### Join the Beta
 
@@ -156,7 +156,7 @@ The [Add to Steam](#add-to-steam) banner sets this up for you when you turn on *
 
 The launcher keeps your save location when you update or rebuild the game. It makes dated backups before and after playing, and before game updates or cleanup.
 
-In **Settings → Saves**, you can:
+On the **Saves & states** page in the side rail, you can:
 
 - **Import a Dolphin save:** drop a `.gci` file into the Saved games panel, or choose **Choose .gci file**. Confirm the import, then start the game.
 - **Back up saves** whenever you want an extra copy.
@@ -171,13 +171,13 @@ A save state is the exact moment you're in. In a level, press **L1 + R1** (LB + 
 
 A state loads exactly, with everything where it was, in the game build that saved it. A state from another build (after a game update, or from someone else) takes you to the same level and spot instead, and the list marks it "position". Loading a state brings its progress too, so saving to the memory card afterwards saves that progress.
 
-States are `.smsstate` files in a **savestates** folder next to your memory card folder. **Settings → Saves** lists them with their pictures. From there, **Import a state** adds states others send you, **Show file** finds one to share, **Delete** removes one, and **Open save states folder** opens the folder. Save states are not part of save backups.
+States are `.smsstate` files in a **savestates** folder next to your memory card folder. The **Saves & states** page lists them with their pictures. From there, **Import a state** adds states others send you, **Show file** finds one to share, **Delete** removes one, and **Open save states folder** opens the folder. Save states are not part of save backups.
 
 Export your North American Super Mario Sunshine save (`GMSE01`, `super_mario_sunshine`) from Dolphin's Memory Card Manager as a `.gci` file. The importer transfers the entire save, including all three slots. It installs the unchanged save data and the card metadata into the save folder shown in the launcher, including custom locations, on Windows, macOS, and Linux. A fresh card does not need to be created in-game first. Other games, regions, raw memory cards, and `.sav`/`.gcs` files are not supported.
 
 ### Add to Steam
 
-The **Add to Steam** banner on the home screen, under the Discord one, adds the launcher to your Steam library as a non-Steam game called **Super Mario Sunshine**, with artwork from [SteamGridDB](https://www.steamgriddb.com/game/34899): the library capsule, wide capsule, header, logo and icon. You can then start it from Steam, Big Picture, or a Steam Deck's Game Mode. On a Steam Deck, add it from Desktop Mode.
+The **Add to Steam** banner on the Play page adds the launcher to your Steam library as a non-Steam game called **Super Mario Sunshine**, with artwork from [SteamGridDB](https://www.steamgriddb.com/game/34899): the library capsule, wide capsule, header, logo and icon. You can then start it from Steam, Big Picture, or a Steam Deck's Game Mode. On a Steam Deck, add it from Desktop Mode.
 
 - It first asks whether to **Skip Launcher**. With it on, the shortcut gets `--play`, so Steam starts the game straight away (see [Start the game from Steam](#start-the-game-from-steam)); turn it off to open the launcher from Steam instead. Your other launch options are kept.
 - If Steam is open, it closes for a moment, because Steam picks up new non-Steam games only when it starts. On Windows it opens again afterwards; on Linux and the Steam Deck, open Steam again yourself once the launcher says it was added.
@@ -215,7 +215,7 @@ While the game runs and the Discord app is open on the same computer, your Disco
 
 ## Need help?
 
-The **Activity log** panel is always available along the bottom of the launcher. It opens when a task starts or reports a failure; click its heading to collapse it or use the expand button for more reading space. Launcher messages, stdout and stderr have separate labels and colors. Stderr also carries normal game diagnostics; its label alone does not mean a crash. Scroll up to pause following output, and click **Follow output** to catch up again. Each fresh Play clears the activity window and replaces the stored session log before any setup or launch steps. Use **Copy log** to copy the full current session to your clipboard or **Save log** to export it to a file, including output older than the latest 700 visible entries. The current session is also kept in the launcher's user-data `logs` folder. The launcher closes stdin for its tasks; this view does not accept terminal input.
+The **Activity log** button at the right of the status bar opens the log on any page, as a panel under the page that pushes it up; ✕ or the button again hides it, and the expand button gives it the page's whole height. A task shows its progress under Play and in the status bar without opening the log (**View build log** opens it); the log opens by itself when something fails. Launcher messages, stdout and stderr have separate labels and colors. Stderr also carries normal game diagnostics; its label alone does not mean a crash. Scroll up to pause following output, and click **Follow output** to catch up again. Each fresh Play clears the activity window and replaces the stored session log before any setup or launch steps. Use **Copy log** to copy the full current session to your clipboard or **Save log** to export it to a file, including output older than the latest 700 visible entries. The current session is also kept in the launcher's user-data `logs` folder. The launcher closes stdin for its tasks; this view does not accept terminal input.
 
 Game failures report the actual exit code or signal, without treating resource warnings or stage context as the crash cause. Windows games start directly so their native exception status is preserved. Setup failures can still quote a compiler or installer diagnostic.
 

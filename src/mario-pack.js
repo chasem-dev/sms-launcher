@@ -70,24 +70,34 @@ function packIndex(directories) {
   return index;
 }
 
-// One texture repainted: each part's texels sorted into regions and repainted,
-// then merged, each texel from the first part (by PRIORITY) that covers it.
-function repaint({ width, height, rgba }, parts, references, chosen, { wrapS = 0, wrapT = 0 } = {}) {
-  const out = Uint8Array.from(rgba), lightness = colors.lightness(rgba);
-  const painted = [...parts.entries()].sort(([a], [b]) => PRIORITY.indexOf(a) - PRIORITY.indexOf(b)).map(([part, shapes]) => {
-    const covered = new Uint8Array(width * height);
+// One texture's paint map, which the chosen colours don't change: each texel's
+// region (255: kept as it is on the disc), the neighbouring region it blends
+// into on a border and how much (blendEdges), and its lightness. A texel two
+// parts cover is the first part's (by PRIORITY).
+function paintMap({ width, height, rgba }, parts, references, { wrapS = 0, wrapT = 0 } = {}) {
+  const lightness = colors.lightness(rgba), size = width * height;
+  const mask = new Uint8Array(size).fill(255), second = new Uint8Array(size).fill(255), mix = new Uint8Array(size);
+  const done = new Uint8Array(size);
+  for (const [part, shapes] of [...parts.entries()].sort(([a], [b]) => PRIORITY.indexOf(a) - PRIORITY.indexOf(b))) {
+    const covered = new Uint8Array(size);
     for (const shape of shapes) colors.coverage(width, height, shape.uv, shape.index, covered, wrapS, wrapT);
     const texture = { rgba, width, height, mask: colors.classify(rgba, width, height, part, covered), lightness };
-    Object.assign(texture, colors.blendEdges(texture, references));
-    return { mask: texture.mask, pixels: colors.recolor(texture, references, chosen) };
-  });
-  const done = new Uint8Array(width * height);
-  for (const { mask, pixels } of painted) for (let i = 0; i < done.length; i++) {
-    if (done[i] || mask[i] === 255) continue;
-    done[i] = 1;
-    out.set(pixels.subarray(i * 4, i * 4 + 4), i * 4);
+    const edges = colors.blendEdges(texture, references);
+    for (let i = 0; i < size; i++) {
+      if (done[i] || texture.mask[i] === 255) continue;
+      done[i] = 1;
+      mask[i] = texture.mask[i];
+      second[i] = edges.second[i];
+      mix[i] = edges.mix[i];
+    }
   }
-  return out;
+  return { mask, second, mix, lightness };
+}
+
+// One texture repainted in the chosen colours.
+function repaint(source, parts, references, chosen, wrap = {}) {
+  const map = paintMap(source, parts, references, wrap);
+  return Uint8Array.from(colors.recolor({ rgba: source.rgba, ...map }, references, chosen));
 }
 
 function stamp(file) {
@@ -133,4 +143,66 @@ function bake({ rom, look, references, packDirectories = [], directory }) {
   return directory;
 }
 
-module.exports = { bake, packName, targets, packIndex, repaint };
+// The look as multiplayer games pass it on: each chosen region and its colour,
+// "hat=2fa846;shirt=2fa846", in the order of the regions (empty: Mario's own).
+function lookText(look) {
+  const chosen = colors.normalize(look?.colors);
+  return colors.REGIONS.filter(({ id }) => chosen[id]).map(({ id }) => `${id}=${chosen[id].slice(1)}`).join(';');
+}
+
+// What a multiplayer game needs to paint the other players in their own
+// colours (SMS_MARIO_PAINT, ext/multiplayer/sync/mp_look.cpp): for each texture
+// Mario's colours touch, the picture the game shows (the HD one where a pack
+// has it) and its paint map, in a .paint file, and paint.txt naming them and
+// the regions. A .paint file: "SMSPAINT", then little-endian u32 version,
+// width and height, then RGBA, region, blend region, blend share and lightness
+// (one byte each) for every texel. Made again only when the disc or the HD
+// images change.
+const PAINT_VERSION = 1;
+function paintFile({ width, height, rgba }, map) {
+  const head = Buffer.alloc(20);
+  head.write('SMSPAINT', 0, 'ascii');
+  head.writeUInt32LE(PAINT_VERSION, 8);
+  head.writeUInt32LE(width, 12);
+  head.writeUInt32LE(height, 16);
+  return Buffer.concat([head, Buffer.from(rgba.buffer, rgba.byteOffset, width * height * 4),
+    map.mask, map.second, map.mix, map.lightness]);
+}
+function bakePaint({ rom, references, packDirectories = [], directory }) {
+  const disc = new Disc(rom);
+  let files;
+  try { files = rarc(disc.file('data/mario.szs')); }
+  finally { disc.close(); }
+  const model = j3d.parseBmd(files.get('bmd/ma_mdl1.bmd'));
+  const index = packIndex(packDirectories);
+  const list = targets(model).map(target => ({ ...target, hd: index.get(target.name) || null }));
+  const key = crypto.createHash('sha256').update(JSON.stringify({
+    PAINT_VERSION, VERSION, rom: stamp(rom), hd: list.map(t => t.hd && stamp(t.hd)),
+  })).digest('hex');
+  try {
+    if (fs.readFileSync(path.join(directory, 'paint.txt'), 'utf8').split('\n').includes(`key ${key}`)) return directory;
+  } catch (_) { /* not made yet */ }
+
+  const temporary = `${directory}.making`;
+  fs.rmSync(temporary, { recursive: true, force: true });
+  fs.mkdirSync(temporary, { recursive: true });
+  const lines = [`sms-paint ${PAINT_VERSION}`, `key ${key}`];
+  colors.REGIONS.forEach(({ id }, i) => {
+    const ref = references[i];
+    lines.push(`region ${i} ${id} ${ref ? ref.color.slice(1) : '-'} ${ref ? ref.lightness.toFixed(3) : 0}`);
+  });
+  list.forEach((target, n) => {
+    const source = target.hd ? image.readImage(target.hd) : target.source;
+    const file = `${n}.paint`;
+    fs.writeFileSync(path.join(temporary, file), paintFile(source, paintMap(source, target.parts, references, target.source)));
+    // every texture of the model with this picture (the game finds them by name)
+    const names = new Set(model.textures.filter(texture => packName(texture) === target.name).map(texture => texture.name));
+    for (const name of names) lines.push(`texture ${name} ${file}`);
+  });
+  fs.writeFileSync(path.join(temporary, 'paint.txt'), `${lines.join('\n')}\n`);
+  fs.rmSync(directory, { recursive: true, force: true });
+  fs.renameSync(temporary, directory);
+  return directory;
+}
+
+module.exports = { bake, bakePaint, lookText, packName, targets, packIndex, paintMap, paintFile, repaint };

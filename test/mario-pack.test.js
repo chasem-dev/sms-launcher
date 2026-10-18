@@ -119,3 +119,22 @@ test('one texture shared by two parts is repainted per part and merged', () => {
   assert.ok(at(7, 4)[2] > 150 && at(7, 4)[1] < 80, `body texel ${at(7, 4)}`);
   assert.deepEqual(at(4, 4), [214, 22, 28], 'texels no part covers keep the disc colour');
 });
+
+test('a look goes to other players as its chosen regions in order, only real regions with colours', () => {
+  assert.equal(pack.lookText({ colors: { shirt: '#2FA846', hat: '#2fa846', overalls: '#21338c', nonsense: '#000000', shoes: 'red' } }),
+    'hat=2fa846;shirt=2fa846;overalls=21338c');
+  assert.equal(pack.lookText({ colors: {} }), '');
+  assert.equal(pack.lookText(null), '');
+});
+
+test('a paint file holds the picture and, per texel, region, blend region, blend share and lightness', () => {
+  const rgba = Uint8Array.from([1, 2, 3, 255, 4, 5, 6, 255]);
+  const map = { mask: Uint8Array.from([0, 255]), second: Uint8Array.from([255, 255]), mix: Uint8Array.from([0, 0]),
+    lightness: Uint8Array.from([10, 20]) };
+  const file = pack.paintFile({ width: 2, height: 1, rgba }, map);
+  assert.equal(file.toString('ascii', 0, 8), 'SMSPAINT');
+  assert.deepEqual([file.readUInt32LE(8), file.readUInt32LE(12), file.readUInt32LE(16)], [1, 2, 1]);
+  assert.equal(file.length, 20 + 2 * 8);
+  assert.deepEqual([...file.subarray(20, 28)], [...rgba]);
+  assert.deepEqual([...file.subarray(28)], [0, 255, 255, 255, 0, 0, 10, 20]);
+});

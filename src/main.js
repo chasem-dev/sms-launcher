@@ -859,6 +859,8 @@ async function play(installation = null, session = null) {
   if (config.settings.discordPresence) env.SMS_PRESENCE = '1';
   const look = marioLookPack(rom, root, settings);
   if (look) env.SMS_MARIO_LOOK = look;
+  // Together, each game paints the others in their own colours (theirs come over the network).
+  if (session) Object.assign(env, marioPaintEnvironment(rom, root, settings));
   if (session) Object.assign(env, session.env);
   if (portableRoot && !env.SMS_GX_SHADER_CACHE) {
     // The game only makes the folder for its default location.
@@ -908,6 +910,24 @@ function marioLookPack(rom, root, settings) {
     log(`Mario keeps his usual colours: ${error.message}`);
     return null;
   }
+}
+
+// Multiplayer: what the game needs to paint the other players in their colours (SMS_MARIO_PAINT, a folder of
+// Mario's pictures and their paint maps) and to send its own (SMS_MULTIPLAYER_LOOK). Without them everyone keeps
+// their character's colours; never in the way of playing.
+function marioPaintEnvironment(rom, root, settings) {
+  if (settings.eclipse) return {};
+  const env = { SMS_MULTIPLAYER_LOOK: marioPack.lookText(config.marioLook) };
+  try {
+    const started = Date.now();
+    env.SMS_MARIO_PAINT = marioPack.bakePaint({ rom, references: marioFrom(rom).references,
+      directory: path.join(app.getPath('userData'), 'mario-paint'),
+      packDirectories: settings.textures ? [port.texturePackDirectory(root)] : [] });
+    if (Date.now() - started > 250) log(`Got Mario ready to paint the other players in ${((Date.now() - started) / 1000).toFixed(1)} s.`);
+  } catch (error) {
+    log(`The other players keep their characters' colours: ${error.message}`);
+  }
+  return env;
 }
 
 // Time spent in the game, in milliseconds, for Discord; kept apart from preferences.

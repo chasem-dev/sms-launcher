@@ -556,15 +556,15 @@ test('the tabs show one page at a time and mark it', async () => {
   assert.equal(ui.elements.get('settings-cog').classList.contains('active'), false);
 });
 
-test('a hosted room shows under Play, on Multiplayer and on its tab, and goes when the game ends', async () => {
+test('a hosted room shows under Play and on Multiplayer, and goes when the game ends', async () => {
   const ui = await renderer();
-  for (const id of ['play-room', 'mp-room', 'nav-mp-badge']) assert.equal(ui.elements.get(id).hidden, true);
+  for (const id of ['play-room', 'mp-room']) assert.equal(ui.elements.get(id).hidden, true);
   await ui.click('open-multiplayer');
   await ui.emitActivity({ label: 'Play Super Mario Sunshine', startedAt: Date.now(), room: 'KQ7M2D' });
-  for (const id of ['play-room', 'mp-room', 'nav-mp-badge']) assert.equal(ui.elements.get(id).hidden, false);
+  for (const id of ['play-room', 'mp-room']) assert.equal(ui.elements.get(id).hidden, false);
   assert.equal(ui.elements.get('play-room-code').textContent, 'KQ7M2D');
   // Hosting from Multiplayer goes back to Play once the game starts.
   assert.equal(ui.elements.get('page-home').hidden, false);
   await ui.emitActivity(null);
-  for (const id of ['play-room', 'mp-room', 'nav-mp-badge']) assert.equal(ui.elements.get(id).hidden, true);
+  for (const id of ['play-room', 'mp-room']) assert.equal(ui.elements.get(id).hidden, true);
 });

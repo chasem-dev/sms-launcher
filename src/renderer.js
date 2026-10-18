@@ -582,9 +582,9 @@ function renderConsoleState(active) {
   }
 }
 
-// The room this launcher hosts: under Play, at the top of Multiplayer and as Live on its tab.
+// The room this launcher hosts: under Play and at the top of Multiplayer.
 function renderRoom(room) {
-  for (const id of ['play-room', 'mp-room', 'nav-mp-badge']) $(id).hidden = !room;
+  for (const id of ['play-room', 'mp-room']) $(id).hidden = !room;
   $('play-room-code').textContent = room || '';
   $('mp-room-code').textContent = room || '';
 }

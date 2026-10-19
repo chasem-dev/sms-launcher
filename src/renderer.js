@@ -733,7 +733,7 @@ function refresh(data) {
   renderLanguages(data.languages);
   for (const key of ['arch', 'widescreen', 'resolution', 'volume', 'frameRate', 'language', 'vsync', 'fullscreenMode', 'exclusiveResolution',
     'display', 'cameraSpeed', 'mouseSensitivity', 'msaa', 'anisotropic', 'sharpen', 'brightness', 'aspect', 'presentFilter', 'fsrMode',
-    'textureLoading'])
+    'textureLoading', 'renderer'])
     $(key).value = String(config.settings[key]);
   renderVolume();
   renderRanges();
@@ -764,7 +764,7 @@ function refresh(data) {
   $('update-channel-field').hidden = data.portable;
   $('update-channel-note').hidden = data.portable;
   renderGameSource(data);
-  for (const key of ['arch', 'widescreen', 'resolution', 'volume', 'frameRate', 'language', 'vsync', 'skipMovies', 'skipIntro', 'pauseTracker', 'heatHaze', 'overlay', 'fullscreen', 'fullscreenMode', 'exclusiveResolution', 'display', 'invertCameraX', 'invertCameraY', 'freeCamera', 'cstickAim', 'cameraSpeed', 'mouseCamera', 'mouseSensitivity', 'msaa', 'fxaa', 'anisotropic', 'sharpen', 'brightness', 'aspect', 'presentFilter', 'hudEdges', 'textures', 'textureLoading', 'shaderWarmup', 'cutscenes', 'eclipse', 'autoUpdate', 'shareUsage', 'discordPresence', 'darkMode', 'updateChannel', 'buttonPrompts', 'promptPad', 'graphicsPreset', 'fsrMode'])
+  for (const key of ['arch', 'widescreen', 'resolution', 'volume', 'frameRate', 'language', 'vsync', 'skipMovies', 'skipIntro', 'pauseTracker', 'heatHaze', 'overlay', 'fullscreen', 'fullscreenMode', 'exclusiveResolution', 'display', 'invertCameraX', 'invertCameraY', 'freeCamera', 'cstickAim', 'cameraSpeed', 'mouseCamera', 'mouseSensitivity', 'msaa', 'fxaa', 'anisotropic', 'sharpen', 'brightness', 'aspect', 'presentFilter', 'hudEdges', 'textures', 'textureLoading', 'shaderWarmup', 'cutscenes', 'eclipse', 'autoUpdate', 'shareUsage', 'discordPresence', 'darkMode', 'updateChannel', 'buttonPrompts', 'promptPad', 'graphicsPreset', 'fsrMode', 'renderer'])
     $(key).disabled = Boolean(data.active);
   // Languages need a game version with language packs. Eclipse has none and plays in English;
   // the chosen language stays for Super Mario Sunshine.
@@ -1044,6 +1044,11 @@ function renderDependents(busy = false) {
   $('fsr-hint').hidden = !fsr;
   $('resolution').disabled = busy || fsr;
   $('textureLoading').disabled = busy || !$('textures').checked;
+  // HDR output (Windows) goes through OpenGL: with Vulkan the game shows in SDR
+  const vulkanHdr = $('renderer').value === 'vulkan' && !$('hdr-panel').hidden && $('hdr').checked;
+  $('renderer-hint').textContent = vulkanHdr
+    ? 'HDR needs OpenGL for now: with Vulkan the game shows in SDR.'
+    : 'How the game talks to your graphics card. Vulkan is often faster; if it can\'t start, the game uses OpenGL.';
   $('texture-loading-hint').textContent = {
     stage: 'Before each level: a level\'s HD textures load with it, so they don\'t pop in while you play.',
     all: 'Whole pack: every HD texture loads during the first few loading screens and stays, so after that none load at all. Needs a graphics card with 6 GB of memory or more.',
@@ -1061,7 +1066,7 @@ function settingsValue() {
     mouseCamera: $('mouseCamera').checked, mouseSensitivity: Number($('mouseSensitivity').value),
     msaa: Number($('msaa').value), fxaa: $('fxaa').checked, anisotropic: Number($('anisotropic').value),
     sharpen: Number($('sharpen').value), brightness: Number($('brightness').value), aspect: $('aspect').value,
-    presentFilter: $('presentFilter').value, fsrMode: $('fsrMode').value,
+    presentFilter: $('presentFilter').value, fsrMode: $('fsrMode').value, renderer: $('renderer').value,
     invertCameraX: $('invertCameraX').checked, invertCameraY: $('invertCameraY').checked, hudEdges: $('hudEdges').checked, textures: $('textures').checked, cutscenes: $('cutscenes').checked,
     textureLoading: $('textureLoading').value, shaderWarmup: $('shaderWarmup').checked,
     eclipse: $('eclipse').checked, autoUpdate: $('autoUpdate').checked, shareUsage: $('shareUsage').checked, discordPresence: $('discordPresence').checked, darkMode: $('darkMode').checked, updateChannel: $('updateChannel').value,
@@ -1773,11 +1778,11 @@ $('import-save-state').addEventListener('click', async () => {
   } catch (error) { $('save-state-result').textContent = errorText(error); }
 });
 $('open-save-states').addEventListener('click', () => window.sms.openSaveStates().catch(showError));
-for (const key of ['arch', 'widescreen', 'resolution', 'volume', 'frameRate', 'language', 'vsync', 'skipMovies', 'skipIntro', 'pauseTracker', 'heatHaze', 'overlay', 'fullscreen', 'fullscreenMode', 'exclusiveResolution', 'display', 'invertCameraX', 'invertCameraY', 'freeCamera', 'cstickAim', 'cameraSpeed', 'mouseCamera', 'mouseSensitivity', 'msaa', 'fxaa', 'anisotropic', 'sharpen', 'brightness', 'aspect', 'presentFilter', 'hudEdges', 'textures', 'textureLoading', 'shaderWarmup', 'cutscenes', 'eclipse', 'autoUpdate', 'shareUsage', 'discordPresence', 'darkMode', 'updateChannel', 'buttonPrompts', 'promptPad', 'hdr', 'hdrCalibration', 'hdrPaperWhite', 'hdrPeak', 'hdrContrast', 'hdrSaturation', 'hdrHighlights', 'fsrMode'])
+for (const key of ['arch', 'widescreen', 'resolution', 'volume', 'frameRate', 'language', 'vsync', 'skipMovies', 'skipIntro', 'pauseTracker', 'heatHaze', 'overlay', 'fullscreen', 'fullscreenMode', 'exclusiveResolution', 'display', 'invertCameraX', 'invertCameraY', 'freeCamera', 'cstickAim', 'cameraSpeed', 'mouseCamera', 'mouseSensitivity', 'msaa', 'fxaa', 'anisotropic', 'sharpen', 'brightness', 'aspect', 'presentFilter', 'hudEdges', 'textures', 'textureLoading', 'shaderWarmup', 'cutscenes', 'eclipse', 'autoUpdate', 'shareUsage', 'discordPresence', 'darkMode', 'updateChannel', 'buttonPrompts', 'promptPad', 'hdr', 'hdrCalibration', 'hdrPaperWhite', 'hdrPeak', 'hdrContrast', 'hdrSaturation', 'hdrHighlights', 'fsrMode', 'renderer'])
   $(key).addEventListener('change', saveSettings);
 $('volume').addEventListener('input', renderVolume);
 for (const key of ['cameraSpeed', 'mouseSensitivity', 'sharpen', 'brightness']) $(key).addEventListener('input', renderRanges);
-for (const key of ['fullscreen', 'fullscreenMode', 'mouseCamera', 'presentFilter', 'textures', 'textureLoading']) $(key).addEventListener('input', () => renderDependents());
+for (const key of ['fullscreen', 'fullscreenMode', 'mouseCamera', 'presentFilter', 'textures', 'textureLoading', 'renderer', 'hdr']) $(key).addEventListener('input', () => renderDependents());
 window.sms.onLog(appendLog);
 window.sms.onLogReset(resetLog);
 window.sms.onActivity(value => {

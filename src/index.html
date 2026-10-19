@@ -242,6 +242,10 @@
               <label class="switch"><span><strong>HD cutscenes <span id="cutscenes-badge" class="badge">Checking</span></strong><small id="cutscenes-description">Sharper Sunshine movies, made from your own disc. About 5.4 GB to download.</small></span><input id="cutscenes" type="checkbox"><i></i></label>
               <p class="row-note" id="cutscene-info"></p>
             </div>
+            <h2 class="group-title">Renderer</h2>
+            <div class="settings-group">
+              <label class="field"><span>Graphics API<small id="renderer-hint">How the game talks to your graphics card. Vulkan is often faster; if it can't start, the game uses OpenGL.</small></span><select id="renderer"><option value="opengl">OpenGL (default)</option><option value="vulkan">Vulkan</option></select></label>
+            </div>
           </section>
 
           <section id="pane-controls" class="settings-pane" role="tabpanel" aria-labelledby="tab-controls" hidden>

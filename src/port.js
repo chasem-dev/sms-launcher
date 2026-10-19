@@ -125,6 +125,8 @@ function normalizeSettings(input = {}, platform = process.platform) {
     aspect: choiceSetting(input.aspect, ['keep', 'stretch', 'integer'], 'keep'),
     // fsr: AMD FSR 1, which upscales a low picture sharpness with clean edges (the game's sharpening sets its strength).
     presentFilter: choiceSetting(input.presentFilter, ['bilinear', 'sharp', 'nearest', 'fsr', 'nis'], 'bilinear'),
+    // The game's graphics API; with Vulkan it falls back to OpenGL by itself when Vulkan cannot start.
+    renderer: choiceSetting(input.renderer, ['opengl', 'vulkan'], 'opengl'),
     // With FSR 1: how far below the picture's size on screen the game renders (it sets the internal resolution).
     fsrMode: choiceSetting(input.fsrMode, ['native', 'quality', 'balanced', 'performance', 'ultraperformance'], 'quality'),
     // Master volume in percent; 100 leaves the game's sound as it is.
@@ -365,6 +367,8 @@ function buildEnvironment(settings, disc, root) {
     SMS_GAMMA: ((settings.brightness ?? 100) / 100).toFixed(2),
     SMS_ASPECT: settings.aspect || 'keep',
     SMS_PRESENT_FILTER: settings.presentFilter || 'bilinear',
+    // game versions without the Vulkan backend ignore it and draw with OpenGL
+    SMS_GX_BACKEND: settings.renderer === 'vulkan' ? 'vulkan' : 'opengl',
     // the upscaling quality, for FSR 1 or NIS (NVIDIA Image Scaling)
     ...(['fsr', 'nis'].includes(settings.presentFilter) ? { SMS_FSR_MODE: settings.fsrMode || 'quality' } : {}),
     SMS_VOLUME: String(settings.volume ?? 100),

@@ -886,7 +886,7 @@ async function setupGame() {
 const PLAYER_SETTINGS = [
   'volume', 'invertCameraX', 'invertCameraY', 'keyBindings', 'padBindings', 'softTrigger', 'rumbleStrength', 'freeCamera', 'cstickAim', 'cameraSpeed', 'mouseCamera',
   'mouseSensitivity', 'skipMovies', 'skipIntro', 'language', 'heatHaze', 'pauseTracker', 'buttonPrompts', 'promptPad', 'hdr', 'hdrCalibration', 'hdrPaperWhite', 'hdrPeak', 'hdrContrast', 'hdrSaturation', 'hdrHighlights', 'overlay', 'fullscreenMode', 'exclusiveResolution', 'display', 'vsync',
-  'msaa', 'fxaa', 'anisotropic', 'sharpen', 'fsrMode', 'brightness', 'aspect', 'presentFilter'
+  'msaa', 'fxaa', 'anisotropic', 'sharpen', 'fsrMode', 'brightness', 'aspect', 'presentFilter', 'renderer'
 ];
 function promptDirectory() { return path.join(app.getPath('userData'), 'prompts'); }
 

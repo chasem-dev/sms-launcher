@@ -126,7 +126,8 @@ function normalizeSettings(input = {}, platform = process.platform) {
     // fsr: AMD FSR 1, which upscales a low picture sharpness with clean edges (the game's sharpening sets its strength).
     presentFilter: choiceSetting(input.presentFilter, ['bilinear', 'sharp', 'nearest', 'fsr', 'nis'], 'bilinear'),
     // The game's graphics API; with Vulkan it falls back to OpenGL by itself when Vulkan cannot start.
-    renderer: choiceSetting(input.renderer, ['opengl', 'vulkan'], 'opengl'),
+    // Linux only for now: the game is built with Vulkan there alone.
+    renderer: info.id === 'linux' ? choiceSetting(input.renderer, ['opengl', 'vulkan'], 'opengl') : 'opengl',
     // With FSR 1: how far below the picture's size on screen the game renders (it sets the internal resolution).
     fsrMode: choiceSetting(input.fsrMode, ['native', 'quality', 'balanced', 'performance', 'ultraperformance'], 'quality'),
     // Master volume in percent; 100 leaves the game's sound as it is.

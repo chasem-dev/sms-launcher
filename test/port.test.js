@@ -149,13 +149,18 @@ test('saved values outside what the game accepts fall back or are clamped', () =
     ['keep', 'bilinear', 'off', 'desktop', 'desktop', 'launcher']);
 });
 
-test('the graphics API is OpenGL unless Vulkan is chosen, and reaches the game as SMS_GX_BACKEND', () => {
-  assert.equal(port.normalizeSettings({}).renderer, 'opengl');
-  assert.equal(port.buildEnvironment(port.normalizeSettings({}), '/d', '/port').SMS_GX_BACKEND, 'opengl');
-  const vulkan = port.normalizeSettings({ renderer: 'vulkan' });
+test('the graphics API is OpenGL unless Vulkan is chosen on Linux, and reaches the game as SMS_GX_BACKEND', () => {
+  assert.equal(port.normalizeSettings({}, 'linux').renderer, 'opengl');
+  assert.equal(port.buildEnvironment(port.normalizeSettings({}, 'linux'), '/d', '/port').SMS_GX_BACKEND, 'opengl');
+  const vulkan = port.normalizeSettings({ renderer: 'vulkan' }, 'linux');
   assert.equal(vulkan.renderer, 'vulkan');
   assert.equal(port.buildEnvironment(vulkan, '/d', '/port').SMS_GX_BACKEND, 'vulkan');
-  assert.equal(port.normalizeSettings({ renderer: 'directx' }).renderer, 'opengl');
+  assert.equal(port.normalizeSettings({ renderer: 'directx' }, 'linux').renderer, 'opengl');
+  for (const platform of ['win32', 'darwin']) {
+    const other = port.normalizeSettings({ renderer: 'vulkan' }, platform);
+    assert.equal(other.renderer, 'opengl');
+    assert.equal(port.buildEnvironment(other, '/d', '/port').SMS_GX_BACKEND, 'opengl');
+  }
 });
 
 test('FSR 1 is a scaling choice and reaches the game as SMS_PRESENT_FILTER=fsr', () => {

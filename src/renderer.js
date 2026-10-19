@@ -747,6 +747,8 @@ function refresh(data) {
   $('graphicsPreset').value = config.settings.graphicsPreset || 'custom';
   renderPreset();
   $('hdr-panel').hidden = data.platform.id !== 'windows';
+  // The Graphics API choice: Vulkan is in the Linux game only, for now.
+  $('renderer-group').hidden = data.platform.id !== 'linux';
   for (const key of ['hdr', 'hdrCalibration']) $(key).checked = config.settings[key];
   for (const key of ['hdrPaperWhite', 'hdrPeak', 'hdrContrast', 'hdrSaturation', 'hdrHighlights']) $(key).value = String(config.settings[key]);
   $('softTrigger').value = String(config.settings.softTrigger ?? 40);
@@ -1044,11 +1046,6 @@ function renderDependents(busy = false) {
   $('fsr-hint').hidden = !fsr;
   $('resolution').disabled = busy || fsr;
   $('textureLoading').disabled = busy || !$('textures').checked;
-  // HDR output (Windows) goes through OpenGL: with Vulkan the game shows in SDR
-  const vulkanHdr = $('renderer').value === 'vulkan' && !$('hdr-panel').hidden && $('hdr').checked;
-  $('renderer-hint').textContent = vulkanHdr
-    ? 'HDR needs OpenGL for now: with Vulkan the game shows in SDR.'
-    : 'How the game talks to your graphics card. Vulkan is often faster; if it can\'t start, the game uses OpenGL.';
   $('texture-loading-hint').textContent = {
     stage: 'Before each level: a level\'s HD textures load with it, so they don\'t pop in while you play.',
     all: 'Whole pack: every HD texture loads during the first few loading screens and stays, so after that none load at all. Needs a graphics card with 6 GB of memory or more.',
@@ -1782,7 +1779,7 @@ for (const key of ['arch', 'widescreen', 'resolution', 'volume', 'frameRate', 'l
   $(key).addEventListener('change', saveSettings);
 $('volume').addEventListener('input', renderVolume);
 for (const key of ['cameraSpeed', 'mouseSensitivity', 'sharpen', 'brightness']) $(key).addEventListener('input', renderRanges);
-for (const key of ['fullscreen', 'fullscreenMode', 'mouseCamera', 'presentFilter', 'textures', 'textureLoading', 'renderer', 'hdr']) $(key).addEventListener('input', () => renderDependents());
+for (const key of ['fullscreen', 'fullscreenMode', 'mouseCamera', 'presentFilter', 'textures', 'textureLoading']) $(key).addEventListener('input', () => renderDependents());
 window.sms.onLog(appendLog);
 window.sms.onLogReset(resetLog);
 window.sms.onActivity(value => {

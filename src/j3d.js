@@ -237,6 +237,22 @@ function readMaterials(data, at) {
         kColorSel: data[e + 0x9c + s], kAlphaSel: data[e + 0xac + s],
       };
     });
+    // Texture coordinate generators and their texture matrices (scale, rotate,
+    // translate about a centre), which pick a part of a texture or scroll it.
+    const texGens = u16(0x28, 8).map(i => {
+      if (i === 0xffff || !off(11)) return null;
+      const o = base(11) + i * 4;
+      return { type: data[o], source: data[o + 1], matrix: data[o + 2] };
+    });
+    const texMatrices = u16(0x48, 10).map(i => {
+      if (i === 0xffff || !off(13)) return null;
+      const o = base(13) + i * 0x64;
+      return {
+        projection: data[o], info: data[o + 1], center: [0, 1, 2].map(k => data.readFloatBE(o + 4 + k * 4)),
+        scale: [data.readFloatBE(o + 0x10), data.readFloatBE(o + 0x14)], rotation: data.readInt16BE(o + 0x18) * ANGLE,
+        translation: [data.readFloatBE(o + 0x1c), data.readFloatBE(o + 0x20)],
+      };
+    });
     const blendAt = data.readUInt16BE(e + 0x148), blend = base(25) + blendAt * 4;
     const alphaAt = base(24) + data.readUInt16BE(e + 0x146) * 8;
     return {
@@ -248,7 +264,7 @@ function readMaterials(data, at) {
       textures: u16(0x84, 8).map(i => i === 0xffff ? -1 : texRemap(i)),
       kColors: u16(0x94, 4).map(i => i === 0xffff ? null : rgba8(18, i)),
       tevColors: u16(0xdc, 4).map(i => i === 0xffff ? null : s16x4(17, i)),
-      stages,
+      stages, texGens, texMatrices,
       blend: { type: data[blend], src: data[blend + 1], dst: data[blend + 2] },
       alphaTest: { comp0: data[alphaAt], ref0: data[alphaAt + 1], op: data[alphaAt + 2], comp1: data[alphaAt + 3], ref1: data[alphaAt + 4] },
     };

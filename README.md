@@ -182,6 +182,18 @@ States are `.smsstate` files in a **savestates** folder next to your memory card
 
 Export your North American Super Mario Sunshine save (`GMSE01`, `super_mario_sunshine`) from Dolphin's Memory Card Manager as a `.gci` file. The importer transfers the entire save, including all three slots. It installs the unchanged save data and the card metadata into the save folder shown in the launcher, including custom locations, on Windows, macOS, and Linux. A fresh card does not need to be created in-game first. Other games, regions, raw memory cards, and `.sav`/`.gcs` files are not supported.
 
+### World editor (Beta)
+
+The **World editor** tab opens any stage on your disc in 3D, to change and walk around. Pick a stage under **Stage** to start from it as it is in the game.
+
+- **Catalog:** the list on the left has everything the game places in any stage, from buildings and palm trees to NPCs, enemies, bosses, coins and Shines, read from your disc. Search it, pick a category, or choose a world (or **This stage**) to see only what's found there, such as Delfino Plaza's buildings. Click one, then click the stage to place it; Shift-click places more, Alt+scroll turns it.
+- **Select:** click an object to select it, drag it along the ground, Shift-drag to raise or lower it, **R** to turn it, **Delete** to remove it, **Ctrl+D** to duplicate it. The panel on the right sets exact position, rotation and scale, and lists everything in the stage. **Ctrl+Z** and **Ctrl+Y** undo and redo.
+- **Paint ground:** paints what the ground is in the game: stone, grass, wood or metal footsteps, sand, wet, slippery, slide, bouncy, soft landing, hurting or out of bounds. It changes how Mario moves and sounds there, not how the ground looks, because a stage's looks are part of its model. **Show ground types** colours the stage by ground type.
+- **Walk:** walk around as Mario with **W A S D**, **Shift** to run and **Space** to jump, or a controller. Only the stage's ground is solid here, not its objects; it's a preview, not the game.
+- **Save** keeps your level in the launcher; **Open** brings it back or imports a `.smsworld` file. **Export** writes the stage as the game stores it: a stage archive (`data/scene/<stage>.szs`, with any models and characters it now needs copied in from their own stages), just its `scene.bin` or `map.col`, or a `.smsworld` level file to share with someone who has the same disc.
+
+The editor reads your disc and never changes it. Things that depend on their own stage's events or paths may not work when moved to another stage.
+
 ### Add to Steam
 
 The **Add to Steam** banner on the Play page adds the launcher to your Steam library as a non-Steam game called **Super Mario Sunshine**, with artwork from [SteamGridDB](https://www.steamgriddb.com/game/34899): the library capsule, wide capsule, header, logo and icon. You can then start it from Steam, Big Picture, or a Steam Deck's Game Mode. On a Steam Deck, add it from Desktop Mode.

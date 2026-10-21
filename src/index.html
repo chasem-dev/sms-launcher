@@ -27,6 +27,7 @@
       <button id="nav-play" class="nav-tab active" aria-current="page"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6.5 4.5v11l9-5.5z"/></svg><span>Play</span></button>
       <button id="open-multiplayer" class="nav-tab" title="Host a game or join one"><span class="nav-icon"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="7.2" cy="6.6" r="2.6"/><path d="M2.6 16.4c.4-3 2.2-4.7 4.6-4.7s4.2 1.7 4.6 4.7"/><circle cx="13.8" cy="7.4" r="2.2"/><path d="M12.6 11.9c.4-.1.8-.2 1.2-.2 2 0 3.5 1.4 3.8 4"/></svg><em id="mp-online" class="nav-online" hidden><span id="mp-online-count"></span></em></span><span>Online</span><em class="nav-badge">Beta</em></button>
       <button id="customize-mario" class="nav-tab" title="Customize Mario" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 1 0 0 18c1.1 0 1.8-.8 1.8-1.7 0-.5-.2-.9-.5-1.2-.3-.3-.5-.7-.5-1.2 0-.9.8-1.7 1.7-1.7h2A4.5 4.5 0 0 0 21 10.7C21 6.4 17 3 12 3z"/><circle cx="7.5" cy="11" r="1.1"/><circle cx="10.5" cy="7" r="1.1"/><circle cx="15" cy="7.4" r="1.1"/></svg><span>Mario</span></button>
+      <button id="nav-world" class="nav-tab" title="World editor" hidden><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 14.5 10 18l7-3.5v-9L10 2 3 5.5z"/><path d="M3 5.5 10 9l7-3.5M10 9v9"/></svg><span>World</span><em class="nav-badge">Beta</em></button>
       <button id="nav-achievements" class="nav-tab"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6 3h8v4.5a4 4 0 0 1-8 0z"/><path d="M6 4.5H3.5v1.2A2.8 2.8 0 0 0 6.3 8.5M14 4.5h2.5v1.2a2.8 2.8 0 0 1-2.8 2.8M10 11.5V14M6.8 17h6.4M7.8 14h4.4l.6 3H7.2z"/></svg><span>Achievements</span><em id="achievements-new" class="nav-badge nav-new" hidden>New</em></button>
       <button id="nav-saves" class="nav-tab" title="Saves &amp; states"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 3h10l3 3v11H4z"/><path d="M7 3v4h6V3M7 17v-5h7v5"/></svg><span>Saves</span></button>
       <span class="nav-spacer" aria-hidden="true"></span>
@@ -115,6 +116,80 @@
       <div class="mario-look-body">
         <div class="mario-stage-wrap"><canvas id="mario-stage" class="mario-stage" tabindex="0" aria-label="Mario, drag or use the arrow keys to turn him"></canvas><div id="mario-status" class="mario-status" role="status" hidden><span class="mario-loader" aria-hidden="true"></span><span id="mario-status-text"></span><span id="mario-status-actions" class="actions mario-status-actions" hidden><button id="mario-retry" class="solid">Try again</button><button id="mario-relaunch" class="subtle">Restart launcher</button></span></div><p id="mario-preview-note" class="mario-preview-note">Your colours show in the game the next time it starts.</p></div>
         <div class="mario-panel"><label class="switch mario-in-game"><span><strong>Use in the game</strong><small>Off: the game shows Mario as usual. Your colours stay here.</small></span><input id="mario-in-game" type="checkbox" checked><i></i></label><div id="mario-presets" class="mario-presets" role="group" aria-label="Presets"></div><div id="mario-regions"></div></div>
+      </div>
+      </section>
+      <section id="world-editor" class="page sheet world-page" aria-label="World editor" hidden>
+      <div class="world-toolbar">
+        <label class="world-level-picker"><span>Stage</span><select id="world-level" aria-label="Stage to edit"></select></label>
+        <input id="world-name" class="world-name" type="text" maxlength="60" spellcheck="false" aria-label="Level name">
+        <div class="world-tools" role="group" aria-label="Tools">
+          <button class="world-tool" data-world-tool="select" title="Select and move (V). Drag to move along the ground, Shift-drag to raise or lower, R to turn.">Select</button>
+          <button class="world-tool" data-world-tool="paint" title="Paint ground types (B)">Paint ground</button>
+          <button class="world-tool" data-world-tool="walk" title="Walk around as Mario (P)">Walk</button>
+        </div>
+        <span class="world-toolbar-spacer"></span>
+        <button id="world-undo" class="world-icon-button" title="Undo (Ctrl+Z)" aria-label="Undo"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7.5 5 4 8.5 7.5 12M4.5 8.5h7a4.5 4.5 0 0 1 0 9H9"/></svg></button>
+        <button id="world-redo" class="world-icon-button" title="Redo (Ctrl+Y)" aria-label="Redo"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M12.5 5 16 8.5 12.5 12M15.5 8.5h-7a4.5 4.5 0 0 0 0 9H11"/></svg></button>
+        <button id="world-open" class="subtle">Open</button>
+        <button id="world-save" class="subtle" title="Save (Ctrl+S)">Save</button>
+        <button id="world-export" class="solid" popovertarget="world-export-menu">Export</button>
+        <div id="world-open-menu" class="world-menu world-open-menu" popover></div>
+        <div id="world-export-menu" class="world-menu world-export-menu" popover>
+          <button class="world-menu-item" data-world-export="szs"><strong>Stage archive (.szs)</strong><small>The whole stage as the game stores it in data/scene, with your scene, ground and any models it now needs.</small></button>
+          <button class="world-menu-item" data-world-export="scene-bin"><strong>Scene file (scene.bin)</strong><small>Just the stage's object list, for other Sunshine modding tools.</small></button>
+          <button class="world-menu-item" data-world-export="collision"><strong>Ground file (map.col)</strong><small>The stage's collision with your painted ground types.</small></button>
+          <button class="world-menu-item" data-world-export="project"><strong>Level file (.smsworld)</strong><small>Your edits, to share with another player who has the same disc.</small></button>
+        </div>
+      </div>
+      <div class="world-body">
+        <aside class="world-sidebar" aria-label="Catalog">
+          <div class="world-sidebar-head">
+            <input id="world-search" class="world-search" type="search" placeholder="Search buildings, NPCs, enemies…" spellcheck="false" aria-label="Search the catalog">
+            <div class="world-filter-row"><select id="world-filter-world" aria-label="Show things from a stage"></select><button id="world-filter-here" class="text-button" title="Only show things found in the stage you're editing">This stage</button></div>
+            <div id="world-categories" class="world-categories" role="group" aria-label="Categories"></div>
+            <p class="world-catalog-count"><span id="world-catalog-count"></span><span>Click one, then click the stage to place it.</span></p>
+          </div>
+          <div id="world-catalog" class="world-catalog"></div>
+          <p id="world-catalog-empty" class="world-catalog-empty" hidden>Nothing matches. Try another word, category or stage.</p>
+          <div id="world-preview" class="world-preview" hidden><canvas id="world-preview-canvas" class="world-preview-canvas" aria-hidden="true"></canvas><div><strong id="world-preview-name"></strong><small id="world-preview-detail"></small></div></div>
+        </aside>
+        <div class="world-stage">
+          <canvas id="world-canvas" class="world-canvas" tabindex="0" aria-label="The stage in 3D"></canvas>
+          <div id="world-status" class="world-status" role="status" hidden><span class="mario-loader" aria-hidden="true"></span><span id="world-status-text"></span><button id="world-retry" class="solid" hidden>Try again</button></div>
+          <p id="world-place-hint" class="world-hint" hidden>Placing <strong id="world-place-name"></strong>: click the stage. Shift-click to keep placing, Alt+scroll to turn, Esc to stop.</p>
+          <p id="world-walk-hint" class="world-hint" hidden>Walking: <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> move, <kbd>Shift</kbd> run, <kbd>Space</kbd> jump, drag to look, scroll to zoom, <kbd>Esc</kbd> to stop. A controller works too. Only the stage's ground is solid here, not its objects.</p>
+          <p class="world-help">Right-drag to look · <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> fly, <kbd>Q</kbd>/<kbd>E</kbd> down/up, <kbd>Shift</kbd> faster · scroll to move · middle-drag to pan</p>
+          <p id="world-flash" class="world-flash" role="status" hidden></p>
+        </div>
+        <aside class="world-inspector" aria-label="Inspector">
+          <div id="world-paint-panel" class="world-panel" hidden>
+            <h2>Paint ground</h2>
+            <p class="helper">Paints what the ground is in the game: how Mario walks on it, its footsteps and what it does. A stage's looks are part of its model, so the ground keeps its colours in the game; the colours here show its ground types.</p>
+            <div id="world-surfaces" class="world-surfaces"></div>
+            <label class="world-range"><span>Brush size <b id="world-brush-size-value">4 m</b></span><input id="world-brush-size" type="range" min="100" max="2500" step="50" value="400"></label>
+          </div>
+          <div class="world-panel">
+            <div id="world-inspector-empty">
+              <h2>Stage</h2>
+              <p id="world-level-info" class="helper"></p>
+              <label class="switch world-switch"><span><strong>Show ground types</strong><small>Colours the ground by type. Always on while painting.</small></span><input id="world-show-ground" type="checkbox"><i></i></label>
+              <button id="world-revert" class="text-button">Undo every change to this stage</button>
+            </div>
+            <div id="world-inspector-body" hidden>
+              <div class="world-inspector-head"><span id="world-inspector-dot" class="world-item-dot"></span><div><h2 id="world-inspector-title"></h2><small id="world-inspector-type"></small></div></div>
+              <p id="world-inspector-note" class="helper world-note" hidden></p>
+              <div class="world-vector"><span>Position</span><input id="world-pos-x" aria-label="Position X"><input id="world-pos-y" aria-label="Position Y"><input id="world-pos-z" aria-label="Position Z"></div>
+              <div class="world-vector"><span>Rotation°</span><input id="world-rot-x" aria-label="Rotation X"><input id="world-rot-y" aria-label="Rotation Y"><input id="world-rot-z" aria-label="Rotation Z"></div>
+              <div class="world-vector"><span>Scale</span><input id="world-scl-x" aria-label="Scale X"><input id="world-scl-y" aria-label="Scale Y"><input id="world-scl-z" aria-label="Scale Z"></div>
+              <div class="world-actions"><button id="world-focus" class="subtle" title="Look at it (F)">Look at</button><button id="world-drop" class="subtle" title="Put it on the ground below">Drop to ground</button><button id="world-duplicate" class="subtle" title="Duplicate (Ctrl+D)">Duplicate</button><button id="world-reset" class="subtle" title="Put it back where the game had it">Reset</button><button id="world-delete" class="subtle danger" title="Delete (Del)">Delete</button></div>
+            </div>
+          </div>
+          <div class="world-panel world-outline-panel">
+            <div class="world-outline-head"><h2>In this stage</h2><small id="world-outline-count"></small></div>
+            <input id="world-outline-search" class="world-search" type="search" placeholder="Find in this stage" spellcheck="false" aria-label="Find an object in this stage">
+            <div id="world-outline" class="world-outline"></div>
+          </div>
+        </aside>
       </div>
       </section>
       <section id="page-saves" class="page sheet saves-page" aria-labelledby="saves-title" hidden>
@@ -446,5 +521,6 @@
   <script src="achievements-page.js"></script>
   <script src="mario-colors.js"></script>
   <script type="module" src="mario-look.js"></script>
+  <script type="module" src="world-editor.js"></script>
 </body>
 </html>

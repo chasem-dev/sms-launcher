@@ -36,6 +36,7 @@ const { observeProcess, exitDescription, failureMessage } = require('./process-o
 const { createSessionLog } = require('./session-log');
 const displayScale = require('./display-scale');
 const marioModel = require('./mario-model');
+const world = require('./world');
 const marioColors = require('./mario-colors');
 const marioPack = require('./mario-pack');
 const { relaunchOptions } = require('./relaunch');
@@ -1117,6 +1118,145 @@ function marioFrom(rom) {
   return marioCache.model;
 }
 
+// The world editor: stages from the chosen disc, read as the editor asks for
+// them. The catalog of everything placed in every stage takes a few seconds
+// to build, so it's built a stage at a time, once per disc, and kept on disk.
+let worldLibrary = null, worldCatalogTask = null;
+function worldLib() {
+  const rom = port.validateRom(config.rom);
+  if (worldLibrary?.rom !== rom) { worldLibrary = new world.Library(rom); worldCatalogTask = null; }
+  return worldLibrary;
+}
+const worldDirectory = (...parts) => path.join(app.getPath('userData'), 'world-editor', ...parts);
+
+function worldLevels() {
+  const library = worldLib(), scenes = library.scenes();
+  const worlds = [];
+  const info = {};
+  for (const scene of scenes) {
+    const owner = world.worldOf(scene);
+    let entry = worlds.find(w => w.id === owner.id);
+    if (!entry) worlds.push(entry = { id: owner.id, name: owner.name, scenes: [] });
+    entry.scenes.push(scene);
+    info[scene] = { label: world.sceneLabel(scene), world: owner.id };
+  }
+  const order = id => { const i = world.WORLDS.findIndex(w => w.id === id); return i < 0 ? world.WORLDS.length : i; };
+  worlds.sort((a, b) => order(a.id) - order(b.id));
+  return {
+    disc: { gameId: library.gameId }, worlds, scenes: info, surfaces: world.SURFACES, groundTypes: world.GROUND_TYPES, cameraTypes: world.CAMERA_TYPES,
+    worldNames: Object.fromEntries(worlds.map(w => [w.id, w.name])),
+    defaultScene: scenes.includes('dolpic0') ? 'dolpic0' : scenes[0],
+  };
+}
+
+function worldCatalog() {
+  const library = worldLib();
+  const file = worldDirectory(`catalog-${library.gameId}-${library.stamp}-v${world.CATALOG_VERSION}.json`);
+  try { return JSON.parse(fs.readFileSync(file, 'utf8')); } catch (_) { /* not built for this disc yet */ }
+  worldCatalogTask ||= world.buildCatalog(library).then(catalog => {
+    fs.mkdirSync(worldDirectory(), { recursive: true });
+    for (const old of fs.readdirSync(worldDirectory())) if (/^catalog-.*\.json$/.test(old)) fs.rmSync(worldDirectory(old), { force: true });
+    fs.writeFileSync(file, JSON.stringify(catalog));
+    return catalog;
+  }).catch(error => { worldCatalogTask = null; throw error; });
+  return worldCatalogTask;
+}
+
+// Model refs are "scene|path in its archive", from the catalog or a loaded stage.
+function worldModel(ref) {
+  const library = worldLib(), [scene, file] = String(ref).split('|');
+  if (!file || file.includes('..') || !(scene === 'mario' || scene === 'common' || library.scenes().includes(scene))) throw new Error('That model isn\'t on your disc.');
+  return library.model(ref);
+}
+
+const worldLevelsDirectory = () => worldDirectory('levels');
+function worldLevelFile(file) {
+  const resolved = path.resolve(String(file || ''));
+  if (path.dirname(resolved) !== path.resolve(worldLevelsDirectory()) || !resolved.endsWith('.smsworld')) throw new Error('That level isn\'t in the world editor\'s folder.');
+  return resolved;
+}
+// A level checked against this disc: its stage must be the one it was made on.
+function worldProject(input) {
+  const library = worldLib(), project = world.cleanProject(input, library.scenes());
+  const stamp = library.stageStamp(project.base);
+  if (project.stamp && project.stamp !== stamp)
+    throw new Error(`This level was made with a different copy of ${world.sceneLabel(project.base)} (another disc, region or mod), so its changes wouldn't land in the right places.`);
+  project.stamp = stamp;
+  return project;
+}
+
+function worldSave(input) {
+  const project = worldProject(input);
+  fs.mkdirSync(worldLevelsDirectory(), { recursive: true });
+  let file = null;
+  try { file = input.file && worldLevelFile(input.file); } catch (_) { file = null; }
+  if (!file) {
+    const slug = project.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'level';
+    for (let n = 1; !file || fs.existsSync(file); n++) file = path.join(worldLevelsDirectory(), `${slug}${n > 1 ? `-${n}` : ''}.smsworld`);
+  }
+  fs.writeFileSync(file, JSON.stringify(project, null, 1));
+  return { file };
+}
+function worldProjects() {
+  let names = [];
+  try { names = fs.readdirSync(worldLevelsDirectory()).filter(name => name.endsWith('.smsworld')); } catch (_) { return []; }
+  return names.flatMap(name => {
+    const file = path.join(worldLevelsDirectory(), name);
+    try {
+      const project = JSON.parse(fs.readFileSync(file, 'utf8'));
+      return [{ file, name: String(project.name || name), base: project.base, savedAt: project.savedAt || fs.statSync(file).mtime.toISOString() }];
+    } catch (_) { return []; }
+  }).sort((a, b) => String(b.savedAt).localeCompare(String(a.savedAt)));
+}
+function worldOpen(file) {
+  const resolved = worldLevelFile(file);
+  return { ...worldProject(JSON.parse(fs.readFileSync(resolved, 'utf8'))), file: resolved };
+}
+
+async function worldExport(event, input, kind) {
+  const library = worldLib(), project = worldProject(input);
+  const owner = BrowserWindow.fromWebContents(event.sender);
+  const slug = project.name.replace(/[^\w -]+/g, '').trim() || project.base;
+  const kinds = {
+    szs: { name: `${project.base}.szs`, filters: [{ name: 'Stage archive', extensions: ['szs'] }] },
+    'scene-bin': { name: 'scene.bin', filters: [{ name: 'Scene file', extensions: ['bin'] }] },
+    collision: { name: 'map.col', filters: [{ name: 'Ground file', extensions: ['col'] }] },
+    project: { name: `${slug}.smsworld`, filters: [{ name: 'World editor level', extensions: ['smsworld'] }] },
+  };
+  const choice = kinds[kind];
+  if (!choice) throw new Error('The world editor can\'t export that.');
+  const chosen = await dialog.showSaveDialog(owner, { title: 'Export level', defaultPath: path.join(app.getPath('documents'), choice.name), filters: choice.filters });
+  if (chosen.canceled || !chosen.filePath) return null;
+  let data, message;
+  if (kind === 'szs') {
+    const built = world.buildArchive(library, project);
+    data = built.data;
+    message = `Exported ${path.basename(chosen.filePath)}${built.copied ? `, with ${built.copied} model and animation files from other stages` : ''}. It replaces data/scene/${project.base}.szs in an extracted game.`;
+  } else if (kind === 'scene-bin') {
+    data = require('./scene-bin').serialize(world.buildScene(library, project).tree);
+    message = `Exported ${path.basename(chosen.filePath)}. Models from other stages aren't in it; export a stage archive to bring them along.`;
+  } else if (kind === 'collision') {
+    data = world.buildCollision(library, project);
+    message = `Exported ${path.basename(chosen.filePath)}.`;
+  } else {
+    data = Buffer.from(JSON.stringify(project, null, 1));
+    message = `Exported ${path.basename(chosen.filePath)}. Anyone with the same disc can open it with Open → Import.`;
+  }
+  fs.writeFileSync(chosen.filePath, data);
+  log(`World editor: ${message}`);
+  return { file: chosen.filePath, message };
+}
+
+async function worldImport(event) {
+  const chosen = await dialog.showOpenDialog(BrowserWindow.fromWebContents(event.sender), { title: 'Import a level', properties: ['openFile'], filters: [{ name: 'World editor level', extensions: ['smsworld'] }] });
+  if (chosen.canceled || !chosen.filePaths[0]) return null;
+  const stat = fs.statSync(chosen.filePaths[0]);
+  if (stat.size > 20 << 20) throw new Error('That file is too large to be a level.');
+  let input;
+  try { input = JSON.parse(fs.readFileSync(chosen.filePaths[0], 'utf8')); } catch (_) { throw new Error('That file isn\'t a level from the world editor.'); }
+  return worldProject(input);
+}
+
 // Customize Mario's colours for the game: Mario's textures repainted, as a
 // pack the game reads before its texture packs (SMS_MARIO_LOOK). Painted from
 // the disc the game plays (Eclipse's own, with Eclipse on), so the names match
@@ -1827,6 +1967,17 @@ function registerHandlers() {
     saveConfig();
     return state();
   });
+  ipcMain.handle('world-levels', () => worldLevels());
+  ipcMain.handle('world-catalog', () => worldCatalog());
+  ipcMain.handle('world-load', (_event, scene) => world.loadLevel(worldLib(), String(scene)));
+  ipcMain.handle('world-model', (_event, ref) => worldModel(ref));
+  ipcMain.handle('world-save', (_event, project) => worldSave(project));
+  ipcMain.handle('world-projects', () => worldProjects());
+  ipcMain.handle('world-open', (_event, file) => worldOpen(file));
+  ipcMain.handle('world-delete', (_event, file) => { fs.rmSync(worldLevelFile(file), { force: true }); });
+  ipcMain.handle('world-import', event => worldImport(event));
+  ipcMain.handle('world-release', () => worldLibrary?.release());
+  ipcMain.handle('world-export', (event, project, kind) => worldExport(event, project, kind));
   ipcMain.handle('mario-model', () => ({ model: marioFrom(port.validateRom(config.rom)), look: config.marioLook }));
   // Customize Mario's way out when its 3D view can't start: a new launcher
   // gets a new GPU process. Not while the game or a task runs.

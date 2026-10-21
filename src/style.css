@@ -769,3 +769,118 @@ pre { height: 120px; margin: 0; padding: 12px; overflow: auto; border-radius: 8p
 .activity-drawer .console-symbol { flex: none; }
 .console-close { display: grid; place-items: center; width: 31px; padding: 5px; }
 .activity-drawer .console-body { height: clamp(170px, 34vh, 320px); }
+
+/* World editor: a toolbar over three columns (catalog, 3D stage, inspector). */
+.world-page { min-width: 0; }
+.world-toolbar { flex: none; display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-bottom: 1px solid #dce7e6; background: #fff; }
+.world-level-picker { display: flex; align-items: center; gap: 7px; color: #637980; font-size: 11px; font-weight: 750; letter-spacing: .06em; text-transform: uppercase; }
+.world-level-picker select { width: 220px; text-transform: none; letter-spacing: 0; font-weight: 600; }
+.world-name { width: 190px; padding: 7px 10px; border: 1px solid #d3dedc; border-radius: 7px; background: #fff; color: #223940; font: inherit; font-size: 12px; font-weight: 650; }
+.world-tools { display: flex; padding: 3px; border-radius: 9px; background: #edf2f1; }
+.world-tool { padding: 6px 11px; border-radius: 7px; background: transparent; color: #49646a; font-size: 12px; }
+.world-tool:hover { color: #17343d; }
+.world-tool.active { background: #fff; color: #125e66; box-shadow: 0 1px 3px #17343d26; }
+.world-toolbar-spacer { flex: 1; }
+.world-icon-button { display: grid; place-items: center; width: 32px; height: 32px; padding: 0; border-color: #d5dfde; background: #fff; color: #31545b; }
+.world-icon-button svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.world-menu { position: fixed; inset: auto; margin: 0; padding: 6px; width: 340px; max-height: 60vh; overflow: auto; border: 1px solid #d8e6e6; border-radius: 11px; background: #fff; color: #17343d; box-shadow: 0 14px 40px #061f3540; }
+.world-export-menu { position-anchor: --world-export; top: anchor(bottom); right: anchor(right); margin-top: 6px; }
+#world-export { anchor-name: --world-export; }
+.world-open-menu { position-anchor: --world-open; top: anchor(bottom); right: anchor(right); margin-top: 6px; }
+#world-open { anchor-name: --world-open; }
+.world-menu-item { display: grid; gap: 3px; width: 100%; padding: 9px 11px; border-radius: 8px; background: transparent; color: inherit; text-align: left; white-space: normal; }
+.world-menu-item:hover { background: #f0f6f5; }
+.world-menu-item strong { font-size: 13px; }
+.world-menu-item small { color: #6d8288; font-size: 11px; font-weight: 500; }
+.world-menu-row { display: flex; align-items: center; }
+.world-menu-row .world-menu-item { flex: 1; }
+.world-menu-delete { padding: 4px 10px; background: transparent; color: #8a9a9e; font-size: 16px; }
+.world-menu-delete:hover { color: #a04d49; }
+.world-menu-import { margin-top: 4px; border-top: 1px solid #e6ebea; border-radius: 0 0 8px 8px; color: #17737a; }
+.world-menu-empty { padding: 10px 11px; color: #6d8288; font-size: 12px; }
+.world-body { flex: 1; min-height: 0; display: grid; grid-template-columns: 270px minmax(0, 1fr) 270px; }
+.world-sidebar, .world-inspector { min-height: 0; display: flex; flex-direction: column; background: #f8faf9; }
+.world-sidebar { border-right: 1px solid #dce7e6; }
+.world-inspector { overflow: auto; border-left: 1px solid #dce7e6; }
+.world-sidebar-head { flex: none; display: grid; gap: 8px; padding: 12px 12px 8px; border-bottom: 1px solid #e3ecea; }
+.world-search { width: 100%; padding: 8px 10px; border: 1px solid #d3dedc; border-radius: 8px; background: #fff; color: #223940; font: inherit; font-size: 12px; }
+.world-filter-row { display: flex; align-items: center; gap: 8px; }
+.world-filter-row select { flex: 1; }
+.world-categories { display: flex; flex-wrap: wrap; gap: 4px; }
+.world-chip { padding: 3px 8px; border: 1px solid #d5dfde; border-radius: 20px; background: #fff; color: #4b666c; font-size: 11px; font-weight: 650; }
+.world-chip.active { border-color: #158188; background: #158188; color: #fff; }
+.world-catalog-count { display: flex; justify-content: space-between; gap: 6px; color: #849297; font-size: 10px; }
+.world-catalog { flex: 1; min-height: 0; overflow: auto; padding: 4px 6px 10px; }
+.world-catalog-heading { position: sticky; top: -4px; z-index: 1; margin: 8px 0 2px; padding: 5px 6px; background: #f8faf9; color: #687f82; font-size: 10px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+.world-item { display: flex; align-items: center; gap: 8px; width: 100%; padding: 6px 7px; border-radius: 7px; background: transparent; color: #223940; text-align: left; font-weight: 600; }
+.world-item:hover { background: #ebf3f2; }
+.world-item.active { background: #fff1cf; box-shadow: inset 0 0 0 1px #f0c35a; }
+.world-item-dot { flex: none; width: 9px; height: 9px; border-radius: 3px; box-shadow: inset 0 0 0 1px #0002; }
+.world-item-text { flex: 1; min-width: 0; display: grid; gap: 1px; }
+.world-item-text strong { overflow: hidden; text-overflow: ellipsis; font-size: 12px; }
+.world-item-text small { overflow: hidden; text-overflow: ellipsis; color: #7d8f94; font-size: 10px; font-weight: 500; }
+.world-item em { color: #9aa8ac; font-size: 9px; font-style: normal; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; }
+.world-catalog-empty { padding: 18px 14px; color: #7d8f94; font-size: 12px; }
+.world-preview { flex: none; display: grid; grid-template-columns: 92px 1fr; align-items: center; gap: 10px; padding: 10px 12px; border-top: 1px solid #e3ecea; background: #fff; }
+.world-preview-canvas { width: 92px; height: 92px; border-radius: 9px; background: radial-gradient(circle at 50% 35%, #e8f4f8, #cfe0e6); }
+.world-preview div { display: grid; gap: 3px; min-width: 0; }
+.world-preview strong { font-size: 13px; }
+.world-preview small { color: #7d8f94; font-size: 10px; overflow-wrap: anywhere; }
+.world-stage { position: relative; min-width: 0; min-height: 0; background: #8fc7e8; }
+.world-canvas { display: block; width: 100%; height: 100%; outline: none; touch-action: none; }
+.world-status { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 30px; background: #0d2231d9; color: #e3eff2; font-size: 13px; text-align: center; }
+.world-status.loading .mario-loader { display: block; }
+.world-hint, .world-help, .world-flash { position: absolute; left: 50%; transform: translateX(-50%); max-width: calc(100% - 28px); margin: 0; padding: 7px 12px; border-radius: 9px; background: #0d2231d0; color: #e8f3f5; font-size: 11px; text-align: center; pointer-events: none; }
+.world-hint { top: 12px; }
+.world-help { bottom: 10px; color: #c6dde2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.world-flash { top: 54px; background: #13636ae8; }
+.world-flash.error { background: #8e3530ee; }
+.world-stage kbd { display: inline-block; min-width: 16px; margin: 0 1px; padding: 0 4px; border: 1px solid #ffffff55; border-radius: 4px; background: #ffffff1a; font: 700 10px/1.5 inherit; text-align: center; }
+.world-panel { padding: 13px 14px; border-bottom: 1px solid #e3ecea; }
+.world-panel h2 { margin-bottom: 6px; font-size: 14px; }
+.world-panel .helper { line-height: 1.45; }
+.world-switch { padding: 11px 0; border-bottom: 0; }
+.world-inspector-head { display: flex; align-items: start; gap: 9px; margin-bottom: 10px; }
+.world-inspector-head .world-item-dot { margin-top: 5px; }
+.world-inspector-head h2 { margin: 0; overflow-wrap: anywhere; }
+.world-inspector-head small { color: #7d8f94; font-size: 11px; overflow-wrap: anywhere; }
+.world-note { margin-bottom: 10px; padding: 7px 9px; border-radius: 7px; background: #fff6e1; color: #7d5a14; }
+.world-vector { display: grid; grid-template-columns: 64px repeat(3, minmax(0, 1fr)); align-items: center; gap: 5px; margin-bottom: 6px; color: #4b666c; font-size: 11px; font-weight: 650; }
+.world-vector input { width: 100%; min-width: 0; padding: 5px 6px; border: 1px solid #d3dedc; border-radius: 6px; background: #fff; color: #223940; font: 12px ui-monospace, Consolas, monospace; }
+.world-actions { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 10px; }
+.world-actions button { padding: 6px 9px; font-size: 11px; }
+.world-surfaces { display: grid; gap: 4px; margin: 10px 0; }
+.world-surface { display: flex; align-items: center; gap: 9px; padding: 6px 8px; border: 1px solid #dfe8e7; border-radius: 8px; background: #fff; color: #223940; text-align: left; white-space: normal; }
+.world-surface i { flex: none; width: 18px; height: 18px; border-radius: 5px; box-shadow: inset 0 0 0 1px #0003; }
+.world-surface span { display: grid; gap: 1px; }
+.world-surface strong { font-size: 12px; }
+.world-surface small { color: #7d8f94; font-size: 10px; font-weight: 500; }
+.world-surface.active { border-color: #158188; box-shadow: inset 0 0 0 1px #158188; }
+.world-range { display: grid; gap: 6px; color: #4b666c; font-size: 11px; font-weight: 650; }
+.world-range span { display: flex; justify-content: space-between; }
+.world-range input { accent-color: #17818a; }
+.world-outline-panel { flex: 1; min-height: 220px; display: flex; flex-direction: column; gap: 8px; border-bottom: 0; }
+.world-outline-head { display: flex; align-items: baseline; justify-content: space-between; }
+.world-outline-head small { color: #849297; font-size: 11px; }
+.world-outline { flex: 1; min-height: 120px; overflow: auto; }
+.world-outline-row { display: flex; align-items: center; gap: 7px; width: 100%; padding: 4px 6px; border-radius: 6px; background: transparent; color: #2f4a50; font-size: 11px; font-weight: 600; text-align: left; }
+.world-outline-row span:nth-child(2) { flex: 1; overflow: hidden; text-overflow: ellipsis; }
+.world-outline-row small { color: #c08a1e; font-size: 9px; text-transform: uppercase; }
+.world-outline-row:hover { background: #ebf3f2; }
+.world-outline-row.active { background: #fff1cf; }
+.dark .world-toolbar { border-color: #2a5163; background: #102a3b; }
+.dark :is(.world-sidebar, .world-inspector, .world-catalog-heading) { border-color: #23404f; background: #0d2231; }
+.dark :is(.world-sidebar-head, .world-panel, .world-preview) { border-color: #23404f; }
+.dark .world-preview { background: #102a3b; }
+.dark :is(.world-name, .world-search, .world-vector input, .world-chip, .world-surface, .world-icon-button) { border-color: #33566a; background: #0f2636; color: #e3eff2; }
+.dark .world-chip.active { border-color: #2aa6ad; background: #158188; color: #fff; }
+.dark .world-tools { background: #0a1c28; }
+.dark .world-tool { color: #a9c6cc; }
+.dark .world-tool.active { background: #1d4459; color: #fff; }
+.dark :is(.world-item, .world-outline-row) { color: #dceaed; }
+.dark :is(.world-item:hover, .world-outline-row:hover) { background: #163447; }
+.dark :is(.world-item.active, .world-outline-row.active) { background: #3b3214; box-shadow: inset 0 0 0 1px #8a6b1e; }
+.dark .world-menu { border-color: #2f5468; background: #0f2636; color: #e3eff2; }
+.dark .world-menu-item:hover { background: #163447; }
+.dark :is(.world-vector, .world-range) { color: #b8cdd2; }
+.dark .world-note { background: #3b3214; color: #f5d68a; }

@@ -252,6 +252,8 @@ function loadConfig() {
     // for the game and once more for Super Mario Eclipse, whose game versions gained it later.
     appleSiliconSwitched: Boolean(saved.appleSiliconSwitched),
     eclipseAppleSiliconSwitched: Boolean(saved.eclipseAppleSiliconSwitched),
+    // A Super Mario Eclipse ISO or download of the player's, which the next Eclipse setup uses instead of downloading it.
+    eclipseFile: typeof saved.eclipseFile === 'string' && saved.eclipseFile ? saved.eclipseFile : null,
     // Customize Mario: the colours the player chose and the Shine shirt.
     marioLook: marioColors.normalizeLook(saved.marioLook),
     // The Multiplayer window's fields, as last used.
@@ -784,11 +786,29 @@ async function installPort() {
   return { ok: true };
 }
 
+// Eclipse is made from the player's disc with the download, or set up from their own Eclipse ISO
+// or download (Use a file I already have, choose-eclipse-file) once, when they chose one.
 async function installEclipse(root = requireRepo()) {
   await ensureBuildTools();
   const rom = port.validateRom(config.rom);
-  const cmd = port.commandFor(root, 'python', [rom], process.platform, toolEnv());
-  return launch(cmd.command, cmd.args, { cwd: cmd.cwd, env: cmd.env }, 'Install Eclipse from your disc');
+  const own = config.eclipseFile;
+  let args = [rom], label = 'Install Eclipse from your disc';
+  if (own) {
+    config.eclipseFile = null;
+    saveConfig();
+    let file = null;
+    try { file = port.eclipseOwnFile(own); } catch (error) { log(`Your Super Mario Eclipse file can't be used (${error.message}); downloading Eclipse instead.`); }
+    if (file && !port.gameFeatures(root).eclipseOwnFile) {
+      log('This game version can only download Super Mario Eclipse, so it is downloading it instead of using your file.');
+      file = null;
+    }
+    if (file) {
+      args = [rom, file.archive ? '--archive' : '--eclipse-iso', file.file];
+      label = file.archive ? 'Install Eclipse from your download' : 'Install Eclipse from your Eclipse ISO';
+    }
+  }
+  const cmd = port.commandFor(root, 'python', args, process.platform, toolEnv());
+  return launch(cmd.command, cmd.args, { cwd: cmd.cwd, env: cmd.env }, label);
 }
 
 // The texture extras' pinned release, downloaded on its own (not the UHD pack
@@ -1017,7 +1037,7 @@ async function setupGame() {
 const PLAYER_SETTINGS = [
   'volume', 'musicVolume', 'sfxVolume', 'invertCameraX', 'invertCameraY', 'keyBindings', 'padBindings', 'softTrigger', 'rumbleStrength', 'freeCamera', 'cstickAim', 'cameraSpeed', 'mouseCamera', 'closeCameraMouse',
   'mouseSensitivity', 'skipMovies', 'skipIntro', 'language', 'heatHaze', 'pauseTracker', 'radar', 'autoSave', 'buttonPrompts', 'promptPad', 'hdr', 'hdrCalibration', 'hdrPaperWhite', 'hdrPeak', 'hdrContrast', 'hdrSaturation', 'hdrHighlights', 'overlay', 'fullscreenMode', 'exclusiveResolution', 'display', 'vsync',
-  'msaa', 'fxaa', 'anisotropic', 'sharpen', 'fsrMode', 'brightness', 'aspect', 'presentFilter', 'renderer'
+  'msaa', 'fxaa', 'anisotropic', 'sharpen', 'fsrMode', 'brightness', 'aspect', 'presentFilter', 'renderer', 'eclipseSunshineMovies'
 ];
 function promptDirectory() { return path.join(app.getPath('userData'), 'prompts'); }
 
@@ -1105,6 +1125,7 @@ async function play(installation = null, session = null) {
   const env = recordedTools
     ? buildTools.environmentAtRoot(recordedTools, { ...port.buildEnvironment(settings, disc, root), SMS_SAVE_DIR: saveDir })
     : toolEnv({ ...port.buildEnvironment(settings, disc, root), SMS_SAVE_DIR: saveDir });
+  Object.assign(env, port.eclipseMovieEnvironment(root, settings, rom));
   shieldGame(root, settings, env);
   // Changed keys go to a file of the launcher's own, so a bindings.txt kept by hand in the game folder is left alone.
   // A game older than the keyboard and mouse keys gets the whole layout the Controls page shows that way too.
@@ -1624,6 +1645,7 @@ function state() {
       (config.settings.eclipse ? !config.eclipseAppleSiliconSwitched && features.eclipseAppleSilicon : !config.appleSiliconSwitched),
     romReady: Boolean(config.rom) && !romError, romError,
     eclipseInstalled: repoReady && fs.existsSync(path.join(config.repo, port.ECLIPSE_ISO)),
+    eclipseFileName: config.eclipseFile ? path.basename(config.eclipseFile) : null,
     hdVisualsReady: repoReady && port.hdVisualsInstalled(config.repo, config.settings),
     texturesInstalled: repoReady && port.texturePackInstalled(config.repo),
     cutscenesInstalled: repoReady && port.cutscenePackInstalled(config.repo),
@@ -1868,6 +1890,25 @@ function registerHandlers() {
     config.rom = port.validateRom(chosen.filePaths[0]);
     saveConfig();
     return state();
+  });
+  // Use a file I already have: Eclipse's ISO or its download, instead of downloading it. Installed
+  // right away once the game is set up (the renderer then runs install-eclipse), else by setup.
+  ipcMain.handle('choose-eclipse-file', async () => {
+    if (operation || active) throw new Error('Finish the current task before changing game files.');
+    const chosen = await dialog.showOpenDialog(window, {
+      title: 'Choose your Super Mario Eclipse v1.1.0 ISO, or its download',
+      properties: ['openFile'],
+      filters: [{ name: 'Super Mario Eclipse ISO or download', extensions: ['iso', 'gcm', '7z'] }, { name: 'All files', extensions: ['*'] }]
+    });
+    if (chosen.canceled) return { ...state(), installEclipse: false };
+    const file = port.eclipseOwnFile(chosen.filePaths[0]);
+    const ready = port.isPort(config.repo);
+    if (ready && !port.gameFeatures(config.repo).eclipseOwnFile)
+      throw new Error('This game version can only download Super Mario Eclipse. Update the game, then choose your file again.');
+    config.eclipseFile = file.file;
+    saveConfig();
+    log(`Super Mario Eclipse will be set up from ${file.file} instead of downloading it.`);
+    return { ...state(), installEclipse: ready && Boolean(config.rom) };
   });
   ipcMain.handle('mario-model', () => ({ model: marioFrom(port.validateRom(config.rom)), look: config.marioLook }));
   // Customize Mario's way out when its 3D view can't start: a new launcher

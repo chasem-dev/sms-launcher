@@ -146,6 +146,11 @@ test('the Eclipse install shows its download, unpacking and patching', () => {
     { detail: 'Making Super Mario Eclipse from your disc (a few minutes)', percent: null });
   assert.deepEqual(read('Patching your image: 40%'),
     { detail: 'Making Super Mario Eclipse from your disc (a few minutes)', percent: 40 });
+  // From the player's own file.
+  assert.deepEqual(read('Checking your Eclipse image, /games/Eclipse.iso'), { detail: 'Checking your Super Mario Eclipse ISO', percent: null });
+  assert.deepEqual(read('Copying it into mods/eclipse'), { detail: 'Copying your Super Mario Eclipse ISO into the game folder', percent: null });
+  assert.deepEqual(read('Checking your Eclipse download, /games/super_mario_eclipse_v110.7z'),
+    { detail: 'Checking your Super Mario Eclipse download', percent: null });
   // Other tasks keep their own wording.
   assert.deepEqual(createActivityReader()('Checking HD texture download'), { detail: 'Checking HD textures', percent: null });
 });

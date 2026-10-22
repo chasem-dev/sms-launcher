@@ -6,14 +6,18 @@
       "Mouse aim in Mario Cam, on by default under Settings → Gameplay: in the close-up view Y opens, the mouse turns the view and aims FLUDD, as in shooters.",
       "Radar in Super Mario Eclipse: with Eclipse and the radar on, the launcher downloads the maps of Eclipse's own stages (about 140 MB), so its new areas have the radar and the full map too. If the download fails, the game still plays and the launcher tries again next time.",
       "Fixed Play and Update & play doing nothing while the launcher removed old game versions after starting, which on Windows can take minutes: that now happens in the background and stops when you start something, and a file another program has open no longer keeps the rest of an old version from being removed.",
-      "Fixed Super Mario Eclipse on Windows with the Vulkan renderer building again every time you pressed Update & play, and never getting Vulkan: Eclipse builds now include it."
+      "Fixed Super Mario Eclipse on Windows with the Vulkan renderer building again every time you pressed Update & play, and never getting Vulkan: Eclipse builds now include it.",
+      "Super Mario Eclipse: Use a file I already have, beside Install Eclipse under Settings → Gameplay, sets Eclipse up from your own Super Mario Eclipse v1.1.0 ISO, or the super_mario_eclipse_v110.7z you downloaded from GameBanana, instead of downloading it again. The launcher checks it's the right file first, and before your game is set up it remembers your choice for setup.",
+      "Sunshine's movies in Eclipse, on by default under Settings → Gameplay while Super Mario Eclipse is on: the ten movies Eclipse kept from Sunshine but made blurrier play from your own Sunshine disc instead, or as HD cutscenes when you have those on."
     ],
     "game": [
       "Keyboard and mouse: the default keys are now laid out for the mouse, with mouse look on. WASD moves, the mouse turns the camera, left click jumps, right click dives, Q switches the nozzle, E opens the close-up camera, middle click sprays FLUDD gently so you can spray on the move and Space sprays it fully, Left Shift ground pounds and sidesteps, Tab opens the map and Enter pauses. Controllers keep their layout.",
       "Soft L and Soft R now press as deep as a trigger goes without clicking (95%) by default, instead of 40%; Soft press depth under Controls still changes it.",
       "The radar and its full map work in Super Mario Eclipse's own stages, show its Shine Sprites past the first 120 as collected or not, and name its areas on the full map.",
       "Fixed a crashed game on Windows leaving a helper running in the background that kept an old game version's files open, so they couldn't be deleted.",
-      "Mods: native mods can now decide which FLUDD nozzles Mario has (refusing or changing a nozzle switch or swap, leaving nozzle boxes out of a stage, choosing the nozzle a stage starts with), take FLUDD away or give it back, and put on or take off his aloha shirt, sunglasses and diving helmet (mod API 1.5 beta 1)."
+      "Mods: native mods can now decide which FLUDD nozzles Mario has (refusing or changing a nozzle switch or swap, leaving nozzle boxes out of a stage, choosing the nozzle a stage starts with), take FLUDD away or give it back, and put on or take off his aloha shirt, sunglasses and diving helmet (mod API 1.5 beta 1).",
+      "Super Mario Eclipse can be installed from an Eclipse v1.1.0 ISO or Eclipse download you already have, checked against the release, without downloading it.",
+      "Super Mario Eclipse plays Sunshine's own copies of the ten movies it re-encoded at a lower quality (among them the trial and the credits), from your Sunshine disc or the HD cutscenes, with the sound in sync; its own and its darkened movies stay as Eclipse made them."
     ]
   },
   "releases": [

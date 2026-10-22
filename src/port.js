@@ -178,6 +178,8 @@ function normalizeSettings(input = {}, platform = process.platform, hostArch = p
     // HD cutscenes are a separate 5 GB download, off unless chosen.
     cutscenes: Boolean(input.cutscenes),
     eclipse: Boolean(input.eclipse),
+    // In Eclipse, the movies it kept from Sunshine play as Sunshine has them (eclipseMovieEnvironment); on unless turned off.
+    eclipseSunshineMovies: input.eclipseSunshineMovies !== false,
     renderer: choiceSetting(input.renderer, info.renderers, 'opengl'),
     autoUpdate: input.autoUpdate !== false,
     // Anonymous usage heartbeats (versions and OS only); see README Privacy.
@@ -393,7 +395,11 @@ function gameFeatures(root) {
   return { vulkan: has(path.join('platform', 'gx', 'src', 'vk')), appleSilicon: has(path.join('tools', 'gameptr')),
     // keyboard and mouse default keys (bindings.js DEFAULTS); an older game has the classic ones built in
     mouseKeys: mentions('bindings.txt', 'A = MOUSE_LEFT'),
-    eclipseAppleSilicon: mentions(path.join('platform', 'mods', 'eclipse', 'lib', 'CMakeLists.txt'), 'SMS_GAMEPTR_PLUGIN') };
+    eclipseAppleSilicon: mentions(path.join('platform', 'mods', 'eclipse', 'lib', 'CMakeLists.txt'), 'SMS_GAMEPTR_PLUGIN'),
+    // get.py installs Eclipse from the player's own ISO or download (eclipseOwnFile)
+    eclipseOwnFile: mentions(path.join('tools', 'mods', 'get.py'), '--eclipse-iso'),
+    // Eclipse plays the movies it kept from Sunshine from the Sunshine disc or the HD cutscenes (eclipseMovieEnvironment)
+    eclipseSunshineMovies: mentions(path.join('platform', 'dvd', 'dvd.cpp'), 'SMS_ECLIPSE_SUNSHINE_MOVIES') };
 }
 
 function hdVisualsInstalled(root, settings) {
@@ -493,11 +499,44 @@ function buildEnvironment(settings, disc, root) {
   return env;
 }
 
+// Super Mario Eclipse kept ten of Sunshine's movies, re-encoded blurrier. A game that can plays
+// Sunshine's own instead: from the player's disc, or the HD cutscenes' when they are on and installed.
+function eclipseMovieEnvironment(root, settings, rom) {
+  if (!settings.eclipse || !gameFeatures(root).eclipseSunshineMovies) return {};
+  if (settings.eclipseSunshineMovies === false) return { SMS_ECLIPSE_SUNSHINE_MOVIES: '0' };
+  const env = { SMS_ECLIPSE_SUNSHINE_MOVIES: rom };
+  if (settings.cutscenes && settings.textures && cutscenePackInstalled(root)) env.SMS_HD_CUTSCENES = cutscenePackDirectory(root);
+  return env;
+}
+
 function gameDisc(root, rom, eclipse) {
   if (!eclipse) return validateRom(rom);
   const modDisc = path.join(root, ECLIPSE_ISO);
   if (!fs.existsSync(modDisc)) throw new Error('Set up Eclipse using your own game disc file first.');
   return modDisc;
+}
+
+// A Super Mario Eclipse file the player already has, for setting Eclipse up without its download:
+// Eclipse's own ISO (as its patcher makes it), or the release archive they downloaded. The game's
+// installer (get.py eclipse --eclipse-iso or --archive) checks either against its checksum.
+function eclipseOwnFile(file) {
+  if (!file || typeof file !== 'string') throw new Error('Choose your Super Mario Eclipse file first.');
+  const absolute = path.resolve(file);
+  let stat;
+  try { stat = fs.statSync(absolute); }
+  catch (error) {
+    if (error.code === 'ENOENT') throw new Error('That file cannot be found. Choose it again.');
+    throw error;
+  }
+  if (!stat.isFile()) throw new Error('Choose a file, not a folder.');
+  const disc = describe(absolute);
+  if (disc.format === '7z') return { file: absolute, archive: true };
+  if (disc.format === 'iso' && disc.gameId === 'GMSE04') return { file: absolute, archive: false };
+  if (disc.gameId === 'GMSE01')
+    throw new Error('This is your Super Mario Sunshine disc. Choose Install Eclipse to make Super Mario Eclipse from it, or choose your Super Mario Eclipse ISO.');
+  if (disc.gameId === 'GMSE04' || ['rvz', 'wia', 'gcz', 'nkit', 'zip', 'rar', 'damaged-ciso'].includes(disc.format))
+    throw new Error('Super Mario Eclipse needs the .iso file Eclipse\'s patcher makes, or its download, super_mario_eclipse_v110.7z. Compressed disc files and other archives don\'t work.');
+  throw new Error('This is not Super Mario Eclipse\'s ISO or its download (super_mario_eclipse_v110.7z).');
 }
 
 function binaryPath(root, settings, platform = process.platform) {
@@ -586,7 +625,7 @@ function commandFor(root, action, args = [], platform = process.platform, enviro
   const bash = path.join(msys, 'usr', 'bin', 'bash.exe');
   if (!fs.existsSync(bash)) throw new Error(`The Windows build tools are missing. Install it at ${msys} or set MSYS2_ROOT.`);
   const script = action === 'python'
-    ? 'cd "$(cygpath -u "$1")" && python "$(cygpath -u "$2")" tools/mods/get.py eclipse --iso "$(cygpath -u "$3")"'
+    ? 'cd "$(cygpath -u "$1")" && python "$(cygpath -u "$2")" tools/mods/get.py eclipse --iso "$(cygpath -u "$3")" ${4:+"$4" "$(cygpath -u "$5")"}'
     : action === 'cutscenes'
       ? 'cd "$(cygpath -u "$1")" && python tools/media/install_cutscenes.py --iso "$(cygpath -u "$2")"'
     : action === 'textures'
@@ -604,7 +643,7 @@ function commandFor(root, action, args = [], platform = process.platform, enviro
     command: bash,
     args: ['-c', script, 'sms-launcher', root, ...(action === 'textures' || action === 'texture-extras' || action === 'eclipse-maps' ? [textureProgress]
       : action === 'language' ? [textureProgress, installLanguage, ...packArgs]
-      : action === 'python' ? [textureProgress, args[0]] : args)], cwd: root,
+      : action === 'python' ? [textureProgress, ...args] : args)], cwd: root,
     env: msysEnvironment(msys, environment)
   };
 }
@@ -651,10 +690,10 @@ function gameRuntimeFolders(settings, environment = process.env) {
 
 function eclipseRunCommand(...args) { return gameRunCommand(...args); }
 
-module.exports = { PORT_URL, ECLIPSE_ISO, platformInfo, isPort, validateRom, normalizeSettings, savedSettings, gameFeatures,
+module.exports = { PORT_URL, ECLIPSE_ISO, eclipseOwnFile, platformInfo, isPort, validateRom, normalizeSettings, savedSettings, gameFeatures,
   texturePackDirectory, texturePackInstalled, textureExtrasDirectory, textureExtrasSupported, textureExtrasInstalled, textureExtrasWanted,
   eclipseMapsDirectory, eclipseMapsSupported, eclipseMapsInstalled, eclipseMapsWanted,
   LANGUAGES, LANGUAGE_PACKS, gameLanguage, languagePackDirectory, languagePacksSupported, languageAvailable, languageChoices,
   languagePackInstalled, languagePackWanted,
-  cutscenePackDirectory, cutscenePackInstalled, cutscenePackSupported, cutscenePackRequirements, wantsCutscenes, hdVisualsInstalled, buildEnvironment, gameDisc, binaryPath,
+  cutscenePackDirectory, cutscenePackInstalled, cutscenePackSupported, cutscenePackRequirements, wantsCutscenes, hdVisualsInstalled, buildEnvironment, eclipseMovieEnvironment, gameDisc, binaryPath,
   commandFor, eclipseBuildCommand, eclipseRunCommand, gameRuntimeFolders, playableInstall, windowsPathLimit, longPathProblem };

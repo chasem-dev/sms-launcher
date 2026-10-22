@@ -21,6 +21,7 @@ contextBridge.exposeInMainWorld('sms', {
   updatePort: () => ipcRenderer.invoke('update-port'),
   setGameSource: value => ipcRenderer.invoke('set-game-source', value),
   installEclipse: () => ipcRenderer.invoke('install-eclipse'),
+  chooseEclipseFile: () => ipcRenderer.invoke('choose-eclipse-file'),
   installTextures: () => ipcRenderer.invoke('install-textures'),
   build: () => ipcRenderer.invoke('build'),
   setupGame: () => ipcRenderer.invoke('setup-game'),

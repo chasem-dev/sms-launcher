@@ -3,20 +3,24 @@
 // objects, paint ground types onto the stage's collision, walk around it, and
 // export the result as the game's own scene files.
 import * as THREE from '../node_modules/three/build/three.module.js';
+import { tevMaterial, LIGHT } from './world-tev.js';
+import { Reflector } from './world-mirror.js';
 
 const $ = id => document.getElementById(id);
 const page = $('world-editor');
 const WRAP = [THREE.ClampToEdgeWrapping, THREE.RepeatWrapping, THREE.MirroredRepeatWrapping];
 const DEG = Math.PI / 180;
-// GX blend factors as three.js ones; source and destination read 2 and 3 differently.
-const BLEND_SRC = [THREE.ZeroFactor, THREE.OneFactor, THREE.DstColorFactor, THREE.OneMinusDstColorFactor, THREE.SrcAlphaFactor, THREE.OneMinusSrcAlphaFactor, THREE.DstAlphaFactor, THREE.OneMinusDstAlphaFactor];
-const BLEND_DST = [THREE.ZeroFactor, THREE.OneFactor, THREE.SrcColorFactor, THREE.OneMinusSrcColorFactor, THREE.SrcAlphaFactor, THREE.OneMinusSrcAlphaFactor, THREE.DstAlphaFactor, THREE.OneMinusDstAlphaFactor];
 const HISTORY = 100;
 
 let levels = null, catalog = null, surfaces = [];
 let level = null, project = null, view = null;
 let selected = null, tool = 'select', placing = null;
 let brush = { id: null, radius: 400 };
+// Paint either textures onto the stage's own faces or ground types onto its collision.
+let paintMode = 'texture', textureBrush = 'delfino-sand';
+let buildKind = 'floor', buildTextures = { top: 'delfino-tiles', side: 'delfino-white-wall' };
+let texturePaintVersion = 0;
+const BUILD = window.smsWorldBuild;
 let undoStack = [], redoStack = [], dirty = false, busy = false;
 let filter = { text: '', category: 'all', world: 'all' };
 let booting = null;
@@ -49,10 +53,12 @@ async function boot() {
       surfaces = levels.surfaces;
       renderLevelPicker();
       renderSurfaceSwatches();
+      renderTextureSwatches();
+      renderBuildPanel();
     }
     if (!catalog) {
       setStatus('Cataloguing everything placed in every stage… (only the first time)', true);
-      catalog = await window.sms.worldCatalog();
+      catalog = withStagePieces(await window.sms.worldCatalog());
       renderFilters();
       renderCatalog();
     }
@@ -89,11 +95,14 @@ async function openLevel(scene, saved = null) {
 }
 
 function newProject(scene) {
-  return { format: 'sms-world', version: 1, name: `My ${sceneLabel(scene)}`, base: scene, disc: levels.disc.gameId, edits: {}, added: [], paint: {} };
+  return { format: 'sms-world', version: 1, name: `My ${sceneLabel(scene)}`, base: scene, disc: levels.disc.gameId, edits: {}, added: [], paint: {}, pieces: [], texturePaint: {}, blank: false };
 }
 
 function normalizeProject(saved, scene) {
-  return { ...newProject(scene), ...saved, base: scene, edits: { ...saved.edits }, added: [...(saved.added || [])], paint: { ...saved.paint } };
+  return {
+    ...newProject(scene), ...saved, base: scene, edits: { ...saved.edits }, added: [...(saved.added || [])], paint: { ...saved.paint },
+    pieces: (saved.pieces || []).map(piece => ({ ...piece })), texturePaint: { ...saved.texturePaint }, blank: Boolean(saved.blank),
+  };
 }
 
 const sceneLabel = scene => levels?.scenes?.[scene]?.label || scene;
@@ -118,12 +127,18 @@ async function showLevel(camera = null) {
   if (view !== shown) return;  // the page was left while the stage loaded
   syncScene();
   if (camera) view.setCamera(camera);
-  else view.frame(level.start);
+  else view.frame(marioStart());
   if (placing) view.setGhost(placing);
   if (previewed) view.preview(previewed);
   syncButtons();
 }
 let savedCamera = null, previewed = null;
+
+// Where Mario starts: the disc's start point, or where the level moved it.
+function marioStart() {
+  const mario = level && project && objects().find(object => object.type === 'Mario');
+  return mario ? { position: mario.transform.position, rotation: mario.transform.rotation } : level?.start;
+}
 
 function setStatus(text, loading = false, stuck = false) {
   $('world-status-text').textContent = text;
@@ -144,7 +159,21 @@ function objects() {
     out.push({ ...object, transform: edit?.transform || object.transform, edited: Boolean(edit) });
   }
   for (const added of project.added) out.push({ ...added, id: added.uid, added: true });
+  for (const piece of project.pieces) out.push(pieceObject(piece));
   return out;
+}
+
+// Built and copied pieces show up like objects: selectable, movable, turnable.
+const paletteById = id => levels.palette.find(entry => entry.id === id) || null;
+const fitOf = id => paletteById(id)?.fit || 0;
+function pieceObject(piece) {
+  const kind = BUILD.KIND[piece.kind];
+  return {
+    id: piece.uid, piece, added: true, category: 'pieces', key: piece.kind === 'prefab' ? piece.ref : `build:${piece.kind}`,
+    label: piece.label || kind?.label || 'Stage piece', type: piece.kind === 'prefab' ? 'Copied stage piece' : `${kind?.label || 'Built'} piece`,
+    name: '', model: piece.kind === 'prefab' ? piece.ref : null,
+    transform: { position: piece.position, rotation: [0, piece.yaw || 0, 0], scale: [1, 1, 1] },
+  };
 }
 
 function objectById(id) { return objects().find(object => object.id === id) || null; }
@@ -168,6 +197,7 @@ function restore(from, to) {
   to.push(JSON.stringify(project));
   project = JSON.parse(from.pop());
   project.file = file;  // undo changes the level, not where it's saved
+  texturePaintVersion++;
   $('world-name').value = project.name;
   dirty = true;
   if (selected && !objectById(selected)) selected = null;
@@ -181,12 +211,18 @@ function restore(from, to) {
 function setTransform(id, transform) {
   const object = objectById(id);
   if (!object) return;
-  if (object.added) project.added.find(a => a.uid === id).transform = transform;
+  if (object.piece) {
+    const piece = project.pieces.find(p => p.uid === id);
+    piece.position = [...transform.position];
+    piece.yaw = transform.rotation[1];
+  } else if (object.added) project.added.find(a => a.uid === id).transform = transform;
   else project.edits[id] = { transform };
 }
 
 function syncScene() {
-  if (view && level) view.syncObjects(objects(), selected);
+  if (!view || !level) return;
+  view.syncObjects(objects(), selected);
+  view.setStage(project, texturePaintVersion);
 }
 
 let uidCounter = 0;
@@ -287,6 +323,18 @@ for (const button of document.querySelectorAll('[data-world-export]'))
     } catch (error) { flash(error.message || String(error), true); }
   });
 
+// Play in game: the launcher exports the level and starts the game in it;
+// this waits until the game is closed again.
+$('world-play').addEventListener('click', async () => {
+  if (!project || $('world-play').disabled) return;
+  if (tool === 'walk') setTool('select');
+  $('world-play').disabled = true;
+  flash(`Starting the game in “${project.name}”… It goes through the title and file select by itself, about half a minute.`);
+  try { await window.sms.worldPlay(project); }
+  catch (error) { flash(error.message || String(error), true); }
+  finally { $('world-play').disabled = false; }
+});
+
 $('world-undo').addEventListener('click', () => restore(undoStack, redoStack));
 $('world-redo').addEventListener('click', () => restore(redoStack, undoStack));
 
@@ -300,11 +348,18 @@ function syncButtons() {
     button.setAttribute('aria-pressed', String(on));
   }
   $('world-paint-panel').hidden = tool !== 'paint';
+  $('world-build-panel').hidden = tool !== 'build';
+  $('world-paint-texture').hidden = paintMode !== 'texture';
+  $('world-paint-ground').hidden = paintMode !== 'ground';
+  for (const button of document.querySelectorAll('[data-world-paint-mode]')) button.classList.toggle('active', button.dataset.worldPaintMode === paintMode);
   $('world-walk-hint').hidden = tool !== 'walk';
   page.querySelector('.world-help').hidden = tool === 'walk';
   $('world-place-hint').hidden = tool !== 'place';
+  $('world-copy-hint').hidden = tool !== 'copy';
   if (placing) $('world-place-name').textContent = placing.label;
-  view?.setOverlay(tool === 'paint' || $('world-show-ground').checked);
+  $('world-empty-stage').textContent = project?.blank ? 'Bring back the stage\'s ground' : 'Start from an empty stage';
+  view?.setOverlay((tool === 'paint' && paintMode === 'ground') || $('world-show-ground').checked);
+  view?.setBuildGhost(tool === 'build' ? buildPieceSpec() : null);
 }
 
 let flashTimer = null;
@@ -326,6 +381,7 @@ function setTool(name) {
   if (name === tool && name !== 'select') name = 'select';
   if (tool === 'walk' && name !== 'walk') stopWalk();
   if (name !== 'place') { placing = null; view?.setGhost(null); markCatalog(); }
+  if (name !== 'copy') view?.endCopy();
   tool = name;
   if (tool === 'paint' && brush.id === null) brush.id = surfaces[0]?.id ?? null;
   if (tool === 'walk') startWalk();
@@ -360,7 +416,124 @@ function renderSurfaceSwatches() {
   }
 }
 
+for (const button of document.querySelectorAll('[data-world-paint-mode]'))
+  button.addEventListener('click', () => { paintMode = button.dataset.worldPaintMode; syncButtons(); });
+
+// Textures from the game's stages, as small images from their own pixels.
+const swatchCache = new Map();
+function swatchUrl(id) {
+  if (!swatchCache.has(id)) {
+    const entry = paletteById(id);
+    if (!entry) return '';
+    const canvas = document.createElement('canvas');
+    canvas.width = entry.thumb.width; canvas.height = entry.thumb.height;
+    canvas.getContext('2d').putImageData(new ImageData(new Uint8ClampedArray(entry.thumb.rgba), entry.thumb.width, entry.thumb.height), 0, 0);
+    swatchCache.set(id, canvas.toDataURL());
+  }
+  return swatchCache.get(id);
+}
+
+function renderTextureSwatches() {
+  const box = $('world-textures');
+  box.replaceChildren();
+  const swatch = (id, label, image) => {
+    const button = document.createElement('button');
+    button.className = 'world-texture';
+    button.classList.toggle('active', textureBrush === id);
+    button.setAttribute('aria-pressed', String(textureBrush === id));
+    button.title = label;
+    const img = document.createElement('img');
+    img.alt = '';
+    if (image) img.src = image;
+    button.append(img, label);
+    button.addEventListener('click', () => { textureBrush = id; renderTextureSwatches(); });
+    return button;
+  };
+  for (const group of levels.paletteGroups) {
+    const entries = levels.palette.filter(entry => entry.group === group.id);
+    if (!entries.length) continue;
+    const heading = document.createElement('h3');
+    heading.textContent = group.label;
+    box.append(heading);
+    if (group.id === 'ground') box.append(swatch(null, 'As it was', ''));
+    for (const entry of entries) box.append(swatch(entry.id, entry.label, swatchUrl(entry.id)));
+  }
+}
+
+// Texture pickers: a list of the palette by group, with the chosen one's image.
+function fillTexturePicker(select, image, value) {
+  if (!select.options.length) {
+    for (const group of levels.paletteGroups) {
+      const optgroup = document.createElement('optgroup');
+      optgroup.label = group.label;
+      for (const entry of levels.palette.filter(e => e.group === group.id)) optgroup.append(new Option(entry.label, entry.id));
+      if (optgroup.children.length) select.append(optgroup);
+    }
+  }
+  select.value = value;
+  image.src = swatchUrl(value) || '';
+}
+
+function renderBuildPanel() {
+  const box = $('world-pieces');
+  box.replaceChildren();
+  for (const kind of BUILD.KINDS) {
+    const button = document.createElement('button');
+    button.className = 'world-piece';
+    button.classList.toggle('active', kind.id === buildKind);
+    button.setAttribute('aria-pressed', String(kind.id === buildKind));
+    button.textContent = kind.label;
+    button.title = kind.detail;
+    button.addEventListener('click', () => {
+      buildKind = kind.id;
+      // Houses and roofs look like what they are from the start.
+      if (kind.id === 'house') buildTextures = { top: paletteById('gelato-shingles') ? 'gelato-shingles' : buildTextures.top, side: paletteById('sirena-stucco') ? 'sirena-stucco' : buildTextures.side };
+      else if (kind.id === 'roof') buildTextures = { ...buildTextures, top: paletteById('sirena-roof') ? 'sirena-roof' : buildTextures.top };
+      renderBuildPanel();
+      if (tool !== 'build') setTool('build');
+      else syncButtons();
+    });
+    box.append(button);
+  }
+  fillTexturePicker($('world-build-top'), $('world-build-top-swatch'), buildTextures.top);
+  fillTexturePicker($('world-build-side'), $('world-build-side-swatch'), buildTextures.side);
+}
+for (const face of ['top', 'side'])
+  $(`world-build-${face}`).addEventListener('change', event => { buildTextures[face] = event.target.value; renderBuildPanel(); syncButtons(); });
+
+const buildPieceSpec = () => ({ kind: buildKind, size: BUILD.KIND[buildKind].size, textures: { ...buildTextures }, label: BUILD.KIND[buildKind].label });
+
+$('world-copy-piece').addEventListener('click', () => setTool('copy'));
+$('world-empty-stage').addEventListener('click', () => {
+  if (!project) return;
+  if (project.blank) { change('Bring back the stage', () => { project.blank = false; }); return; }
+  if (!confirm('Start from an empty stage? Its ground, buildings and objects go (its sea and sky stay), so you can build your own. You can undo this.')) return;
+  change('Empty the stage', () => {
+    project.blank = true;
+    project.texturePaint = {};
+    project.paint = {};
+    texturePaintVersion++;
+    for (const object of level.objects) if (object.transform && object.type !== 'Mario' && object.category !== 'markers') project.edits[object.id] = { removed: true };
+    selected = null;
+  });
+  view?.repaintAll(project.paint);
+});
+
 // --- Catalog sidebar ----------------------------------------------------------------
+
+// The catalog with the stages' own buildings to copy, as their own category.
+function withStagePieces(list) {
+  const items = levels.prefabs.map(prefab => {
+    const world = levels.scenes[prefab.scene]?.world;
+    return {
+      key: `prefab:${prefab.id}`, type: 'Stage piece', variant: '', label: prefab.label, category: 'pieces', piece: true,
+      worlds: world ? [world] : [], scenes: [prefab.scene], count: 1, model: prefab.ref, source: null, scale: [1, 1, 1],
+      note: 'A building from the stage itself, walls, roof and ground included. Exporting copies it into this stage\'s model.',
+      search: `${prefab.label} building stage piece ${levels.worldNames[world] || ''}`.toLowerCase(),
+    };
+  });
+  return { ...list, categories: [{ id: 'pieces', label: 'Stage pieces' }, ...list.categories], items: [...items, ...list.items] };
+}
 
 function renderFilters() {
   const chips = $('world-categories');
@@ -430,7 +603,7 @@ function catalogRow(item) {
   row.querySelector('strong').textContent = item.label;
   const worlds = item.worlds.map(id => levels.worldNames[id] || id);
   row.querySelector('small').textContent = worlds.length > 3 ? `${worlds.slice(0, 3).join(', ')} +${worlds.length - 3}` : worlds.join(', ');
-  row.querySelector('em').textContent = item.model ? '' : 'marker';
+  row.querySelector('em').textContent = item.piece ? 'piece' : item.model ? '' : 'marker';
   row.title = `${item.label}\n${item.type}${item.variant ? ` · ${item.variant}` : ''}\nIn: ${worlds.join(', ')}\nPlaced ${item.count} times on the disc${item.note ? `\n${item.note}` : ''}`;
   row.addEventListener('click', () => startPlacing(item));
   return row;
@@ -455,16 +628,25 @@ function startPlacing(item) {
 function previewItem(item) {
   previewed = item;
   $('world-preview-name').textContent = item.label;
-  $('world-preview-detail').textContent = `${item.type}${item.variant ? ` · ${item.variant}` : ''} · placed ${item.count}× on the disc`;
+  $('world-preview-detail').textContent = item.piece ? `${item.type} · from ${levels.scenes[item.scenes?.[0]]?.label || 'a stage'}` : `${item.type}${item.variant ? ` · ${item.variant}` : ''} · placed ${item.count}× on the disc`;
   $('world-preview').hidden = false;
   view?.preview(item);
 }
 
 const CATEGORY_COLORS = {
   buildings: '#d39a5b', nature: '#4fae5b', decorations: '#c97fd0', npcs: '#f2c94c', enemies: '#e3574b', bosses: '#a3242f',
-  items: '#ffd64a', interactive: '#4aa3df', vehicles: '#3cc0b4', water: '#3a7bd5', effects: '#ff8a3d', markers: '#9aa7ad', system: '#6c7a80',
+  items: '#ffd64a', interactive: '#4aa3df', vehicles: '#3cc0b4', water: '#3a7bd5', effects: '#ff8a3d', markers: '#9aa7ad', system: '#6c7a80', pieces: '#b07a4f',
 };
 const categoryColor = id => CATEGORY_COLORS[id] || '#9aa7ad';
+
+// A piece of the stage being edited, copied by dragging a box over it.
+function copiedItem(box) {
+  return {
+    key: `copy:${box.join(',')}`, type: 'Stage piece', variant: '', label: 'Copied piece', category: 'pieces', piece: true,
+    worlds: [], scenes: [project.base], count: 1, model: `prefab|${project.base}|${box.join(',')}`, scale: [1, 1, 1],
+    note: 'Part of the stage, copied with its walls, roofs and ground.',
+  };
+}
 
 // --- Outline and inspector -------------------------------------------------------------
 
@@ -504,7 +686,7 @@ function renderInspector() {
   $('world-inspector-empty').hidden = Boolean(object);
   $('world-inspector-body').hidden = !object;
   if (!object) {
-    if (level) $('world-level-info').textContent = `${sceneLabel(project.base)} · ${level.objects.filter(o => o.transform).length} objects from the disc · ${project.added.length} added · ${Object.keys(project.edits).length} edited · ${Object.keys(project.paint).length} ground triangles painted`;
+    if (level) $('world-level-info').textContent = `${sceneLabel(project.base)}${project.blank ? ' (emptied)' : ''} · ${level.objects.filter(o => o.transform).length} objects from the disc · ${project.added.length} added · ${Object.keys(project.edits).length} edited · ${project.pieces.length} pieces built or copied · ${Object.keys(project.texturePaint).length} faces retextured · ${Object.keys(project.paint).length} ground triangles painted`;
     return;
   }
   $('world-inspector-title').textContent = object.label;
@@ -520,7 +702,30 @@ function renderInspector() {
   $('world-inspector-note').hidden = !object.note;
   $('world-delete').disabled = $('world-duplicate').disabled = isStart(object);
   $('world-reset').disabled = Boolean(object.added) || !object.edited;
+  // Pieces turn about the vertical only; built ones have a size and textures instead of a scale.
+  const built = object.piece && object.piece.kind !== 'prefab';
+  $('world-scale-row').hidden = Boolean(object.piece);
+  $('world-rot-x').disabled = $('world-rot-z').disabled = Boolean(object.piece);
+  $('world-piece-fields').hidden = !built;
+  if (built) {
+    AXES.forEach((axis, i) => { const input = $(`world-size-${axis}`); if (document.activeElement !== input) input.value = round(object.piece.size[i], 0); });
+    fillTexturePicker($('world-piece-top'), $('world-piece-top-swatch'), object.piece.textures.top);
+    fillTexturePicker($('world-piece-side'), $('world-piece-side-swatch'), object.piece.textures.side);
+  }
 }
+
+const selectedPiece = () => { const object = selected && objectById(selected); return object?.piece && object.piece.kind !== 'prefab' ? object.piece : null; };
+for (const [i, axis] of AXES.entries())
+  $(`world-size-${axis}`).addEventListener('change', event => {
+    const piece = selectedPiece(), value = Number(event.target.value);
+    if (!piece || !Number.isFinite(value)) { renderInspector(); return; }
+    change('Resize', () => { const size = [...piece.size]; size[i] = value; piece.size = BUILD.cleanSize(piece.kind, size); });
+  });
+for (const face of ['top', 'side'])
+  $(`world-piece-${face}`).addEventListener('change', event => {
+    const piece = selectedPiece();
+    if (piece) change('Retexture', () => { piece.textures = { ...piece.textures, [face]: event.target.value }; });
+  });
 const round = (value, digits) => String(Math.round(value * 10 ** digits) / 10 ** digits);
 
 for (const field of ['pos', 'rot', 'scl']) for (const [i, axis] of AXES.entries())
@@ -560,7 +765,8 @@ function removeSelected() {
   if (!object) return;
   if (isStart(object)) { flash('The stage needs Mario\'s start point. Move it instead.', true); return; }
   change('Delete', () => {
-    if (object.added) project.added = project.added.filter(a => a.uid !== object.id);
+    if (object.piece) project.pieces = project.pieces.filter(p => p.uid !== object.id);
+    else if (object.added) project.added = project.added.filter(a => a.uid !== object.id);
     else project.edits[object.id] = { removed: true };
     selected = null;
   });
@@ -570,6 +776,12 @@ function duplicateSelected() {
   const object = selected && objectById(selected);
   if (!object) return;
   if (isStart(object)) { flash('A stage has one Mario start point.', true); return; }
+  if (object.piece) {
+    const width = object.piece.size?.[0] || 1000;
+    const copy = { ...JSON.parse(JSON.stringify(object.piece)), uid: uid(), position: [object.piece.position[0] + width, object.piece.position[1], object.piece.position[2]] };
+    change('Duplicate', () => { project.pieces.push(copy); selected = copy.uid; });
+    return;
+  }
   const t = cloneTransform(object.transform);
   t.position[0] += 200;
   const copy = { uid: uid(), key: object.key, source: object.source || { scene: project.base, id: object.id }, type: object.type, variant: object.variant, label: object.label, category: object.category, model: object.model, note: object.note, transform: t };
@@ -578,7 +790,7 @@ function duplicateSelected() {
 
 $('world-revert').addEventListener('click', () => {
   if (!project || !confirm('Undo every change to this stage? You can still undo this.')) return;
-  change('Revert', () => { project.edits = {}; project.added = []; project.paint = {}; selected = null; });
+  change('Revert', () => { project.edits = {}; project.added = []; project.paint = {}; project.pieces = []; project.texturePaint = {}; project.blank = false; texturePaintVersion++; selected = null; });
   view?.repaintAll(project.paint);
 });
 
@@ -607,6 +819,7 @@ document.addEventListener('keydown', event => {
   const key = event.key.toLowerCase();
   if (key === 'f') { const object = selected && objectById(selected); if (object) view?.focus(object); }
   else if (key === 'b') setTool('paint');
+  else if (key === 'n') setTool('build');
   else if (key === 'p') setTool('walk');
   else if (key === 'v') setTool('select');
   else if (key === 'r' && selected) {
@@ -631,7 +844,7 @@ function createView(canvas) {
   const camera = new THREE.PerspectiveCamera(60, 1, 40, 320000);
   scene.add(new THREE.HemisphereLight(0xffffff, 0x8a7a66, 2.2));
   const sun = new THREE.DirectionalLight(0xffffff, 1.6);
-  sun.position.set(0.4, 1, 0.3);
+  sun.position.copy(LIGHT);
   scene.add(sun);
 
   const stage = new THREE.Group(), things = new THREE.Group(), overlayGroup = new THREE.Group();
@@ -650,7 +863,7 @@ function createView(canvas) {
     const maps = data.textures.map(source => {
       if (!source) return null;
       const texture = new THREE.DataTexture(source.rgba, source.width, source.height, THREE.RGBAFormat);
-      texture.colorSpace = THREE.SRGBColorSpace;
+      texture.colorSpace = THREE.NoColorSpace;
       texture.wrapS = WRAP[source.wrapS] || THREE.ClampToEdgeWrapping;
       texture.wrapT = WRAP[source.wrapT] || THREE.ClampToEdgeWrapping;
       texture.magFilter = THREE.LinearFilter;
@@ -668,45 +881,69 @@ function createView(canvas) {
       geometry.setAttribute('position', new THREE.BufferAttribute(mesh.position, 3));
       geometry.setAttribute('normal', new THREE.BufferAttribute(mesh.normal, 3));
       geometry.setAttribute('uv', new THREE.BufferAttribute(mesh.uv, 2));
-      // The game's vertex colours are display values; three.js lights in linear.
-      // Only blended layers keep vertex alpha: elsewhere it isn't coverage, and
-      // three.js would test it along with the texture's.
-      if (mesh.color) geometry.setAttribute('color', mesh.translucent ? new THREE.BufferAttribute(linearColors(mesh.color, 4), 4) : new THREE.BufferAttribute(linearColors(mesh.color, 3), 3));
+      geometry.setAttribute('uv1', new THREE.BufferAttribute(mesh.uv1, 2));
+      // Vertex colours stay as the game stores them: the TEV shader works in
+      // display values, as the GameCube does.
+      if (mesh.color) geometry.setAttribute('clr', new THREE.BufferAttribute(mesh.color, 4));
       geometry.setIndex(new THREE.BufferAttribute(mesh.index, 1));
       geometry.computeBoundingSphere();
-      const options = {
-        map: mesh.texture >= 0 ? maps[mesh.texture] : null, vertexColors: Boolean(mesh.color),
-        side: mesh.doubleSided ? THREE.DoubleSide : THREE.FrontSide,
-        alphaTest: mesh.cutout && !mesh.translucent ? Math.max(0.3, mesh.alphaRef) : 0,
-      };
-      // Blended layers (decals, shadows, glass) sit on the surfaces under them:
-      // drawn after, with the game's blend factors, nudged forward so they don't flicker.
-      if (mesh.translucent) Object.assign(options, {
-        transparent: true, depthWrite: false, blending: THREE.CustomBlending,
-        blendSrc: BLEND_SRC[mesh.blendSrc] ?? THREE.SrcAlphaFactor, blendDst: BLEND_DST[mesh.blendDst] ?? THREE.OneMinusSrcAlphaFactor,
-        polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -4,
-      });
-      if (!options.map && !mesh.color) options.color = new THREE.Color().setRGB(mesh.tint[0], mesh.tint[1], mesh.tint[2], THREE.SRGBColorSpace);
-      const material = mesh.hasNormal && !mesh.color ? new THREE.MeshLambertMaterial(options) : new THREE.MeshBasicMaterial(options);
+      const material = mesh.tev ? tevMaterial(mesh, maps) : new THREE.MeshLambertMaterial({ color: 0xbbbbbb });
       return { geometry, material };
     });
     const bounds = new THREE.Box3(new THREE.Vector3(...data.bounds.min), new THREE.Vector3(...data.bounds.max));
-    return { parts, bounds };
-  }
-  // RGBA colours to linear RGB(A), keeping `width` components each.
-  function linearColors(colors, width) {
-    const count = colors.length / 4, out = new Float32Array(count * width);
-    for (let i = 0; i < count; i++) for (let k = 0; k < width; k++) {
-      const c = colors[i * 4 + k];
-      out[i * width + k] = k === 3 ? c : c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
-    }
-    return out;
+    // What a preview frames: all but a glow (a little added light around it,
+    // like a Shine's halo; not a body drawn that way, like Kazekun's cloud),
+    // and not much below ground (a cannon's bunker).
+    const glow = mesh => mesh.translucent && mesh.blendDst === 1;
+    const faces = list => list.reduce((n, mesh) => n + mesh.index.length / 3, 0);
+    const glowing = faces(data.meshes.filter(glow)) < faces(data.meshes) * 0.25;
+    const solid = new THREE.Box3();
+    parts.forEach(({ geometry }, i) => { if (!(glowing && glow(data.meshes[i]))) { geometry.computeBoundingBox(); solid.union(geometry.boundingBox); } });
+    if (solid.isEmpty()) solid.copy(bounds);
+    if (solid.max.y > 0 && solid.min.y < -solid.max.y * 0.5) solid.min.y = -solid.max.y * 0.5;
+    // Mirror surfaces, turned so their facing is the reflector's +Z.
+    const mirrors = (data.mirrors || []).map(mirror => {
+      const geometry = new THREE.BufferGeometry();
+      geometry.setAttribute('position', new THREE.BufferAttribute(Float32Array.from(mirror.position), 3));
+      geometry.setIndex(new THREE.BufferAttribute(mirror.index, 1));
+      // Which way it faces, from its triangles (the game's mirrors face the sky).
+      const facing = new THREE.Vector3(), p = mirror.position, a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3();
+      for (let i = 0; i < mirror.index.length; i += 3) {
+        a.fromArray(p, mirror.index[i] * 3); b.fromArray(p, mirror.index[i + 1] * 3).sub(a); c.fromArray(p, mirror.index[i + 2] * 3).sub(a);
+        facing.add(b.cross(c));
+      }
+      if (facing.lengthSq() < 1e-9 || facing.y < 0) facing.negate();
+      if (facing.lengthSq() < 1e-9) facing.set(0, 1, 0);
+      const turn = new THREE.Quaternion().setFromUnitVectors(facing.normalize(), new THREE.Vector3(0, 0, 1));
+      geometry.applyQuaternion(turn);
+      return { geometry, back: turn.clone().invert() };
+    });
+    return { parts, bounds, solid, meshes: data.meshes, ground: data.ground || null, mirrors };
   }
   function instance(built) {
     const group = new THREE.Group();
     for (const { geometry, material } of built.parts) group.add(new THREE.Mesh(geometry, material));
+    // Each mirror reflects for itself, with its own picture of the scene.
+    for (const { geometry, back } of built.mirrors || []) {
+      const mirror = new Reflector(geometry, { textureWidth: 512, textureHeight: 512, color: 0xc4ced6, multisample: 0, type: THREE.UnsignedByteType });
+      mirror.quaternion.copy(back);
+      // It shows the scene, not the mirror it's part of.
+      const reflect = mirror.onBeforeRender;
+      mirror.onBeforeRender = function (...args) {
+        const own = group.children.filter(child => child !== mirror && child.visible);
+        own.forEach(child => { child.visible = false; });
+        reflect.apply(this, args);
+        own.forEach(child => { child.visible = true; });
+      };
+      // A little see-through, so the tiles' seams under it show as on the real mirrors.
+      mirror.material.transparent = true;
+      mirror.material.fragmentShader = mirror.material.fragmentShader.replace('gl_FragColor = vec4( blendOverlay( base.rgb, color ), 1.0 );', 'gl_FragColor = vec4( blendOverlay( base.rgb, color ), 0.85 );');
+      group.add(mirror);
+    }
     return group;
   }
+  // Lets go of what an instance holds on the GPU itself (mirrors' pictures).
+  const release = root => root?.traverse(child => { if (child.isReflector) child.dispose(); });
 
   // A stand-in for things with no model of their own (cameras, areas, sounds…).
   const markerGeometry = new THREE.OctahedronGeometry(70);
@@ -722,22 +959,40 @@ function createView(canvas) {
 
   // --- Stage and collision ---
   let collision = null, overlay = null, overlayOn = false, levelToken = 0;
+  let baseGround = null, mapStage = null, seaStage = null, stageKey = '', paintedVersion = -1, blank = false;
+  const painted = new THREE.Group();
   async function setLevel(data) {
     const token = ++levelToken;
     collision = null;
     overlay = null;
+    mapStage = null;
+    seaStage = null;
+    stageKey = '';
+    paintedVersion = -1;
     stage.clear();
+    painted.clear();
     overlayGroup.clear();
-    for (const [, entry] of nodes) things.remove(entry.root);
+    for (const [, entry] of nodes) dropEntry(entry);
     nodes.clear();
     const built = await Promise.all(data.stageModels.map(modelFor));
     if (token !== levelToken || disposed) return;  // another stage started loading meanwhile
-    for (const model of built) if (model) stage.add(instance(model));
+    built.forEach((model, i) => {
+      if (!model) return;
+      const group = instance(model);
+      stage.add(group);
+      // The stage's own ground and buildings: what texture painting changes.
+      if (data.stageModels[i].endsWith('|map/map/map.bmd')) mapStage = { group, built: model, original: model.parts.map(part => part.geometry.index), centers: null };
+      if (data.stageModels[i].endsWith('|map/map/sea.bmd')) seaStage = { group, built: model };
+    });
+    stage.add(painted);
+    baseGround = data.collision;
     collision = prepareCollision(data.collision);
+    collision.baseCount = collision.count;
     overlay = buildOverlay(collision);
     overlayGroup.add(overlay.mesh);
     overlay.mesh.visible = overlayOn;
     repaintAll(project?.paint || {});
+    if (project) setStage(project, texturePaintVersion);
     const sky = data.sky;
     scene.background = new THREE.Color(sky || 0x8fc7e8);
   }
@@ -859,7 +1114,165 @@ function createView(canvas) {
   }
   function repaintAll(paint) {
     if (!collision) return;
-    repaint(Array.from({ length: collision.count }, (_, t) => t), paint);
+    repaint(Array.from({ length: collision.baseCount ?? collision.count }, (_, t) => t), paint);
+  }
+
+  // --- The stage as the project changes it: emptied, built on, retextured ---
+  function setStage(project, version) {
+    if (!baseGround) return;
+    blank = Boolean(project.blank);
+    if (mapStage) mapStage.group.visible = !blank;
+    painted.visible = !blank;
+    // An emptied stage keeps the open sea, not its canals, falls and shore foam.
+    if (seaStage) {
+      seaStage.open ??= openSea(seaStage.built.meshes);
+      seaStage.group.children.forEach((mesh, i) => { mesh.visible = !blank || i === seaStage.open; });
+    }
+    if (overlay) overlay.mesh.visible = overlayOn && !blank;
+    const key = JSON.stringify([blank, project.pieces]);
+    if (key !== stageKey) { stageKey = key; rebuildGround(project.pieces); }
+    if (version !== paintedVersion) { paintedVersion = version; showTexturePaint(project.texturePaint); }
+  }
+
+  // Ground to walk and place on: the stage's (unless emptied) and the pieces'.
+  let groundToken = 0;
+  async function rebuildGround(pieces) {
+    const token = ++groundToken;
+    const extra = [], codes = [];
+    const codeOf = id => { const surface = surfaces.find(s => s.id === id) || surfaces[0]; return surface.type * 256 + surface.sound; };
+    for (const piece of pieces) {
+      if (piece.kind === 'prefab') {
+        const model = await modelFor(piece.ref);
+        if (token !== groundToken) return;
+        const ground = model?.ground;
+        if (!ground) continue;
+        const yaw = (piece.yaw || 0) * DEG, c = Math.cos(yaw), s = Math.sin(yaw), [px, py, pz] = piece.position;
+        for (let i = 0; i < ground.position.length; i += 3) {
+          const x = ground.position[i], y = ground.position[i + 1], z = ground.position[i + 2];
+          extra.push(px + x * c + z * s, py + y, pz - x * s + z * c);
+        }
+        codes.push(...ground.codes);
+        continue;
+      }
+      if (!BUILD.solid(piece)) continue;
+      const floorCode = codeOf(piece.ground || paletteById(piece.textures.top)?.ground || 'stone'), stone = codeOf('stone');
+      for (const face of BUILD.faces(piece)) {
+        for (const p of face.p) extra.push(...p);
+        codes.push(BUILD.isFloor(face.n) ? floorCode : stone);
+      }
+    }
+    // An emptied stage keeps its sea (surface, floor and the plane that ends a fall), not to paint.
+    if (blank) {
+      for (let t = 0; t < baseGround.codes.length; t++) {
+        if (![0x0102, 0x0700, 0x0800].includes(Math.floor(baseGround.codes[t] / 256) & 0x1fff)) continue;
+        for (let k = 0; k < 9; k++) extra.push(baseGround.position[t * 9 + k]);
+        codes.push(baseGround.codes[t]);
+      }
+    }
+    const base = blank ? { position: new Float32Array(0), codes: new Uint32Array(0) } : baseGround;
+    const position = new Float32Array(base.position.length + extra.length);
+    position.set(base.position);
+    position.set(extra, base.position.length);
+    const allCodes = new Uint32Array(base.codes.length + codes.length);
+    allCodes.set(base.codes);
+    allCodes.set(codes, base.codes.length);
+    collision = prepareCollision({ position, codes: allCodes, ground: baseGround.ground });
+    collision.baseCount = base.codes.length;
+  }
+
+  // Retextured faces: taken out of the stage's own meshes and drawn again
+  // with their new texture, laid over the world as the export lays it.
+  function showTexturePaint(paint) {
+    painted.clear();
+    if (!mapStage) return;
+    const byMaterial = new Map();
+    for (const [key, id] of Object.entries(paint || {})) {
+      const [material, face] = key.split(':').map(Number);
+      if (!byMaterial.has(material)) byMaterial.set(material, new Map());
+      byMaterial.get(material).set(face, id);
+    }
+    const byTexture = new Map();  // palette id -> [{ mesh, face }]
+    mapStage.built.parts.forEach((part, i) => {
+      const mesh = mapStage.built.meshes[i], faces = byMaterial.get(mesh.material);
+      if (!faces) { part.geometry.setIndex(mapStage.original[i]); return; }
+      const source = mapStage.original[i].array, kept = [];
+      for (let f = 0; f < source.length / 3; f++) {
+        const id = faces.get(f);
+        if (id) { if (!byTexture.has(id)) byTexture.set(id, []); byTexture.get(id).push({ mesh, face: f }); }
+        else kept.push(source[f * 3], source[f * 3 + 1], source[f * 3 + 2]);
+      }
+      part.geometry.setIndex(new THREE.BufferAttribute(Uint32Array.from(kept), 1));
+    });
+    for (const [id, list] of byTexture) {
+      const tile = paletteById(id)?.tile || 800;
+      const n = list.length * 3, position = new Float32Array(n * 3), normal = new Float32Array(n * 3), uv = new Float32Array(n * 2), clr = new Float32Array(n * 4);
+      list.forEach(({ mesh, face }, k) => {
+        const corners = [0, 1, 2].map(c => mesh.index[face * 3 + c]);
+        const P = corners.map(v => [mesh.position[v * 3], mesh.position[v * 3 + 1], mesh.position[v * 3 + 2]]);
+        const e1 = P[1].map((v, c) => v - P[0][c]), e2 = P[2].map((v, c) => v - P[0][c]);
+        const fn = new THREE.Vector3(e1[1] * e2[2] - e1[2] * e2[1], e1[2] * e2[0] - e1[0] * e2[2], e1[0] * e2[1] - e1[1] * e2[0]).normalize().toArray();
+        corners.forEach((v, c) => {
+          const o = k * 3 + c;
+          position.set(P[c], o * 3);
+          normal.set([mesh.normal[v * 3], mesh.normal[v * 3 + 1], mesh.normal[v * 3 + 2]], o * 3);
+          uv.set(BUILD.planarUv(P[c], fn, tile), o * 2);
+          clr.set(mesh.color ? [mesh.color[v * 4], mesh.color[v * 4 + 1], mesh.color[v * 4 + 2], 1] : [1, 1, 1, 1], o * 4);
+        });
+      });
+      painted.add(texturedMesh(id, { position, normal, uv, clr }));
+    }
+  }
+
+  // The sea model's mesh that spreads furthest: the open water.
+  function openSea(meshes) {
+    let best = -1, area = -1;
+    meshes.forEach((mesh, i) => {
+      let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
+      for (let k = 0; k < mesh.position.length; k += 3) { x0 = Math.min(x0, mesh.position[k]); x1 = Math.max(x1, mesh.position[k]); z0 = Math.min(z0, mesh.position[k + 2]); z1 = Math.max(z1, mesh.position[k + 2]); }
+      if ((x1 - x0) * (z1 - z0) > area) { area = (x1 - x0) * (z1 - z0); best = i; }
+    });
+    return best;
+  }
+
+  // A mesh drawn with a palette texture's own material, once it has loaded.
+  const pending = new THREE.MeshLambertMaterial({ color: 0xcccccc });
+  function texturedMesh(id, { position, normal, uv, clr }) {
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.BufferAttribute(position, 3));
+    geometry.setAttribute('normal', new THREE.BufferAttribute(normal, 3));
+    geometry.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+    geometry.setAttribute('uv1', new THREE.BufferAttribute(uv, 2));
+    geometry.setAttribute('clr', new THREE.BufferAttribute(clr, 4));
+    geometry.computeBoundingSphere();
+    const mesh = new THREE.Mesh(geometry, pending);
+    if (id) modelFor(`palette|${id}`).then(model => { const material = model?.parts[0]?.material; if (material) mesh.material = material; });
+    return mesh;
+  }
+
+  // A built piece's meshes, one per texture, in world space.
+  function pieceMeshes(piece) {
+    const group = new THREE.Group(), byTexture = new Map();
+    for (const face of BUILD.faces(piece, fitOf)) {
+      if (!byTexture.has(face.texture)) byTexture.set(face.texture, []);
+      byTexture.get(face.texture).push(face);
+    }
+    for (const [id, faces] of byTexture) {
+      const entry = paletteById(id), tile = entry?.tile || 800, base = entry?.base || [235, 238, 242];
+      const n = faces.length * 3, position = new Float32Array(n * 3), normal = new Float32Array(n * 3), uv = new Float32Array(n * 2), clr = new Float32Array(n * 4);
+      faces.forEach((face, k) => {
+        const light = BUILD.shade(face.n, base).map(v => v / 255);
+        light[3] = 1;
+        face.p.forEach((p, c) => {
+          const o = k * 3 + c;
+          position.set(p, o * 3);
+          normal.set(face.n, o * 3);
+          uv.set(face.uv ? face.uv[c] : BUILD.planarUv(p, face.n, tile), o * 2);
+          clr.set(light, o * 4);
+        });
+      });
+      group.add(texturedMesh(id, { position, normal, uv, clr }));
+    }
+    return group;
   }
 
   // --- Objects ---
@@ -869,31 +1282,44 @@ function createView(canvas) {
   scene.add(selectionBox);
   let selectedId = null;
 
+  // Built pieces are drawn where they are (their textures laid over the
+  // world), so they're made again when they move or change.
+  const builtPiece = object => object.piece && object.piece.kind !== 'prefab';
+  const pieceRef = piece => `piece:${JSON.stringify([piece.kind, piece.size, piece.textures, piece.position, piece.yaw])}`;
+  function dropEntry(entry) {
+    things.remove(entry.root);
+    release(entry.root);
+    if (entry.built) entry.root.traverse(child => child.geometry?.dispose());
+  }
   function syncObjects(list, selection) {
     const keep = new Set();
     for (const object of list) {
       if (!object.transform) continue;
       keep.add(object.id);
       let entry = nodes.get(object.id);
-      if (!entry || entry.ref !== (object.model || null)) {
-        if (entry) things.remove(entry.root);
-        entry = { root: new THREE.Group(), ref: object.model || null, ready: false, type: object.type };
+      const ref = builtPiece(object) ? pieceRef(object.piece) : object.model || null;
+      if (!entry || entry.ref !== ref) {
+        if (entry) dropEntry(entry);
+        entry = { root: new THREE.Group(), ref, ready: false, type: object.type, built: builtPiece(object) };
         entry.root.userData.id = object.id;
         things.add(entry.root);
         nodes.set(object.id, entry);
-        const placeholder = marker(object.category);
-        entry.root.add(placeholder);
-        modelFor(entry.ref).then(model => {
-          if (!model || nodes.get(object.id) !== entry) return;
-          entry.root.remove(placeholder);
-          entry.root.add(instance(model));
-          entry.ready = true;
-          if (selectedId === object.id) updateSelectionBox();
-        });
+        if (entry.built) { entry.root.add(pieceMeshes(object.piece)); entry.ready = true; }
+        else {
+          const placeholder = marker(object.category);
+          entry.root.add(placeholder);
+          modelFor(entry.ref).then(model => {
+            if (!model || nodes.get(object.id) !== entry) return;
+            entry.root.remove(placeholder);
+            entry.root.add(instance(model));
+            entry.ready = true;
+            if (selectedId === object.id) updateSelectionBox();
+          });
+        }
       }
-      applyTransform(entry.root, object.transform);
+      if (!entry.built) applyTransform(entry.root, object.transform);
     }
-    for (const [id, entry] of nodes) if (!keep.has(id)) { things.remove(entry.root); nodes.delete(id); }
+    for (const [id, entry] of nodes) if (!keep.has(id)) { dropEntry(entry); nodes.delete(id); }
     selectedId = selection;
     updateSelectionBox();
   }
@@ -918,7 +1344,7 @@ function createView(canvas) {
   let brushRadius = brush.radius;
 
   function setGhost(item) {
-    if (ghost) scene.remove(ghost);
+    if (ghost) { scene.remove(ghost); release(ghost); }
     ghost = null;
     ghostItem = item;
     if (!item) return;
@@ -931,9 +1357,43 @@ function createView(canvas) {
       if (!model || ghostItem !== item) return;
       ghost.remove(placeholder);
       const copy = instance(model);
-      copy.traverse(child => { if (child.isMesh) { child.material = child.material.clone(); child.material.transparent = true; child.material.opacity = 0.6; } });
+      copy.traverse(child => {
+        if (!child.isMesh || child.isReflector) return;
+        child.material = child.material.clone();
+        child.material.transparent = true;
+        if (child.material.uniforms?.opacity) child.material.uniforms.opacity.value = 0.6;
+        else child.material.opacity = 0.6;
+      });
       ghost.add(copy);
     });
+  }
+
+  // The piece the Build tool puts down, following the pointer.
+  let buildGhost = null, buildGhostKey = '';
+  function setBuildGhost(spec) {
+    const key = spec ? JSON.stringify(spec) : '';
+    if (key === buildGhostKey) return;
+    buildGhostKey = key;
+    if (buildGhost) { scene.remove(buildGhost); buildGhost.traverse(child => child.geometry?.dispose()); }
+    buildGhost = null;
+    if (!spec) return;
+    buildGhost = pieceMeshes({ ...spec, position: [0, 0, 0], yaw: 0 });
+    buildGhost.visible = false;
+    scene.add(buildGhost);
+  }
+  const snap = v => Math.round(v / 50) * 50;
+
+  // The box dragged over the stage to copy part of it.
+  let copyBox = null;
+  const copyHelper = new THREE.Box3Helper(new THREE.Box3(), 0x5ad1ff);
+  copyHelper.visible = false;
+  scene.add(copyHelper);
+  function endCopy() { copyBox = null; copyHelper.visible = false; }
+  function showCopyBox() {
+    const { from, to } = copyBox;
+    copyHelper.box.min.set(Math.min(from.x, to.x), Math.min(from.y, to.y) - 50, Math.min(from.z, to.z));
+    copyHelper.box.max.set(Math.max(from.x, to.x), Math.max(from.y, to.y) + 3000, Math.max(from.z, to.z));
+    copyHelper.visible = true;
   }
 
   const previewCanvas = $('world-preview-canvas');
@@ -945,6 +1405,8 @@ function createView(canvas) {
       previewRenderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
       previewRenderer.outputColorSpace = THREE.SRGBColorSpace;
       previewScene = new THREE.Scene();
+      // A sky for mirrors to show, the colour of the panel behind the preview.
+      previewScene.background = new THREE.Color(0xdbe9ee);
       previewScene.add(new THREE.HemisphereLight(0xffffff, 0x8a7a66, 2.4));
       const light = new THREE.DirectionalLight(0xffffff, 1.4);
       light.position.set(1, 2, 1.5);
@@ -955,19 +1417,31 @@ function createView(canvas) {
     previewRoot = marker(item.category);
     previewScene.add(previewRoot);
     fitPreview(new THREE.Box3().setFromObject(previewRoot));
+    const show = (root, box) => {
+      previewScene.remove(previewRoot);
+      previewRoot?.traverse(child => { if (child.userData.ownMaterial) child.material.dispose(); });
+      release(previewRoot);
+      previewRoot = root;
+      previewScene.add(previewRoot);
+      fitPreview(box);
+    };
+    if (item.kind && BUILD.KIND[item.kind]) { const root = pieceMeshes({ ...item, position: [0, 0, 0], yaw: 0 }); show(root, new THREE.Box3().setFromObject(root)); return; }
     modelFor(item.model).then(model => {
       if (!model || token !== previewToken) return;
-      previewScene.remove(previewRoot);
-      previewRoot = instance(model);
-      previewScene.add(previewRoot);
-      fitPreview(model.bounds);
+      // Seen from all round: flat things (signs, paintings) from behind too.
+      const root = instance(model);
+      root.traverse(child => { if (child.isMesh && !child.isReflector) { child.material = child.material.clone(); child.material.side = THREE.DoubleSide; child.userData.ownMaterial = true; } });
+      show(root, model.solid || model.bounds);
     });
   }
-  let previewRadius = 300, previewCenter = new THREE.Vector3();
+  let previewRadius = 300, previewCenter = new THREE.Vector3(), previewHeight = 0.9;
   function fitPreview(box) {
     const sphere = box.getBoundingSphere(new THREE.Sphere());
     previewRadius = Math.max(sphere.radius, 30);
     previewCenter.copy(sphere.center);
+    // Flat things (a silhouette, a mat) are seen from higher up.
+    const size = box.getSize(new THREE.Vector3());
+    previewHeight = size.y < 0.15 * Math.max(size.x, size.z) ? 2.4 : 0.9;
   }
 
   // --- Camera ---
@@ -1000,7 +1474,7 @@ function createView(canvas) {
   let walker = null, marioModel = null;
   const WALK = { speed: 1000, run: 1600, gravity: 3600, jump: 1500, radius: 50, height: 160, step: 70 };
   async function walk(from) {
-    const start = from ? [...from] : [...(level.start?.position || [0, 0, 0])];
+    const start = from ? [...from] : [...(marioStart()?.position || [0, 0, 0])];
     const ground = groundBelow(start, 600);
     if (ground != null) start[1] = ground;
     walker = { position: new THREE.Vector3(...start), velocity: new THREE.Vector3(), grounded: false, yaw: look.yaw, camYaw: look.yaw, camPitch: -0.25, distance: 650, body: new THREE.Group(), anim: 0 };
@@ -1067,7 +1541,7 @@ function createView(canvas) {
     }
     // Fell out of the world: back to the start.
     if (w.position.y < (collision?.ground ?? -20000) - 5000) {
-      w.position.set(...level.start.position);
+      w.position.set(...(marioStart()?.position || [0, 0, 0]));
       w.velocity.set(0, 0, 0);
     }
     w.body.position.copy(w.position);
@@ -1136,6 +1610,27 @@ function createView(canvas) {
     if (event.button === 2 || event.button === 1 || tool === 'walk') { drag = { kind: 'look', x: event.clientX, y: event.clientY, pan: event.button === 1 }; return; }
     if (event.button !== 0) return;
     const ray = rayFrom(event);
+    if (tool === 'build') {
+      const hit = surfacePoint(ray);
+      if (!hit) return;
+      const spec = buildPieceSpec();
+      const piece = { uid: uid(), ...spec, size: [...spec.size], position: [snap(hit.point.x), Math.round(hit.point.y), snap(hit.point.z)], yaw: ghostYaw };
+      change('Build', () => { project.pieces.push(piece); selected = piece.uid; });
+      return;
+    }
+    if (tool === 'copy') {
+      const hit = surfacePoint(ray);
+      if (hit) { copyBox = { from: hit.point.clone(), to: hit.point.clone() }; showCopyBox(); }
+      return;
+    }
+    if (tool === 'place' && placing?.piece) {
+      const hit = surfacePoint(ray);
+      if (!hit) return;
+      const piece = { uid: uid(), kind: 'prefab', ref: placing.model, label: placing.label, position: [Math.round(hit.point.x), Math.round(hit.point.y), Math.round(hit.point.z)], yaw: ghostYaw };
+      change('Place', () => { project.pieces.push(piece); selected = piece.uid; });
+      if (!event.shiftKey) setTool('select');
+      return;
+    }
     if (tool === 'place' && placing) {
       const hit = surfacePoint(ray);
       if (!hit) return;
@@ -1148,7 +1643,7 @@ function createView(canvas) {
     }
     if (tool === 'paint') {
       painting = { before: JSON.stringify(project), changed: false };
-      paintAt(ray);
+      paintMode === 'texture' ? paintTextureAt(ray) : paintAt(ray);
       return;
     }
     const picked = pickObject(ray);
@@ -1189,6 +1684,17 @@ function createView(canvas) {
       renderInspector();
       return;
     }
+    if (tool === 'build' && buildGhost) {
+      const hit = surfacePoint(rayFrom(event));
+      buildGhost.visible = Boolean(hit);
+      if (hit) { buildGhost.position.set(snap(hit.point.x), hit.point.y, snap(hit.point.z)); buildGhost.rotation.set(0, ghostYaw * DEG, 0); }
+      return;
+    }
+    if (tool === 'copy' && copyBox) {
+      const hit = surfacePoint(rayFrom(event));
+      if (hit) { copyBox.to.copy(hit.point); showCopyBox(); }
+      return;
+    }
     if (tool === 'place' && ghost) {
       const hit = surfacePoint(rayFrom(event));
       ghost.visible = Boolean(hit);
@@ -1199,11 +1705,18 @@ function createView(canvas) {
       const hit = raycastCollision(rayFrom(event).origin, raycaster.ray.direction);
       brushRing.visible = Boolean(hit);
       if (hit) { brushRing.position.copy(hit.point).add(new THREE.Vector3(0, 6, 0)); brushRing.scale.setScalar(brushRadius); }
-      if (painting) paintAt(raycaster.ray);
+      if (painting) paintMode === 'texture' ? paintTextureAt(raycaster.ray) : paintAt(raycaster.ray);
     }
   });
   const endPointer = event => {
     if (canvas.hasPointerCapture?.(event.pointerId)) canvas.releasePointerCapture(event.pointerId);
+    if (tool === 'copy' && copyBox) {
+      const { from, to } = copyBox;
+      const box = [Math.min(from.x, to.x), Math.min(from.z, to.z), Math.max(from.x, to.x), Math.max(from.z, to.z)].map(Math.round);
+      endCopy();
+      if (box[2] - box[0] >= 150 && box[3] - box[1] >= 150) startPlacing(copiedItem(box));
+      else flash('Drag a bigger box over what you want to copy.', true);
+    }
     if (drag?.kind === 'move' && drag.moved) {
       undoStack.push(drag.before);
       redoStack = [];
@@ -1223,12 +1736,12 @@ function createView(canvas) {
   };
   canvas.addEventListener('pointerup', endPointer);
   canvas.addEventListener('pointercancel', endPointer);
-  canvas.addEventListener('pointerleave', () => { brushRing.visible = false; if (ghost) ghost.visible = false; });
+  canvas.addEventListener('pointerleave', () => { brushRing.visible = false; if (ghost) ghost.visible = false; if (buildGhost) buildGhost.visible = false; });
   let ghostYaw = 0;
   canvas.addEventListener('wheel', event => {
     event.preventDefault();
     if (walker) { walker.distance = Math.max(200, Math.min(2500, walker.distance * (event.deltaY > 0 ? 1.12 : 0.89))); return; }
-    if (tool === 'place' && event.altKey) { ghostYaw = (ghostYaw + (event.deltaY > 0 ? 15 : -15) + 540) % 360 - 180; return; }
+    if ((tool === 'place' || tool === 'build') && event.altKey) { ghostYaw = (ghostYaw + (event.deltaY > 0 ? 15 : -15) + 540) % 360 - 180; return; }
     const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
     camera.position.addScaledVector(forward, -Math.sign(event.deltaY) * 400 * speedBoost);
   }, { passive: false });
@@ -1250,8 +1763,11 @@ function createView(canvas) {
   function paintAt(ray) {
     const hit = raycastCollision(ray.origin, ray.direction);
     const surface = surfaces.find(s => s.id === brush.id);
-    if (!hit || !surface) return;
-    const { centers, normals, count } = collision, r2 = brushRadius * brushRadius, changed = [];
+    if (hit && surface) paintGroundAround(hit.point, surface);
+  }
+  function paintGroundAround(point, surface) {
+    const hit = { point };
+    const { centers, normals } = collision, count = collision.baseCount ?? collision.count, r2 = brushRadius * brushRadius, changed = [];
     for (let t = 0; t < count; t++) {
       if (normals[t * 3 + 1] < 0.2) continue;
       const dx = centers[t * 3] - hit.point.x, dy = centers[t * 3 + 1] - hit.point.y, dz = centers[t * 3 + 2] - hit.point.z;
@@ -1269,6 +1785,69 @@ function createView(canvas) {
       changed.push(t);
     }
     if (changed.length) { painting.changed = true; repaint(changed, project.paint); }
+  }
+
+  // How far (x, z) is from a triangle's corners as seen from above (0 inside it).
+  function distanceToTriangle(x, z, t, o) {
+    const ax = t[o], az = t[o + 1], bx = t[o + 2], bz = t[o + 3], cx = t[o + 4], cz = t[o + 5];
+    const side = (px, pz, qx, qz) => (qx - px) * (z - pz) - (qz - pz) * (x - px);
+    const d1 = side(ax, az, bx, bz), d2 = side(bx, bz, cx, cz), d3 = side(cx, cz, ax, az);
+    if ((d1 >= 0 && d2 >= 0 && d3 >= 0) || (d1 <= 0 && d2 <= 0 && d3 <= 0)) return 0;
+    const edge = (px, pz, qx, qz) => {
+      const dx = qx - px, dz = qz - pz, length = dx * dx + dz * dz || 1;
+      const t = Math.max(0, Math.min(1, ((x - px) * dx + (z - pz) * dz) / length));
+      return Math.hypot(x - (px + dx * t), z - (pz + dz * t));
+    };
+    return Math.min(edge(ax, az, bx, bz), edge(bx, bz, cx, cz), edge(cx, cz, ax, az));
+  }
+
+  // Retextures the stage's own faces under the brush (floors only, unless
+  // that's off), and its ground to match if asked.
+  function paintTextureAt(ray) {
+    if (!mapStage || blank) return;
+    const hit = raycastCollision(ray.origin, ray.direction);
+    if (!hit) return;
+    // Per face: its corners on the ground plane, height range and how much it faces up.
+    if (!mapStage.faces) mapStage.faces = mapStage.built.meshes.map(mesh => {
+      const count = mesh.index.length / 3, out = new Float32Array(count * 9), P = mesh.position;
+      for (let f = 0; f < count; f++) {
+        const [a, b, c] = [mesh.index[f * 3], mesh.index[f * 3 + 1], mesh.index[f * 3 + 2]];
+        const o = f * 9;
+        out[o] = P[a * 3]; out[o + 1] = P[a * 3 + 2]; out[o + 2] = P[b * 3]; out[o + 3] = P[b * 3 + 2]; out[o + 4] = P[c * 3]; out[o + 5] = P[c * 3 + 2];
+        out[o + 6] = Math.min(P[a * 3 + 1], P[b * 3 + 1], P[c * 3 + 1]); out[o + 7] = Math.max(P[a * 3 + 1], P[b * 3 + 1], P[c * 3 + 1]);
+        const e1 = [0, 1, 2].map(k => P[b * 3 + k] - P[a * 3 + k]), e2 = [0, 1, 2].map(k => P[c * 3 + k] - P[a * 3 + k]);
+        const nx = e1[1] * e2[2] - e1[2] * e2[1], ny = e1[2] * e2[0] - e1[0] * e2[2], nz = e1[0] * e2[1] - e1[1] * e2[0];
+        out[o + 8] = ny / (Math.hypot(nx, ny, nz) || 1);
+      }
+      return out;
+    });
+    const floorsOnly = $('world-paint-floors').checked, r = brushRadius, x = hit.point.x, y = hit.point.y, z = hit.point.z;
+    let changed = false;
+    mapStage.built.meshes.forEach((mesh, i) => {
+      if (mesh.translucent) return;  // shadows and decals stay over whatever is under them
+      const faces = mapStage.faces[i];
+      for (let f = 0; f < faces.length / 9; f++) {
+        const o = f * 9;
+        if (faces[o + 7] < y - r || faces[o + 6] > y + r) continue;
+        if (floorsOnly && faces[o + 8] < 0.5) continue;
+        if (Math.max(faces[o], faces[o + 2], faces[o + 4]) < x - r || Math.min(faces[o], faces[o + 2], faces[o + 4]) > x + r) continue;
+        if (Math.max(faces[o + 1], faces[o + 3], faces[o + 5]) < z - r || Math.min(faces[o + 1], faces[o + 3], faces[o + 5]) > z + r) continue;
+        if (distanceToTriangle(x, z, faces, o) > r) continue;
+        const key = `${mesh.material}:${f}`;
+        if ((project.texturePaint[key] || null) === textureBrush) continue;
+        if (textureBrush) project.texturePaint[key] = textureBrush;
+        else delete project.texturePaint[key];
+        changed = true;
+      }
+    });
+    if (changed) {
+      painting.changed = true;
+      texturePaintVersion++;
+      paintedVersion = texturePaintVersion;
+      showTexturePaint(project.texturePaint);
+    }
+    const ground = textureBrush && $('world-paint-footsteps').checked && surfaces.find(s => s.id === paletteById(textureBrush)?.ground);
+    if (ground) paintGroundAround(hit.point, ground);
   }
 
   // --- Loop ---
@@ -1316,7 +1895,7 @@ function createView(canvas) {
         previewCamera.aspect = rect.width / rect.height;
         previewCamera.updateProjectionMatrix();
         const angle = now / 2400;
-        previewCamera.position.set(previewCenter.x + Math.sin(angle) * previewRadius * 2.6, previewCenter.y + previewRadius * 0.9, previewCenter.z + Math.cos(angle) * previewRadius * 2.6);
+        previewCamera.position.set(previewCenter.x + Math.sin(angle) * previewRadius * 3.3, previewCenter.y + previewRadius * previewHeight, previewCenter.z + Math.cos(angle) * previewRadius * 3.3);
         previewCamera.lookAt(previewCenter);
         previewRenderer.render(previewScene, previewCamera);
       }
@@ -1325,7 +1904,7 @@ function createView(canvas) {
   requestAnimationFrame(tick);
 
   return {
-    setLevel, syncObjects, frame, focus, groundBelow, walk, stopWalk, setGhost, preview, repaintAll,
+    setLevel, syncObjects, frame, focus, groundBelow, walk, stopWalk, setGhost, preview, repaintAll, setStage, setBuildGhost, endCopy,
     setOverlay(on) { overlayOn = on; if (overlay) overlay.mesh.visible = on; brushRing.visible = brushRing.visible && tool === 'paint'; },
     setBrushRadius(radius) { brushRadius = radius; },
     gesturing: () => Boolean(drag?.kind === 'move' || painting),

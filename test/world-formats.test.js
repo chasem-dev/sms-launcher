@@ -175,3 +175,18 @@ function collisionFile(vertexBytes, vertexCount, tris) {
   return out;
 }
 
+
+test('built pieces and copied ground go into the ground file, an emptied stage keeping only what is asked', () => {
+  const { vertexBytes, vertexCount, tris } = sampleCollision();
+  const file = collisionFile(vertexBytes, vertexCount, tris);
+  const square = [[[0, 50, 0], [0, 50, 100], [100, 50, 100]], [[0, 50, 0], [100, 50, 100], [100, 50, 0]]];
+  const built = collision.compose(file, { add: square.map(p => ({ p, code: collision.surfaceCode(0x701, 5) })) });
+  const parsed = collision.parse(built);
+  assert.equal(parsed.codes.length, 5);
+  assert.deepEqual([...parsed.codes].filter(c => c === 0x70105).length, 2);
+  // Shared corners are written once.
+  assert.equal(built.readUInt32BE(0), vertexCount + 4);
+  // Emptied: only the kept type stays, alongside what's added.
+  const empty = collision.compose(file, { clear: true, keep: type => type === 0x8000, add: square.map(p => ({ p, code: 0 })) });
+  assert.deepEqual(collision.triangles(empty).map(t => t.type).sort(), [0, 0, 0x8000]);
+});

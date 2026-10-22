@@ -23,6 +23,7 @@ contextBridge.exposeInMainWorld('sms', {
   worldDelete: file => ipcRenderer.invoke('world-delete', file),
   worldImport: () => ipcRenderer.invoke('world-import'),
   worldExport: (project, kind) => ipcRenderer.invoke('world-export', project, kind),
+  worldPlay: project => ipcRenderer.invoke('world-play', project),
   worldRelease: () => ipcRenderer.invoke('world-release'),
   saveMarioLook: look => ipcRenderer.invoke('save-mario-look', look),
   relaunchLauncher: () => ipcRenderer.invoke('relaunch-launcher'),

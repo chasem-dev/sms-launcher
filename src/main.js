@@ -40,6 +40,7 @@ const { createSessionLog } = require('./session-log');
 const displayScale = require('./display-scale');
 const marioModel = require('./mario-model');
 const world = require('./world');
+const worldStage = require('./world-stage');
 const marioColors = require('./mario-colors');
 const marioPack = require('./mario-pack');
 const { relaunchOptions } = require('./relaunch');
@@ -1280,7 +1281,8 @@ function noteRenderer(line, settings) {
   }
 }
 
-async function play(installation = null, session = null) {
+// `extra.env` goes over the rest (the world editor's Play in game).
+async function play(installation = null, session = null, extra = null) {
   keepGameSettings();
   const root = installation?.repo || requireRepo();
   // Controls, sound, display and picture choices are the player's, not the build's: an earlier install plays with them too.
@@ -1333,6 +1335,7 @@ async function play(installation = null, session = null) {
   // Mods from the Mods page, beside the game's own mods/ folder.
   Object.assign(env, nativeMods.environment(root, app.getPath('userData')));
   if (session) Object.assign(env, session.env);
+  if (extra?.env) Object.assign(env, extra.env);
   if (portableRoot && !env.SMS_GX_SHADER_CACHE) {
     // The game only makes the folder for its default location.
     env.SMS_GX_SHADER_CACHE = portable.shaderCache(portableRoot, settings.arch);
@@ -1394,6 +1397,7 @@ function worldLevels() {
   worlds.sort((a, b) => order(a.id) - order(b.id));
   return {
     disc: { gameId: library.gameId }, worlds, scenes: info, surfaces: world.SURFACES, groundTypes: world.GROUND_TYPES, cameraTypes: world.CAMERA_TYPES,
+    palette: worldStage.palette(library), paletteGroups: worldStage.PALETTE_GROUPS, prefabs: worldStage.prefabs(library),
     worldNames: Object.fromEntries(worlds.map(w => [w.id, w.name])),
     defaultScene: scenes.includes('dolpic0') ? 'dolpic0' : scenes[0],
   };
@@ -1413,9 +1417,14 @@ function worldCatalog() {
 }
 
 // Model refs are "scene|path in its archive", from the catalog or a loaded stage.
+// Also "palette|texture id" (a texture to paint and build with) and
+// "prefab|scene|x0,z0,x1,z1" (a piece of a stage, such as a building).
 function worldModel(ref) {
-  const library = worldLib(), [scene, file] = String(ref).split('|');
-  if (!file || file.includes('..') || !(scene === 'mario' || scene === 'common' || library.scenes().includes(scene))) throw new Error('That model isn\'t on your disc.');
+  const library = worldLib(), [scene, file, extra] = String(ref).split('|');
+  if (scene === 'palette' && /^[a-z0-9-]{1,40}$/.test(file || '') && extra === undefined) return library.model(ref);
+  if (scene === 'prefab' && library.scenes().includes(file) && /^-?\d+,-?\d+,-?\d+,-?\d+$/.test(extra || '')) return library.model(ref);
+  if (!file || file.includes('..') || (extra && !/^(npc:\d+:-?\d+,-?\d+:-?\d+,-?\d+,-?\d+:\d+|tint:\d{1,3},\d{1,3},\d{1,3})$/.test(extra))
+    || !(scene === 'mario' || scene === 'common' || library.scenes().includes(scene))) throw new Error('That model isn\'t on your disc.');
   return library.model(ref);
 }
 
@@ -1471,6 +1480,7 @@ async function worldExport(event, input, kind) {
     szs: { name: `${project.base}.szs`, filters: [{ name: 'Stage archive', extensions: ['szs'] }] },
     'scene-bin': { name: 'scene.bin', filters: [{ name: 'Scene file', extensions: ['bin'] }] },
     collision: { name: 'map.col', filters: [{ name: 'Ground file', extensions: ['col'] }] },
+    model: { name: 'map.bmd', filters: [{ name: 'Stage model', extensions: ['bmd'] }] },
     project: { name: `${slug}.smsworld`, filters: [{ name: 'World editor level', extensions: ['smsworld'] }] },
   };
   const choice = kinds[kind];
@@ -1488,6 +1498,10 @@ async function worldExport(event, input, kind) {
   } else if (kind === 'collision') {
     data = world.buildCollision(library, project);
     message = `Exported ${path.basename(chosen.filePath)}.`;
+  } else if (kind === 'model') {
+    data = world.buildModel(library, project) || library.files(project.base).get('map/map/map.bmd');
+    if (!data) throw new Error('This stage has no model.');
+    message = `Exported ${path.basename(chosen.filePath)}. It replaces map/map/map.bmd in data/scene/${project.base}.szs.`;
   } else {
     data = Buffer.from(JSON.stringify(project, null, 1));
     message = `Exported ${path.basename(chosen.filePath)}. Anyone with the same disc can open it with Open → Import.`;
@@ -1495,6 +1509,55 @@ async function worldExport(event, input, kind) {
   fs.writeFileSync(chosen.filePath, data);
   log(`World editor: ${message}`);
   return { file: chosen.filePath, message };
+}
+
+// Play in game: the level exported into a folder of its own that the game
+// lays over its disc (SMS_MOD), then the game started on a memory card of
+// its own (the player's saves stay out of it) and sent to the level's stage
+// (SMS_WARP) through the title and file select by scripted presses
+// (SMS_AUTOPRESS). On every screen on the way, A takes the choice already
+// picked (Yes to make a file, No to hearing an explanation again), and right
+// walks Mario under file B; once the stage has loaded, the presses stop.
+function worldPlayPresses(skipsIntro) {
+  const presses = [];
+  const press = (at, control, hold) => presses.push([at, `${control}@${at}+${hold}`]);
+  // Without SMS_SKIP_INTRO (older games), A skips the logos and opening movie first.
+  const title = skipsIntro ? 600 : 1500;
+  if (!skipsIntro) for (let at = 150; at < title - 200; at += 100) press(at, 'A', 6);
+  press(title, 'START', 8);
+  press(title + 150, 'START', 8);
+  for (let at = title + 300; at <= title + 2200; at += 100) { press(at, 'A', 6); press(at + 55, 'STICK_RIGHT', 10); }
+  return presses.sort((a, b) => a[0] - b[0]).map(p => p[1]).join(',');
+}
+
+async function worldPlay(input) {
+  const library = worldLib(), project = worldProject(input);
+  const root = requireRepo(), settings = config.settings;
+  if (settings.eclipse) throw new Error('Turn off Super Mario Eclipse in Settings to play your levels in the game.');
+  if (!binaryReady(root, settings)) throw new Error('Set up the game on the Play page first, then play your level in it.');
+  const source = file => { try { return fs.readFileSync(path.join(root, file), 'utf8'); } catch (_) { return ''; } };
+  if (!fs.existsSync(path.join(root, 'decomp-patches', 'port-02-warp-after-file-select.patch')) || !source('platform/pad/pad.cpp').includes('SMS_AUTOPRESS'))
+    throw new Error('This version of the game can\'t start in a level. Update the game, then try again.');
+  const start = world.stageStart(library, project.base);
+  if (!start) throw new Error(`The game has no way to start in ${world.sceneLabel(project.base)}.`);
+  const folder = worldDirectory('play'), card = worldDirectory('play-card');
+  for (const dir of [folder, card]) fs.rmSync(dir, { recursive: true, force: true });
+  const sceneFile = path.join(folder, 'files', 'data', 'scene', `${project.base}.szs`);
+  fs.mkdirSync(path.dirname(sceneFile), { recursive: true });
+  fs.mkdirSync(card, { recursive: true });
+  fs.writeFileSync(sceneFile, world.buildArchive(library, project).data);
+  // The title card and pause menu name the level, not the stage it's built on:
+  // a folder named after common.szs puts these files inside it.
+  for (const [file, data] of Object.entries(world.playTexts(library, project, start))) {
+    const target = path.join(folder, 'files', 'data', 'common.szs', ...file.split('/'));
+    fs.mkdirSync(path.dirname(target), { recursive: true });
+    fs.writeFileSync(target, data);
+  }
+  log(`World editor: playing ${project.name} in ${world.sceneLabel(project.base)} (area ${start.area}, episode ${start.episode}).`);
+  return play(null, null, { env: {
+    SMS_MOD: folder, SMS_WARP: `${start.area},${start.episode}`, SMS_SAVE_DIR: card,
+    SMS_SKIP_INTRO: '1', SMS_SKIP_MOVIES: '1', SMS_AUTOPRESS: worldPlayPresses(source('platform/port_runtime.cpp').includes('SMS_SKIP_INTRO')),
+  } });
 }
 
 async function worldImport(event) {
@@ -2322,6 +2385,7 @@ function registerHandlers() {
   ipcMain.handle('world-catalog', () => worldCatalog());
   ipcMain.handle('world-load', (_event, scene) => world.loadLevel(worldLib(), String(scene)));
   ipcMain.handle('world-model', (_event, ref) => worldModel(ref));
+  ipcMain.handle('world-play', (_event, project) => exclusive('Play Super Mario Sunshine', () => worldPlay(project), true));
   ipcMain.handle('world-save', (_event, project) => worldSave(project));
   ipcMain.handle('world-projects', () => worldProjects());
   ipcMain.handle('world-open', (_event, file) => worldOpen(file));

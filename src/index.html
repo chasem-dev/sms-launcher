@@ -124,7 +124,8 @@
         <input id="world-name" class="world-name" type="text" maxlength="60" spellcheck="false" aria-label="Level name">
         <div class="world-tools" role="group" aria-label="Tools">
           <button class="world-tool" data-world-tool="select" title="Select and move (V). Drag to move along the ground, Shift-drag to raise or lower, R to turn.">Select</button>
-          <button class="world-tool" data-world-tool="paint" title="Paint ground types (B)">Paint ground</button>
+          <button class="world-tool" data-world-tool="paint" title="Paint the stage's ground with textures or ground types (B)">Paint</button>
+          <button class="world-tool" data-world-tool="build" title="Build floors, walls, stairs and houses (N)">Build</button>
           <button class="world-tool" data-world-tool="walk" title="Walk around as Mario (P)">Walk</button>
         </div>
         <span class="world-toolbar-spacer"></span>
@@ -132,12 +133,14 @@
         <button id="world-redo" class="world-icon-button" title="Redo (Ctrl+Y)" aria-label="Redo"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M12.5 5 16 8.5 12.5 12M15.5 8.5h-7a4.5 4.5 0 0 0 0 9H11"/></svg></button>
         <button id="world-open" class="subtle">Open</button>
         <button id="world-save" class="subtle" title="Save (Ctrl+S)">Save</button>
-        <button id="world-export" class="solid" popovertarget="world-export-menu">Export</button>
+        <button id="world-export" class="subtle" popovertarget="world-export-menu">Export</button>
+        <button id="world-play" class="solid world-play" title="Export the level and start the game straight in it, on a memory card of its own (your saves aren't touched)"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6 4.5v11l9-5.5z"/></svg>Play in game</button>
         <div id="world-open-menu" class="world-menu world-open-menu" popover></div>
         <div id="world-export-menu" class="world-menu world-export-menu" popover>
           <button class="world-menu-item" data-world-export="szs"><strong>Stage archive (.szs)</strong><small>The whole stage as the game stores it in data/scene, with your scene, ground and any models it now needs.</small></button>
           <button class="world-menu-item" data-world-export="scene-bin"><strong>Scene file (scene.bin)</strong><small>Just the stage's object list, for other Sunshine modding tools.</small></button>
-          <button class="world-menu-item" data-world-export="collision"><strong>Ground file (map.col)</strong><small>The stage's collision with your painted ground types.</small></button>
+          <button class="world-menu-item" data-world-export="collision"><strong>Ground file (map.col)</strong><small>The stage's collision with your painted ground types and what you built.</small></button>
+          <button class="world-menu-item" data-world-export="model"><strong>Stage model (map.bmd)</strong><small>How the stage looks, with your painted textures and what you built.</small></button>
           <button class="world-menu-item" data-world-export="project"><strong>Level file (.smsworld)</strong><small>Your edits, to share with another player who has the same disc.</small></button>
         </div>
       </div>
@@ -156,17 +159,36 @@
         <div class="world-stage">
           <canvas id="world-canvas" class="world-canvas" tabindex="0" aria-label="The stage in 3D"></canvas>
           <div id="world-status" class="world-status" role="status" hidden><span class="mario-loader" aria-hidden="true"></span><span id="world-status-text"></span><button id="world-retry" class="solid" hidden>Try again</button></div>
+          <p id="world-copy-hint" class="world-hint" hidden>Copying: drag a box over part of the stage, such as a building, then click where the copy goes. <kbd>Esc</kbd> to stop.</p>
           <p id="world-place-hint" class="world-hint" hidden>Placing <strong id="world-place-name"></strong>: click the stage. Shift-click to keep placing, Alt+scroll to turn, Esc to stop.</p>
-          <p id="world-walk-hint" class="world-hint" hidden>Walking: <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> move, <kbd>Shift</kbd> run, <kbd>Space</kbd> jump, drag to look, scroll to zoom, <kbd>Esc</kbd> to stop. A controller works too. Only the stage's ground is solid here, not its objects.</p>
+          <p id="world-walk-hint" class="world-hint" hidden>Walking: <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> move, <kbd>Shift</kbd> run, <kbd>Space</kbd> jump, drag to look, scroll to zoom, <kbd>Esc</kbd> to stop. A controller works too. The stage's ground and what you built are solid here, not its objects.</p>
           <p class="world-help">Right-drag to look · <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> fly, <kbd>Q</kbd>/<kbd>E</kbd> down/up, <kbd>Shift</kbd> faster · scroll to move · middle-drag to pan</p>
           <p id="world-flash" class="world-flash" role="status" hidden></p>
         </div>
         <aside class="world-inspector" aria-label="Inspector">
           <div id="world-paint-panel" class="world-panel" hidden>
-            <h2>Paint ground</h2>
-            <p class="helper">Paints what the ground is in the game: how Mario walks on it, its footsteps and what it does. A stage's looks are part of its model, so the ground keeps its colours in the game; the colours here show its ground types.</p>
-            <div id="world-surfaces" class="world-surfaces"></div>
+            <h2>Paint</h2>
+            <div class="world-segment" role="group" aria-label="What to paint"><button data-world-paint-mode="texture">Textures</button><button data-world-paint-mode="ground">Ground types</button></div>
+            <div id="world-paint-texture">
+              <p class="helper">Gives the stage's own ground another texture under the brush: the grass under a palm tree to sand, a plaza to paving.</p>
+              <div id="world-textures" class="world-textures" role="group" aria-label="Textures"></div>
+              <label class="world-check"><input id="world-paint-footsteps" type="checkbox" checked><span>Footsteps to match (sand, grass, wood…)</span></label>
+              <label class="world-check"><input id="world-paint-floors" type="checkbox" checked><span>Floors only</span></label>
+            </div>
+            <div id="world-paint-ground" hidden>
+              <p class="helper">Paints what the ground is in the game: how Mario walks on it, its footsteps and what it does. The colours show the ground types, not how it looks.</p>
+              <div id="world-surfaces" class="world-surfaces"></div>
+            </div>
             <label class="world-range"><span>Brush size <b id="world-brush-size-value">4 m</b></span><input id="world-brush-size" type="range" min="100" max="2500" step="50" value="400"></label>
+          </div>
+          <div id="world-build-panel" class="world-panel" hidden>
+            <h2>Build</h2>
+            <p class="helper">Pick a piece and its textures, then click the stage to put it down. Select it afterwards to resize or retexture it.</p>
+            <div id="world-pieces" class="world-pieces" role="group" aria-label="Pieces"></div>
+            <label class="world-texture-pick"><img id="world-build-top-swatch" alt=""><span>Top</span><select id="world-build-top" aria-label="Texture on top"></select></label>
+            <label class="world-texture-pick"><img id="world-build-side-swatch" alt=""><span>Sides</span><select id="world-build-side" aria-label="Texture on the sides"></select></label>
+            <div class="world-build-actions"><button id="world-copy-piece" class="subtle" title="Drag a box over part of the stage, such as a building, to place copies of it">Copy part of the stage</button><button id="world-empty-stage" class="subtle" title="Take away the stage's ground, buildings and objects, keeping its sea and sky">Start from an empty stage</button></div>
+            <p class="helper">Whole buildings from Delfino are in the catalog under Stage pieces.</p>
           </div>
           <div class="world-panel">
             <div id="world-inspector-empty">
@@ -180,7 +202,12 @@
               <p id="world-inspector-note" class="helper world-note" hidden></p>
               <div class="world-vector"><span>Position</span><input id="world-pos-x" aria-label="Position X"><input id="world-pos-y" aria-label="Position Y"><input id="world-pos-z" aria-label="Position Z"></div>
               <div class="world-vector"><span>Rotation°</span><input id="world-rot-x" aria-label="Rotation X"><input id="world-rot-y" aria-label="Rotation Y"><input id="world-rot-z" aria-label="Rotation Z"></div>
-              <div class="world-vector"><span>Scale</span><input id="world-scl-x" aria-label="Scale X"><input id="world-scl-y" aria-label="Scale Y"><input id="world-scl-z" aria-label="Scale Z"></div>
+              <div id="world-scale-row" class="world-vector"><span>Scale</span><input id="world-scl-x" aria-label="Scale X"><input id="world-scl-y" aria-label="Scale Y"><input id="world-scl-z" aria-label="Scale Z"></div>
+              <div id="world-piece-fields" hidden>
+                <div class="world-vector"><span>Size</span><input id="world-size-x" aria-label="Width"><input id="world-size-y" aria-label="Height"><input id="world-size-z" aria-label="Depth"></div>
+                <label class="world-texture-pick"><img id="world-piece-top-swatch" alt=""><span>Top</span><select id="world-piece-top" aria-label="Texture on top"></select></label>
+                <label class="world-texture-pick"><img id="world-piece-side-swatch" alt=""><span>Sides</span><select id="world-piece-side" aria-label="Texture on the sides"></select></label>
+              </div>
               <div class="world-actions"><button id="world-focus" class="subtle" title="Look at it (F)">Look at</button><button id="world-drop" class="subtle" title="Put it on the ground below">Drop to ground</button><button id="world-duplicate" class="subtle" title="Duplicate (Ctrl+D)">Duplicate</button><button id="world-reset" class="subtle" title="Put it back where the game had it">Reset</button><button id="world-delete" class="subtle danger" title="Delete (Del)">Delete</button></div>
             </div>
           </div>
@@ -515,6 +542,7 @@
   <script src="presets.js"></script>
   <script src="activity-log.js"></script>
   <script src="changelog-text.js"></script>
+  <script src="world-build.js"></script>
   <script src="gamepad-nav.js"></script>
   <script src="rumble.js"></script>
   <script src="renderer.js"></script>

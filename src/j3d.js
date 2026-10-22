@@ -26,7 +26,7 @@ function nameTable(data, at) {
 
 // --- Vertex arrays -------------------------------------------------------
 
-const POS = 9, NRM = 10, CLR0 = 11, TEX0 = 13;
+const POS = 9, NRM = 10, CLR0 = 11, TEX0 = 13, TEX1 = 14;
 const VTX_SLOTS = { 9: 0, 10: 1, 11: 3, 12: 4, 13: 5, 14: 6, 15: 7, 16: 8, 17: 9, 18: 10, 19: 11, 20: 12 };
 
 function readVtx(data, at, size) {
@@ -176,6 +176,7 @@ function readShapes(data, at, vtx) {
             else if (attr === NRM) vert.nrm = value;
             else if (attr === CLR0) vert.clr = value;
             else if (attr === TEX0) vert.uv = value;
+            else if (attr === TEX1) vert.uv1 = value;
           }
           vert.drw = current[vert.pnmtx] ?? current[0];
           strip.push(vertices.push(vert) - 1);
@@ -192,7 +193,7 @@ function readShapes(data, at, vtx) {
 
 function flattenShape(vertices, triangles, vtx) {
   const n = vertices.length;
-  const position = new Float32Array(n * 3), normal = new Float32Array(n * 3), uv = new Float32Array(n * 2);
+  const position = new Float32Array(n * 3), normal = new Float32Array(n * 3), uv = new Float32Array(n * 2), uv1 = new Float32Array(n * 2);
   const color = new Float32Array(n * 4).fill(1), drawIndex = new Uint16Array(n);
   const pick = (array, index, width, out, o) => {
     for (let c = 0; c < width; c++) out[o + c] = array.values[index * array.width + c] ?? 0;
@@ -202,12 +203,13 @@ function flattenShape(vertices, triangles, vtx) {
     if (vtx[NRM] && v.nrm !== undefined) pick(vtx[NRM], v.nrm, 3, normal, i * 3);
     if (vtx[CLR0] && v.clr !== undefined) pick(vtx[CLR0], v.clr, 4, color, i * 4);
     if (vtx[TEX0] && v.uv !== undefined) pick(vtx[TEX0], v.uv, 2, uv, i * 2);
+    if (vtx[TEX1] && v.uv1 !== undefined) pick(vtx[TEX1], v.uv1, 2, uv1, i * 2);
     drawIndex[i] = v.drw ?? 0;
   });
   return {
     position, normal, uv, color, drawIndex, index: Uint32Array.from(triangles),
     hasColor: vertices.some(v => v.clr !== undefined), hasNormal: vertices.some(v => v.nrm !== undefined),
-    hasUv: vertices.some(v => v.uv !== undefined),
+    hasUv: vertices.some(v => v.uv !== undefined), hasUv1: vertices.some(v => v.uv1 !== undefined), uv1,
   };
 }
 
@@ -231,8 +233,8 @@ function readMaterials(data, at) {
     const stages = u16(0xe4, 16).slice(0, stageCount).map((i, s) => {
       const o = base(20) + i * 0x14, order = u16(0xbc, 16)[s], oo = base(16) + order * 4;
       return {
-        colorIn: [...data.subarray(o + 1, o + 5)], colorOp: data[o + 5], colorBias: data[o + 6], colorScale: data[o + 7], colorReg: data[o + 9],
-        alphaIn: [...data.subarray(o + 10, o + 14)], alphaOp: data[o + 14], alphaBias: data[o + 15], alphaScale: data[o + 16], alphaReg: data[o + 18],
+        colorIn: [...data.subarray(o + 1, o + 5)], colorOp: data[o + 5], colorBias: data[o + 6], colorScale: data[o + 7], colorClamp: data[o + 8] === 1, colorReg: data[o + 9],
+        alphaIn: [...data.subarray(o + 10, o + 14)], alphaOp: data[o + 14], alphaBias: data[o + 15], alphaScale: data[o + 16], alphaClamp: data[o + 17] === 1, alphaReg: data[o + 18],
         texCoord: data[oo], texMap: data[oo + 1], channel: data[oo + 2],
         kColorSel: data[e + 0x9c + s], kAlphaSel: data[e + 0xac + s],
       };
@@ -376,6 +378,15 @@ function parseBmd(data) {
   return { joints, envelopes, inverseBind, draw, shapes, materials: readMaterials(data, at.MAT3), textures: readTextures(data, at.TEX1) };
 }
 
+// A material table (.bmt): materials and their textures, which the game puts
+// over a model's own (Nokis' parts take theirs from mareCommon/mare.bmt).
+function parseBmt(data) {
+  if (data.toString('ascii', 0, 8) !== 'J3D2bmt3') throw new Error('This is not a game material table.');
+  // Some tables hold only textures.
+  const at = sections(data);
+  return { materials: at.MAT3 === undefined ? [] : readMaterials(data, at.MAT3), textures: readTextures(data, at.TEX1) };
+}
+
 // --- Joint animation ----------------------------------------------------------
 
 function parseBck(data) {
@@ -425,4 +436,4 @@ function mat3x4(r) {
   return [r[0], r[4], r[8], 0, r[1], r[5], r[9], 0, r[2], r[6], r[10], 0, r[3], r[7], r[11], 1];
 }
 
-module.exports = { parseBmd, parseBck, sampleTrack, decodeTexture, decodeBti };
+module.exports = { parseBmd, parseBmt, parseBck, sampleTrack, decodeTexture, decodeBti };

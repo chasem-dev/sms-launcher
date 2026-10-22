@@ -243,4 +243,12 @@ function yaz0Encode(src) {
   return Buffer.concat(out);
 }
 
-module.exports = { yaz0, rarc, readTree, treeFile, treePut, writeTree, yaz0Encode };
+// Takes a file out of an archive tree (lower-case path); true if it was there.
+function treeRemove(tree, file) {
+  const found = treeFile(tree, file);
+  if (!found) return false;
+  found.dir.entries.splice(found.index, 1);
+  return true;
+}
+
+module.exports = { yaz0, rarc, readTree, treeFile, treePut, treeRemove, writeTree, yaz0Encode };

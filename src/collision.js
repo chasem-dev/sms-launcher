@@ -69,20 +69,51 @@ function parse(buffer) {
 // code }). Triangles are regrouped by type; a repainted triangle takes the
 // flags and value the file already uses for its new type, or the given defaults.
 function paint(buffer, changes, defaults = {}) {
-  const list = triangles(buffer);
-  const { vertexCount, vertexAt } = readGroups(buffer);
+  return compose(buffer, { changes, defaults });
+}
+
+// The file rebuilt: its own triangles (with `clear`, only those whose type
+// `keep` accepts), repainted as in `paint`, plus `add`ed ones ({ p: [[x, y, z] × 3], code }) with their
+// corners welded. Added triangles face the way their corners turn
+// counter-clockwise, as the game's floors do seen from above.
+function compose(buffer, { changes = {}, defaults = {}, clear = false, keep = () => false, add = [] } = {}) {
+  const own = buffer ? triangles(buffer) : [];
   const usual = new Map();  // type -> { flags, byteB, value } as the file has it
-  for (const t of list) if (!usual.has(t.type)) usual.set(t.type, { flags: t.flags, byteB: t.byteB, value: t.value });
-  for (const [index, code] of Object.entries(changes)) {
+  for (const t of own) if (!usual.has(t.type)) usual.set(t.type, { flags: t.flags, byteB: t.byteB, value: t.value });
+  const like = type => usual.get(type) || { flags: 0, byteB: 0, value: 0, ...defaults[type] };
+  const list = clear ? own.filter(t => keep(t.type)) : own;
+  if (!clear) for (const [index, code] of Object.entries(changes)) {
     const t = list[Number(index)], type = Math.floor(code / 256), byteA = code & 0xff;
     if (!t || (t.type === type && t.byteA === byteA)) continue;
-    if (t.type !== type) {
-      const like = usual.get(type) || { flags: 0, byteB: 0, value: 0, ...defaults[type] };
-      Object.assign(t, { type, flags: like.flags, byteB: like.byteB, value: like.value });
-    }
+    if (t.type !== type) Object.assign(t, { type, flags: like(type).flags, byteB: like(type).byteB, value: like(type).value });
     t.byteA = byteA;
   }
-  return write(buffer.subarray(vertexAt, vertexAt + vertexCount * 12), vertexCount, list);
+  const chunks = [];
+  let vertexCount = 0;
+  if (buffer && (!clear || list.length)) {
+    const { vertexCount: count, vertexAt } = readGroups(buffer);
+    chunks.push(buffer.subarray(vertexAt, vertexAt + count * 12));
+    vertexCount = count;
+  }
+  if (add.length) {
+    const welded = new Map(), extra = [];
+    const vertex = ([x, y, z]) => {
+      const key = `${Math.round(x * 4)},${Math.round(y * 4)},${Math.round(z * 4)}`;
+      if (!welded.has(key)) { welded.set(key, vertexCount + extra.length / 3); extra.push(x, y, z); }
+      return welded.get(key);
+    };
+    for (const { p, code } of add) {
+      const type = Math.floor(code / 256), [a, b, c] = p.map(vertex);
+      if (a === b || b === c || a === c) continue;
+      list.push({ a, b, c, type, flags: like(type).flags, pad: 0xffff, byteA: code & 0xff, byteB: like(type).byteB, value: like(type).value });
+    }
+    const bytes = Buffer.alloc(extra.length * 4);
+    extra.forEach((v, i) => bytes.writeFloatBE(v, i * 4));
+    chunks.push(bytes);
+    vertexCount += extra.length / 3;
+  }
+  if (vertexCount > 0xffff) throw new Error('The stage has too much ground for the game to hold. Remove some built pieces.');
+  return write(Buffer.concat(chunks), vertexCount, list);
 }
 
 // Groups in ground type order, as the game's files have them.
@@ -132,4 +163,4 @@ function write(vertices, vertexCount, list) {
   return out;
 }
 
-module.exports = { parse, paint, triangles, surfaceCode };
+module.exports = { parse, paint, compose, triangles, surfaceCode };

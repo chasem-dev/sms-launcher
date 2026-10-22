@@ -13,9 +13,10 @@ const sceneBin = require('./scene-bin');
 const collisionFile = require('./collision');
 const j3d = require('./j3d');
 const levelModel = require('./level-model');
+const stage = require('./world-stage');
 const DATA = require('./world-data.json');
 
-const CATALOG_VERSION = 4;
+const CATALOG_VERSION = 9;
 const PROJECT_FORMAT = 'sms-world';
 
 // Stage file prefixes -> the world they belong to.
@@ -87,6 +88,18 @@ const LABELS = {
   MapStaticObj: 'Stage piece', MapObjBase: 'Stage object', MapObjGeneral: 'Stage object', MapObjFloatOnSea: 'Floating object',
   BalloonHelp: 'Hint balloon', SwitchHelp: 'Switch hint', HideObj: 'Hidden object', HipDropHideObj: 'Ground-pound spot',
   WaterHitHideObj: 'Spray-to-reveal spot', WaterHitPictureHideObj: 'Spray-to-reveal picture', HideObjPictureTwin: 'Shine picture sign',
+  BiaWatermill: 'Bianco watermill', BiaWatermillVertical: 'Bianco watermill (upright)', BiaBell: 'Bianco bell', BiaTurnBridge: 'Turning bridge',
+  BellWatermill: 'Watermill bell', BellDolpicPolice: 'Delfino bell (police)', BellDolpicTV: 'Delfino bell (TV)', DptMonteFence: 'Pianta fence',
+  BathtubPeach: 'Peach in the bathtub', Bathtub: 'Bathtub', SandBombBase: 'Sand sculpture', SandEgg: 'Sand egg', SandLeafBase: 'Sand leaf base',
+  SlotDrum: 'Slot drum', ItemSlotDrum: 'Item slot drum', TelesaSlot: 'Boo slot drum', CasinoPanelGate: 'Casino panel gate', CasinoRoulette: 'Casino roulette',
+  Roulette: 'Roulette', Item: 'Item', MapObjNail: 'Nail', MapObjSwitch: 'Switch', MapObjRootPakkun: 'Piranha vines', MapObjTreeScale: 'Swaying tree',
+  FenceInner: 'Inner fence', FenceRevolve: 'Revolving fence', FenceWaterH: 'Water fence (across)', FenceWaterV: 'Water fence (upright)', RailFence: 'Rail fence',
+  RailBlock: 'Rail block', RailBlockB: 'Rail block (blue)', RailBlockR: 'Rail block (red)', RollBlock: 'Roll block', RollBlockB: 'Roll block (blue)', RollBlockY: 'Roll block (yellow)',
+  WoodBlock: 'Wood block', BoxTelesa: 'Boo in a box', GateShell: 'Shell gate', JumpBase: 'Jump base', IceBlock: 'Ice block', PanelBreak: 'Breaking panel',
+  PanelRevolve: 'Revolving panel', ChestRevolve: 'Revolving chest', ExRollCube: 'Rolling cube', EXRollCube: 'Rolling cube', Closet: 'Closet', Cogwheel: 'Cogwheel',
+  MareGate: 'Noki gate', MareFall: 'Noki waterfall', MareCork: 'Cork', CraneRotY: 'Turning crane', craneUpDown: 'Crane (up and down)', CraneUpDown: 'Crane (up and down)',
+  LeanMirror: 'Leaning mirror', GetaGreen: 'Geta (green)', GetaOrange: 'Geta (orange)', GoalFlag: 'Goal flag', SwingBoard: 'Swing board',
+  SirenabossWall: 'Hotel boss wall', MapObjSteam: 'Steam', DoroHaneKuri: 'Goop-winged Stu', BossDangoHamuKuri: 'Giant Strollin\' Stu stack', LampTrapIron: 'Lamp trap (iron)', LampTrapSpike: 'Lamp trap (spiked)',
 };
 const VARIANT_LABELS = {
   coin: null, invisible_coin: 'Invisible coin', fruitcoconut: 'Coconut', fruitpapaya: 'Papaya', fruitdurian: 'Durian', fruitpine: 'Pineapple',
@@ -94,6 +107,10 @@ const VARIANT_LABELS = {
   normal_nozzle_item: 'Hover', palmnormal: null, palmleaf: 'Leaf', flagwhite: 'White', kibako: null, mushroom1upx: null,
   monumentshine: null, eggyoshievent: 'Event', billboard_sun: 'Sun', dptweathercock: null, normallift: null, merry: null,
   coaster: null, cloud: null, jumpbase: null, mammayacht00: null, belldolpic: null, getag: null, getao: null,
+  dptcannon: 'Delfino cannon', dptcoronafence: 'Corona fence', mammasurfboardstand: 'Surfboard stand', riccohericopter: 'Helicopter', riccogangway: 'Gangway',
+  riccogrille: 'Grille', simihotel: 'Hotel goop stain', coral00: 'Coral', pile: 'Wooden pile', biabridge: 'Bianco bridge',
+  biadoor: 'Bianco door', mapobjpachinkonail: 'Pachinko nail', bottle_large: 'Juice bottle', watergun_item: 'FLUDD', sandbombbaseshit: 'Swirl',
+  sandeggrepair: 'Mended', koopajrsignm: 'Bowser Jr.\'s M', chipshine: 'Shine', star_sign: 'star', rulet00: '1', rulet01: '2', rulet02: '3', fence3x3: '3×3', bamboofence_revolve_outer: 'Bamboo', bamboorailfence: 'Bamboo',
 };
 
 // What the editor draws for objects the game doesn't show (invisible coins).
@@ -215,17 +232,50 @@ class Library {
   context(scene) { return { files: this.files(scene), tree: this.sceneTree(scene), charas: this.charaFolders() }; }
 
   // A model as the editor draws it; refs are "scene|path inside its archive".
-  model(ref) {
+  archiveFiles(scene) {
+    return scene === 'mario' ? archive.rarc(this.read('data/mario.szs')) : scene === 'common' ? archive.rarc(this.read('data/common.szs')) : this.files(scene);
+  }
+
+  // A file from the given stage, or the first stage that has it (shared
+  // textures like the goop one, NPC parts from another stage's folder).
+  findFile(file, scene) {
+    const own = this.archiveFiles(scene).get(file);
+    if (own) return own;
+    // Which stage has each file, read once (a couple of seconds) the first time it's needed.
+    if (!this.fileIndex) {
+      this.fileIndex = new Map();
+      for (const other of this.scenes()) {
+        let files;
+        try { files = this.archives.get(other) || archive.rarc(this.read(archiveFile(other))); } catch (_) { continue; }
+        for (const path of files.keys()) if (!this.fileIndex.has(path)) this.fileIndex.set(path, other);
+      }
+    }
+    const where = this.fileIndex.get(file);
+    return where ? this.files(where).get(file) : null;
+  }
+
+  // A model file read once and kept while its stage is.
+  parsed(scene, file) {
+    const key = `${scene}|${file}`;
+    this.parsedModels ||= new Map();
+    if (!this.parsedModels.has(key)) {
+      const data = this.files(scene).get(file);
+      if (!data) throw new Error(`The disc has no ${file} in ${scene}.`);
+      this.parsedModels.set(key, j3d.parseBmd(data));
+      while (this.parsedModels.size > 8) this.parsedModels.delete(this.parsedModels.keys().next().value);
+    }
+    return this.parsedModels.get(key);
+  }
+
+  // A baked model made some other way (palette textures, copied pieces), kept like the rest.
+  cached(ref, make) {
     if (this.models.has(ref)) return this.models.get(ref);
-    const [scene, file] = splitRef(ref);
-    const files = scene === 'mario' ? archive.rarc(this.read('data/mario.szs')) : scene === 'common' ? archive.rarc(this.read('data/common.szs')) : this.files(scene);
-    const data = files.get(file);
-    if (!data) throw new Error(`The disc has no ${file} in ${scene}.`);
-    const model = j3d.parseBmd(data);
-    // Mario stands as he idles, without the Shine shirt he only gets later.
-    const options = ref === marioRef() && files.has(MARIO_IDLE) ? { pose: firstFrame(j3d.parseBck(files.get(MARIO_IDLE)), model), skipShapes: new Set([MARIO_ALOHA_SHAPE]) } : {};
-    const baked = levelModel.bake(model, options);
+    const baked = make();
     baked.bytes = bakedBytes(baked);
+    this.remember(ref, baked);
+    return baked;
+  }
+  remember(ref, baked) {
     this.models.set(ref, baked);
     // Stage models run to tens of megabytes: keep the latest ones, up to a budget.
     let total = 0;
@@ -235,11 +285,60 @@ class Library {
       this.models.delete(key);
       total -= entry.bytes;
     }
+  }
+
+  model(ref) {
+    const made = stage.stageModel(this, ref);
+    if (made) return made;
+    if (this.models.has(ref)) return this.models.get(ref);
+    const [scene, file, extra] = splitRef(ref);
+    const files = this.archiveFiles(scene);
+    const data = files.get(file);
+    if (!data) throw new Error(`The disc has no ${file} in ${scene}.`);
+    const model = j3d.parseBmd(data);
+    swapTextures(this, model, scene, file.split('/')[0]);
+    materialTableFor(this, model, scene, file);
+    // Mario's goop shows where a mask beats konst colour 0's alpha, like NPCs'; his is clean too (TMario's draw).
+    if (ref === marioRef()) cleanNpc(model);
+    // Spray-to-reveal pictures take their colour from their scene entry (TWaterHitPictureHideObj::load).
+    if (extra?.startsWith('tint:')) {
+      const rgb = extra.slice(5).split(',').map(Number);
+      for (const material of model.materials) material.tevColors[0] = [...rgb, 255];
+    }
+    RUNTIME_LOOKS[file]?.(this, model);
+    const npc = extra?.startsWith('npc:') ? parseNpcLook(extra) : null;
+    if (npc) {
+      paintNpc(model, DATA.npcs[npc.index]?.colors || [], [npc.body[0], npc.body[1]]);
+      cleanNpc(model);
+    }
+    // Mario stands as he idles, without the Shine shirt he only gets later;
+    // other characters as they wait in the game, not in their modelling pose.
+    const options = ref === marioRef() && files.has(MARIO_IDLE) ? { pose: firstFrame(j3d.parseBck(files.get(MARIO_IDLE)), model), skipShapes: new Set([MARIO_ALOHA_SHAPE]) }
+      : { pose: waitPose(this, model, scene, file) };
+    const baked = JOINT_OBJECTS[file] ? jointObjects(this, model, scene, file) : levelModel.bake(model, options);
+    if (npc) addNpcParts(this, baked, model, scene, file, npc, options.pose);
+    RUNTIME_SHAPES[file]?.(baked);
+    // Gelato's leaning mirrors reflect the scene through their top (TLeanMirror::load's
+    // "<name>Top.bmd", a TMirrorModelObj): its surface, for the editor to draw as a mirror.
+    const top = /^mapobj\/mirror[lms]\.bmd$/.test(file) && files.get(file.replace('.bmd', 'top.bmd'));
+    // It lies just under the mirror's tiled top; drawn a little above it here, so it shows.
+    if (top) {
+      const highest = baked.meshes.reduce((y, mesh) => { for (let i = 1; i < mesh.position.length; i += 3) y = Math.max(y, mesh.position[i]); return y; }, -Infinity);
+      baked.mirrors = levelModel.bake(j3d.parseBmd(top)).meshes.map(mesh => {
+        const position = Float32Array.from(mesh.position);
+        let lowest = Infinity;
+        for (let i = 1; i < position.length; i += 3) lowest = Math.min(lowest, position[i]);
+        for (let i = 1; i < position.length; i += 3) position[i] += highest + 2 - lowest;
+        return { position, index: mesh.index };
+      });
+    }
+    baked.bytes = bakedBytes(baked);
+    this.remember(ref, baked);
     return baked;
   }
 
   // Lets go of everything cached; the editor reads it again when it reopens.
-  release() { this.archives.clear(); this.trees.clear(); this.models.clear(); }
+  release() { this.archives.clear(); this.trees.clear(); this.models.clear(); this.parsedModels?.clear(); this.fileIndex = null; this.paletteCache = null; }
 
   // A short fingerprint of a stage as this disc has it, so a level made on
   // another disc (or another version of the game) isn't applied to this one.
@@ -260,8 +359,288 @@ function bakedBytes(baked) {
 }
 
 const archiveFile = scene => `data/scene/${scene}.szs`;
-const splitRef = ref => { const at = String(ref).indexOf('|'); return [ref.slice(0, at), ref.slice(at + 1)]; };
-const makeRef = (scene, file) => `${scene}|${file}`;
+// Model refs: "scene|path in its archive", with "|npc:…" for an NPC's own look.
+const splitRef = ref => String(ref).split('|');
+const makeRef = (scene, file, extra = '') => extra ? `${scene}|${file}|${extra}` : `${scene}|${file}`;
+
+// --- How the game dresses models at runtime ------------------------------------
+
+// Placeholder textures the game swaps for real ones as it loads models: the
+// goop texture on characters that can be gooped, Piantas' straw skirts and the
+// jellyfish. A placeholder named "…_dummy" otherwise takes the model's texture
+// of the same name without it (Peach's parts, FLUDD).
+// Some only for the models whose code swaps them (the goop generators, the
+// goop piranha plant, the goop slugs and Kukku), by their folder.
+const GOOP = 'map/pollution/h_ma_rak.bti';
+const TEXTURE_SWAPS = {
+  h_ma_rak_dummy: { file: GOOP }, q_kepper_dummy_128ia4: { file: GOOP, folders: ['gatekeeper'] },
+  q_gene_dummy_i4: { file: GOOP, folders: ['clauncher', 'hamukuril'] }, k_name_dummy: { file: GOOP, folders: ['namekuri', 'tori'] },
+  i_mom_mino_dummyi4: { file: 'montemcommon/i_mom_mino_rgba.bti' }, i_mow_mino_dummyi4: { file: 'montewcommon/i_mow_mino_rgba.bti' },
+  j_jellyfish_dummy: { file: 'marejellyfish/j_kurage.bti' },
+};
+function swapTextures(library, model, scene, folder, donor = null) {
+  model.textures.forEach((texture, i) => {
+    const name = texture.name.toLowerCase(), swap = TEXTURE_SWAPS[name];
+    const file = swap && (!swap.folders || swap.folders.some(f => folder.startsWith(f))) ? swap.file : null;
+    if (swap) {
+      if (!file) return;
+      const data = library.findFile(file, scene);
+      if (data) model.textures[i] = { ...j3d.decodeBti(data, 0), name: texture.name };
+      return;
+    }
+    if (!name.endsWith('_dummy')) return;
+    const real = [...model.textures, ...(donor?.textures || [])].find(t => t.name.toLowerCase() === name.slice(0, -'_dummy'.length));
+    if (real) model.textures[i] = { ...real, name: texture.name };
+  });
+}
+
+// A character's waiting pose: the first frame of its own "wait" animation
+// (the plain one, not its start, end, fall or gooped variants), from its
+// folder or its family's shared one, where it fits the model's joints.
+const WAIT_SKIP = /fall|yogore|anger|fear|start|end|turn|towait|close|arrow|osen|ororo|nwait|_[bc]\.bck$/;
+const FAMILY_WAITS = { montem: 'montemcommon/mom_wait.bck', montew: 'montewcommon/mow_wait.bck' };
+function waitPose(library, model, scene, file) {
+  const folder = file.split('/')[0];
+  if (folder === 'mapobj' || folder === 'map' || !model.joints.length) return null;
+  const files = library.archiveFiles(scene);
+  const own = [...files.keys()].filter(k => k.startsWith(`${folder}/`) && k.endsWith('.bck') && /wait/.test(k.split('/').pop()) && !WAIT_SKIP.test(k.split('/').pop()))
+    .sort((a, b) => a.length - b.length);
+  const family = Object.entries(FAMILY_WAITS).find(([prefix]) => folder.startsWith(prefix))?.[1];
+  for (const name of [...own, ...(family ? [family] : [])]) {
+    const data = files.get(name) || library.findFile(name, scene);
+    if (!data) continue;
+    try {
+      const animation = j3d.parseBck(data);
+      // The root stays where the model has it: some animations turn or move
+      // the whole character, which the game's own placement undoes.
+      if (animation.joints.length === model.joints.length) return firstFrame(animation, model).map((joint, j) => j === 0 ? null : joint);
+    } catch (_) { /* not one this reader understands */ }
+  }
+  return null;
+}
+
+// Models that are only a skeleton: the game puts an object on each joint by
+// its name (TJointCoin, TSandBird) and doesn't draw the model itself.
+const COIN_JOINTS = [['redcoin', 'mapobj/coin_red.bmd'], ['bluecoin', 'mapobj/coin_blue.bmd'], ['coin', 'mapobj/coin.bmd'], ['dust', null]];
+const JOINT_OBJECTS = {
+  'mapobj/coinfish.bmd': COIN_JOINTS,
+  'mapobj/sandbird.bmd': [...COIN_JOINTS, ['none', null], ['', 'mapobj/sandbirdblock.bmd']],
+};
+function jointObjects(library, model, scene, file) {
+  const animation = library.archiveFiles(scene).get(file.replace(/\.bmd$/, '.bck'));
+  const world = levelModel.jointWorld(model, animation ? firstFrame(j3d.parseBck(animation), model) : null);
+  const baked = { meshes: [], textures: [], bounds: { min: [Infinity, Infinity, Infinity], max: [-Infinity, -Infinity, -Infinity] } };
+  // The last joint is the root's end; TJointCoin::loadAfter stops before it.
+  for (let j = 0; j < model.joints.length - 1; j++) {
+    const name = model.joints[j].name.toLowerCase();
+    const rule = JOINT_OBJECTS[file].find(([part]) => name.includes(part));
+    if (!rule?.[1]) continue;
+    levelModel.merge(baked, copyBaked(library.model(makeRef(scene, rule[1]))), world[j]);
+  }
+  if (!baked.meshes.length) baked.bounds = { min: [0, 0, 0], max: [0, 0, 0] };
+  return baked;
+}
+// A baked model's own copy, to move into another (merge changes what it's given).
+function copyBaked(baked) {
+  return {
+    textures: [...baked.textures], bounds: { min: [...baked.bounds.min], max: [...baked.bounds.max] },
+    meshes: baked.meshes.map(mesh => ({
+      ...mesh, position: Float32Array.from(mesh.position), normal: Float32Array.from(mesh.normal),
+      tev: mesh.tev && { ...mesh.tev, stages: mesh.tev.stages.map(stage => ({ ...stage })) },
+    })),
+  };
+}
+
+// Models the game draws its own way rather than with their materials.
+// Phantamanta (TBossMantaManager::drawMantaShadow): its shape is drawn into
+// the alpha buffer, then filled with one colour from its parameters, added
+// over half of what's behind it.
+const RUNTIME_LOOKS = {
+  'manta/manta.bmd': (library, model) => {
+    const color = mantaColor(library);
+    model.materials = model.materials.map(material => ({
+      ...material, cull: 0, blend: { type: 1, src: 1, dst: 5 }, kColors: [color, ...material.kColors.slice(1)],
+      alphaTest: { comp0: 7, ref0: 0, op: 0, comp1: 7, ref1: 0 }, textures: material.textures.map(() => -1),
+      stages: [{ colorIn: [15, 15, 15, 14], colorOp: 0, colorBias: 0, colorScale: 0, colorClamp: true, colorReg: 0, alphaIn: [7, 7, 7, 6], alphaOp: 0, alphaBias: 0,
+        alphaScale: 0, alphaClamp: true, alphaReg: 0, texCoord: 0xff, texMap: 0xff, channel: 0xff, kColorSel: 0x0c, kAlphaSel: 0x1c }],
+    }));
+  },
+};
+// And drawn as something else than their model's shape. Phantamanta's model
+// is a shadow volume, an upright prism of its outline: the game colours where
+// it cuts through the ground and water, so it shows as a flat silhouette
+// there. Here, the prism's top, laid on the ground.
+const RUNTIME_SHAPES = {
+  'manta/manta.bmd': baked => {
+    for (const mesh of baked.meshes) {
+      const kept = [];
+      for (let f = 0; f < mesh.index.length; f += 3) {
+        const [a, b, c] = [mesh.index[f], mesh.index[f + 1], mesh.index[f + 2]].map(v => [0, 1, 2].map(k => mesh.position[v * 3 + k]));
+        const e1 = [0, 1, 2].map(k => b[k] - a[k]), e2 = [0, 1, 2].map(k => c[k] - a[k]);
+        const n = [e1[1] * e2[2] - e1[2] * e2[1], e1[2] * e2[0] - e1[0] * e2[2], e1[0] * e2[1] - e1[1] * e2[0]];
+        if (n[1] > 0.5 * Math.hypot(...n)) kept.push(mesh.index[f], mesh.index[f + 1], mesh.index[f + 2]);
+      }
+      mesh.index = Uint32Array.from(kept);
+      for (let i = 1; i < mesh.position.length; i += 3) mesh.position[i] = 5;
+      for (let i = 0; i < mesh.normal.length; i += 3) { mesh.normal[i] = 0; mesh.normal[i + 1] = 1; mesh.normal[i + 2] = 0; }
+    }
+    baked.bounds.min[1] = baked.bounds.max[1] = 5;
+  },
+};
+
+// Phantamanta's colour from the game's parameters (params.szs, enemy/bossmanta.prm).
+function mantaColor(library) {
+  const color = [196, 128, 95, 128];
+  try {
+    const file = archive.rarc(library.read('data/params.szs')).get('enemy/bossmanta.prm');
+    for (let at = 4, n = file.readUInt32BE(0), i = 0; i < n; i++) {
+      const length = file.readUInt16BE(at + 2), name = file.toString('latin1', at + 4, at + 4 + length), size = file.readUInt32BE(at + 4 + length);
+      const slot = ['mSLMantaRed', 'mSLMantaGreen', 'mSLMantaBlue', 'mSLMantaAlpha'].indexOf(name);
+      if (slot >= 0 && size === 4) color[slot] = file.readInt32BE(at + 8 + length) & 0xff;
+      at += 8 + length + size;
+    }
+  } catch (_) { /* the game's defaults then */ }
+  return color;
+}
+
+// NPCs, by the game's NPC init index (SMSGetNpcInitData).
+const NPC_TYPES = ['NPCMonteM', 'NPCMonteMA', 'NPCMonteMB', 'NPCMonteMC', 'NPCMonteMD', 'NPCMonteME', 'NPCMonteMF', 'NPCMonteMG', 'NPCMonteMH',
+  'NPCMonteW', 'NPCMonteWA', 'NPCMonteWB', 'NPCMonteWC', 'NPCMareM', 'NPCMareMA', 'NPCMareMB', 'NPCMareMC', 'NPCMareMD',
+  'NPCMareW', 'NPCMareWA', 'NPCMareWB', 'NPCKinopio', 'NPCKinojii', 'NPCPeach', 'NPCRaccoonDog', 'NPCSunflowerL', 'NPCSunflowerS', 'NPCDummy', 'NPCBoard'];
+// Where a family's shared parts live (TMonteMBase… keepers), before the NPC's own folder.
+const NPC_PART_FOLDERS = { NPCMonteM: 'montemcommon', NPCMonteW: 'montewcommon', NPCMareM: 'marem', NPCMareW: 'marew' };
+
+// An NPC's look from its scene entry (TBaseNPC::load): after the manager and
+// path names, colour indexes for body and clothes, for parts, and which parts it wears.
+function npcLook(node, described) {
+  const index = NPC_TYPES.indexOf(node.type);
+  if (index < 0 || node.type === 'NPCDummy' || node.type === 'NPCBoard') return null;
+  const at = actorNamesEnd(node.data, 3);
+  if (at < 0 || at + 28 > node.data.length) return null;
+  const int = k => node.data.readInt32BE(at + k * 4);
+  let mask = Math.max(0, int(6));
+  if (node.type === 'NPCPeach') mask |= 6 | (mask & 0x10 ? 0x60 : 0);
+  return `npc:${index}:${int(0)},${int(1)}:${int(3)},${int(4)},${int(5)}:${mask}`;
+}
+function parseNpcLook(extra) {
+  const [, index, body, parts, mask] = extra.split(':');
+  return { index: Number(index), body: body.split(',').map(Number), parts: parts.split(',').map(Number), mask: Number(mask) };
+}
+
+// What a placed object's scene entry changes about its look: an NPC's
+// colours and parts, a spray-to-reveal picture's colour (its last three numbers).
+const TINTED = new Set(['WaterHitPictureHideObj', 'HideObjPictureTwin']);
+function lookOf(node, described) {
+  if (TINTED.has(node.type) && node.data.length >= 12) {
+    const n = node.data.length, rgb = [12, 8, 4].map(k => node.data.readInt32BE(n - k) & 0xff);
+    return `tint:${rgb.join(',')}`;
+  }
+  return npcLook(node, described);
+}
+
+// The game's colour changes (SMS_InitChangeNpcColor): mode 0 sets material
+// colour 0, mode 1 TEV register 0, mode 2 registers 1 and 2; each picks the
+// entry its colour index says.
+function paintNpc(model, changes, indexes) {
+  changes.forEach((list, slot) => {
+    const at = indexes[slot];
+    for (const change of list || []) {
+      const material = model.materials.find(m => m.name === change.material);
+      if (!material || !(at >= 0)) continue;
+      const pick = buffer => buffer && buffer[Math.min(at, buffer.length - 1)];
+      if (change.mode === 0 && pick(change.buf0)) material.matColor[0] = [...pick(change.buf0).slice(0, 3), 255];
+      if (change.mode === 1 && pick(change.buf0)) material.tevColors[0] = [...pick(change.buf0)];
+      if (change.mode === 2) {
+        if (pick(change.buf0)) material.tevColors[1] = [...pick(change.buf0)];
+        if (pick(change.buf1)) material.tevColors[2] = [...pick(change.buf1)];
+      }
+    }
+  });
+}
+
+// The parts an NPC wears (hats, shells, glasses, Peach's hair), each painted
+// and put on its joint (TNpcParts).
+function addNpcParts(library, baked, body, scene, bodyFile, npc, pose = null) {
+  const info = DATA.npcs[npc.index];
+  if (!info) return;
+  const type = NPC_TYPES[npc.index];
+  const common = Object.entries(NPC_PART_FOLDERS).find(([prefix]) => type.startsWith(prefix))?.[1];
+  const folders = [common, bodyFile.split('/')[0]].filter(Boolean);
+  const joints = levelModel.jointWorld(body, pose);
+  let bmt;
+  info.parts.forEach((part, bit) => {
+    if (!part || !part.bmd || !(npc.mask & (1 << bit))) return;
+    const data = folders.map(folder => library.findFile(`${folder}/${part.bmd.toLowerCase()}`, scene)).find(Boolean);
+    if (!data) return;
+    const model = j3d.parseBmd(data);
+    if (part.bmt) {
+      bmt ??= (() => { const table = library.findFile('marecommon/mare.bmt', scene); return table ? j3d.parseBmt(table) : null; })();
+      if (bmt) useMaterialTable(model, bmt);
+    }
+    swapTextures(library, model, scene, folders[0], body);
+    paintNpc(model, [part.colors], [npc.parts[part.slot]]);
+    cleanNpc(model);
+    const joint = part.joint === '__ROOT_JOINT__' ? -1 : body.joints.findIndex(j => j.name === part.joint);
+    const matrix = joint >= 0 ? joints[joint] : levelModel.compose([1, 1, 1], [0, 0, 0], [0, 0, 0]);
+    levelModel.merge(baked, levelModel.bake(model), matrix);
+  });
+}
+
+// NPCs that aren't gooped: konst colour 0 white with alpha 0 on every
+// material but the eyes, as TBaseNPC sets it for a clean NPC (NpcInitPrg.cpp).
+function cleanNpc(model) {
+  for (const material of model.materials) if (!/eye/i.test(material.name)) material.kColors[0] = [255, 255, 255, 0];
+}
+
+// A material table over a model (J3DModelData::setMaterialTable): its
+// texture list replaces the model's, slot for slot, and unless only textures
+// are wanted, its materials replace the model's ones of the same name.
+// `unify` then gives every material the first one's texture (SMS_UnifyMaterial).
+function useMaterialTable(model, table, { textures = false, unify = false } = {}) {
+  if (table.textures.length) {
+    const list = [...model.textures];
+    table.textures.forEach((texture, i) => { list[i] = texture; });
+    model.textures = list;
+  }
+  if (!textures) model.materials = model.materials.map(material => table.materials.find(m => m.name === material.name) || material);
+  // SMS_UnifyMaterial: every material takes the first one's texture in slot
+  // 0, keeping its own colour combiner. (Where the first has none, the game
+  // draws with whatever texture was loaded last; the material's own stays here.)
+  const shared = model.materials[0]?.textures[0];
+  if (unify && shared >= 0) model.materials = model.materials.map(material => ({ ...material, textures: [shared, ...material.textures.slice(1)] }));
+}
+
+// Map objects the game dresses from a shared material table, by their type
+// (TMapObjBase::initModelData): wooden crates, barrels, Bianco Hills' and the
+// sand sculptures' pieces, mirrors, nozzle items and more.
+const MATERIAL_TABLES = {
+  0x40000048: ['flower', 'unify'], 0x4000001c: ['kibako', 'unify'], 0x4000005a: ['barrel', 'unify'], 0x400000ba: ['riccoship', 'unify'],
+  0x400000a8: ['bianco', 'unify'], 0x40000096: ['bianco', 'unify'], 0x4000009a: ['bianco', 'unify'], 0x4000009b: ['bianco', 'unify'],
+  0x4000009e: ['bianco', 'unify'], 0x4000009f: ['bianco', 'unify'], 0x400000a1: ['bianco', 'unify'], 0x400000a2: ['bianco', 'unify'],
+  0x400000a3: ['bianco', 'unify'], 0x400000a0: ['bianco'], 0x4000009c: ['leafboat', 'unify'], 0x400000a5: ['leafboat'],
+  0x400000cb: ['sandbombbase', 'unify'], 0x400000cd: ['sandbombbase', 'unify'], 0x400000ce: ['sandbombbase', 'unify'], 0x400000d3: ['sandbombbase', 'textures'],
+  0x400000cf: ['mirror', 'unify'], 0x20000026: ['nozzleitem', 'unify'], 0x2000002a: ['nozzleitem', 'unify'], 0x2000001f: ['nozzleitem', 'unify'],
+  0x20000022: ['nozzleitem', 'unify'], 0x20000068: ['nozzlebox', 'textures'], 0x400002c2: ['brickblock'], 0x400002c3: ['watermelonblock'],
+  0x4000001b: ['arrowboard', 'unify'],
+};
+// And characters whose own code loads one (TElecNokonokoManager, THanaSamboManager).
+const MODEL_TABLES = { 'dennoko/dennoko_model1.bmd': 'dennoko/dennoko_model1.bmt', 'samboflower/flower.bmd': 'samboflower/flower_orange.bmt' };
+let modelTypes = null;
+function materialTableFor(library, model, scene, file) {
+  if (MODEL_TABLES[file]) {
+    const data = library.findFile(MODEL_TABLES[file], scene);
+    if (data) useMaterialTable(model, j3d.parseBmt(data));
+    return;
+  }
+  if (!modelTypes) {
+    modelTypes = new Map();
+    for (const entry of Object.values(DATA.mapobj)) for (const m of entry.m || []) if (entry.t && !modelTypes.has(m)) modelTypes.set(m, entry.t);
+  }
+  const rule = MATERIAL_TABLES[modelTypes.get(file)];
+  if (!rule) return;
+  const data = library.findFile(`mapobj/${rule[0]}.bmt`, scene);
+  if (data) useMaterialTable(model, j3d.parseBmt(data), { unify: rule[1] === 'unify', textures: rule[1] === 'textures' });
+}
 
 // Stages in a sensible order: by world, then numbered stages in number order.
 function compareScenes(a, b) {
@@ -326,6 +705,19 @@ function actorNames(data) {
   return names;
 }
 
+// Where an actor's data continues after its character name, light map and
+// `strings` more strings; -1 if it doesn't hold that much.
+function actorNamesEnd(data, strings) {
+  let at = 36;
+  const skip = () => { if (at + 2 > data.length) return false; at += 2 + data.readUInt16BE(at); return at <= data.length; };
+  if (!skip() || at + 4 > data.length) return -1;
+  const lights = data.readInt32BE(at);
+  at += 4;
+  for (let i = 0; i < lights; i++) { at += 4; if (!skip()) return -1; }
+  for (let i = 1; i < strings; i++) if (!skip()) return -1;
+  return at;
+}
+
 // What an object is: its model key (map objects), manager (NPCs, enemies) or nothing.
 function describe(node) {
   const info = classOf(node.type);
@@ -366,10 +758,17 @@ function fitManagers(tree) {
 
 // Stage pieces that only draw reflections and heat haze: nothing to place.
 const HELPERS = /^(reflect|seaindirect|indirect)/i;
+// Things not to offer: a stage's own water and goop sheets (drawn over its
+// whole sea or river), heat shimmer, and the developers' test stage.
+const STAGE_SHEETS = /pollution|river/i;
+const UNLISTED_TYPES = new Set(['Shimmer']);
+const UNLISTED_SCENES = new Set(['test11']);
+const MARKER_WHEN_EMPTY = new Set(['buildings', 'bosses', 'npcs', 'enemies', 'interactive', 'decorations', 'nature', 'vehicles']);
 
 function categoryOf(type, variant, info) {
   const text = `${type} ${variant}`;
-  if (type === 'MapStaticObj' && HELPERS.test(variant)) return null;
+  if (type === 'MapStaticObj' && (HELPERS.test(variant) || STAGE_SHEETS.test(variant))) return null;
+  if (UNLISTED_TYPES.has(type)) return null;
   switch (info.category) {
     case 'npcs': return 'npcs';
     case 'bosses': return 'bosses';
@@ -394,7 +793,7 @@ function categoryOf(type, variant, info) {
 const VARIANT_NAMED = {
   Fruit: v => v, ResetFruit: v => `${v} (comes back)`, CoverFruit: v => `${v} (covered)`,
   ItemNozzle: v => `${v} nozzle`, NozzleBox: v => `${v} nozzle box`,
-  MapObjBase: v => v, MapObjGeneral: v => v, MapStaticObj: v => v, MapObjFloatOnSea: v => v,
+  MapObjBase: v => v, MapObjGeneral: v => v, MapStaticObj: v => v, MapObjFloatOnSea: v => v, Item: v => v,
 };
 
 function labelOf(type, variant) {
@@ -404,12 +803,16 @@ function labelOf(type, variant) {
   if (known === null) return base;
   const nice = known || humanize(variant);
   if (VARIANT_NAMED[type]) return VARIANT_NAMED[type](nice);
-  // A variant that only repeats the type's name ("Blue coin", coin_blue) adds nothing.
-  const words = text => new Set(text.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim().split(' '));
+  if (known) return `${base} (${known})`;
+  // A variant that only repeats the type's name ("Blue coin", coin_blue) adds
+  // nothing; one that does says only what's new ("Wood block cube": cube).
+  const words = text => text.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim().split(' ');
   const squash = text => text.toLowerCase().replace(/[^a-z0-9]+/g, '');
-  const baseWords = words(base);
-  if ([...words(nice)].every(word => baseWords.has(word)) || squash(nice) === squash(base)) return base;
-  return `${base} (${nice})`;
+  const baseWords = new Set([...words(base), ...words(humanize(type))]);
+  const rest = words(nice).filter(word => !baseWords.has(word));
+  if (!rest.length || rest.every(word => /^\d+$/.test(word)) && words(nice).length > rest.length && Number(rest.join('')) <= 1 || squash(nice) === squash(base)) return base;
+  const plain = { l: 'large', m: 'medium', s: 'small', normalvariant: 'style', railvariant: 'style', rollvariant: 'style' };
+  return `${base} (${rest.map(word => plain[word] || word).join(' ')})`;
 }
 
 function humanize(name) {
@@ -486,8 +889,14 @@ function resourcesFor(files, modelFile, described) {
   if (info.family === 'mapobj' || info.family === 'static') {
     const entry = (info.family === 'mapobj' ? DATA.mapobj : DATA.static)[variant.toLowerCase()] || {};
     for (const file of [].concat(entry.m || [], entry.c || [], entry.a || [], modelFile)) if (files.has(file)) out.add(file);
-    const stems = new Set([...out].map(file => file.replace(/\.[^./]+$/, '')));
-    for (const file of files.keys()) if (stems.has(file.replace(/\.[^./]+$/, ''))) out.add(file);
+    // Files named after its model too: its animations, and parts' collision
+    // the object loads by name (a tree's leaves, "palmnormalleaf01.col").
+    const stems = [...out].map(file => file.replace(/\.[^./]+$/, ''));
+    for (const file of files.keys()) if (stems.some(stem => file.startsWith(stem))) out.add(file);
+    // The material table its manager loads for its kind (MapObjManager's
+    // loadMatTable): without it the game has none to put on it and stops.
+    const table = MATERIAL_TABLES[entry.t];
+    if (table && files.has(`mapobj/${table[0]}.bmt`)) out.add(`mapobj/${table[0]}.bmt`);
   } else {
     // Characters: their model folder, their family's shared parts (Piantas and
     // Nokis), and the parameter files characters read from map/params.
@@ -504,6 +913,7 @@ async function buildCatalog(library) {
   const items = new Map();
   for (const scene of library.scenes()) {
     await new Promise(resolve => setImmediate(resolve));
+    if (UNLISTED_SCENES.has(scene)) continue;
     let tree, context;
     try { context = library.context(scene); tree = context.tree; }
     catch (_) { continue; }  // a stage without a scene file (Eclipse keeps some elsewhere)
@@ -530,9 +940,18 @@ async function buildCatalog(library) {
       item.scenes.add(scene);
       if (!item.model) {
         const file = modelPath(context, node, described);
-        if (file) { item.model = makeRef(scene, file); item.source = { scene, id }; item.scale = transform.scale.map(v => round(v, 3)); }
+        if (file) { item.model = makeRef(scene, file, lookOf(node, described)); item.source = { scene, id }; item.scale = transform.scale.map(v => round(v, 3)); }
       }
     });
+  }
+  // A type with a name players know and only one kind needs no variant in its
+  // label ("Date palm", not "Date palm (Palm natume)"). Things without a model
+  // of their own show as markers, so they're listed with them.
+  const kinds = new Map();
+  for (const item of items.values()) kinds.set(item.type, (kinds.get(item.type) || 0) + 1);
+  for (const item of items.values()) {
+    if (kinds.get(item.type) === 1 && LABELS[item.type] && item.variant && VARIANT_LABELS[item.variant.toLowerCase()] === undefined) item.label = LABELS[item.type];
+    if (!item.model && MARKER_WHEN_EMPTY.has(item.category)) item.category = 'markers';
   }
   const worldNames = Object.fromEntries([...WORLDS, OTHER_WORLD].map(world => [world.id, world.name]));
   const categoryLabels = Object.fromEntries(CATEGORIES.map(c => [c.id, c.label]));
@@ -550,7 +969,19 @@ async function buildCatalog(library) {
 const worldOrder = id => { const i = WORLDS.findIndex(w => w.id === id); return i < 0 ? WORLDS.length : i; };
 const round = (value, digits) => Math.round(value * 10 ** digits) / 10 ** digits;
 
+// Material tables the game loads in one world only (MapObjManager: bianco.bmt
+// when the map is Bianco Hills), so their objects work only there.
+const WORLD_TABLES = { bianco: { world: 'bianco', name: 'Bianco Hills' } };
+function worldBound(item) {
+  if (item.type !== 'MapObjBase' && item.type !== 'MapObjGeneral' && !item.variant) return null;
+  const entry = DATA.mapobj[String(item.variant || '').toLowerCase()];
+  const table = entry && MATERIAL_TABLES[entry.t];
+  return table && WORLD_TABLES[table[0]] || null;
+}
+
 function noteFor(item) {
+  const bound = worldBound(item);
+  if (bound) return `Only works in ${bound.name} stages: the game loads its materials there only.`;
   if (item.category === 'npcs' || item.category === 'enemies' || item.category === 'bosses')
     return 'Characters bring their manager and model folder along when you export. Some also need events or paths only their own stage has.';
   if (item.category === 'markers') return 'Shown as a marker here; the game uses it for where things happen.';
@@ -578,7 +1009,7 @@ function loadLevel(library, scene) {
       id, type: node.type, variant: described.variant, name: sceneBin.decodeName(node.nameBytes),
       label: labelOf(node.type, described.variant), category,
       key: described.variant ? `${node.type}:${described.variant.toLowerCase()}` : node.type,
-      transform, model: node.type === 'Mario' ? marioRef() : file ? makeRef(scene, file) : null,
+      transform, model: node.type === 'Mario' ? marioRef() : file ? makeRef(scene, file, lookOf(node, described)) : null,
     });
   });
   const stageModels = ['map/map/sky.bmd', 'map/map/map.bmd', 'map/map/sea.bmd'].filter(file => files.has(file)).map(file => makeRef(scene, file));
@@ -641,7 +1072,7 @@ function cleanProject(input, scenes) {
   return {
     format: PROJECT_FORMAT, version: 1, name: String(input.name || 'Untitled level').slice(0, 60), base: input.base,
     disc: String(input.disc || '').slice(0, 6), stamp: /^[0-9a-f]{16}$/.test(input.stamp) ? input.stamp : undefined,
-    edits, added, paint, savedAt: new Date().toISOString(),
+    edits, added, paint, ...stage.cleanStage(input, scenes), savedAt: new Date().toISOString(),
   };
 }
 
@@ -665,6 +1096,9 @@ function buildScene(library, project) {
   }
   const needs = new Map();  // scene -> Set of files to copy
   for (const added of project.added) {
+    const bound = worldBound(added);
+    if (bound && worldOf(project.base).id !== bound.world)
+      throw new Error(`${added.label} only works in ${bound.name} stages (the game loads its materials there only). Remove it to export this level.`);
     const sourceTree = library.sceneTree(added.source.scene);
     const source = sceneBin.find(sourceTree, added.source.id);
     if (!source || source.children || classOf(source.type).kind !== 'actor') throw new Error(`Couldn't find ${added.label} on your disc any more.`);
@@ -721,18 +1155,32 @@ function addManager(tree, sourceTree, name) {
   parent.children.push(cloneNode(manager));
 }
 
+// The stage's ground: painted, with built and copied pieces' ground added.
 function buildCollision(library, project) {
+  const built = stage.buildGround(library, project, SURFACES, SURFACE_DEFAULTS);
+  if (built) return built;
   const col = library.files(project.base).get('map/map.col');
   if (!col) throw new Error('This stage has no ground file.');
-  return Object.keys(project.paint).length ? collisionFile.paint(col, project.paint, SURFACE_DEFAULTS) : Buffer.from(col);
+  return Buffer.from(col);
 }
+
+// The stage's model with painted textures and built and copied pieces, or
+// null when the project leaves it as it is.
+function buildModel(library, project) { return stage.buildMap(library, project); }
 
 // The whole stage archive with the project in it, Yaz0-compressed as the game stores it.
 function buildArchive(library, project) {
   const tree = archive.readTree(library.read(archiveFile(project.base)));
   const { tree: scene, needs } = buildScene(library, project);
   archive.treePut(tree, 'map/scene.bin', sceneBin.serialize(scene));
-  if (Object.keys(project.paint).length) archive.treePut(tree, 'map/map.col', buildCollision(library, project));
+  if (Object.keys(project.paint).length || stage.hasStageEdits(project)) archive.treePut(tree, 'map/map.col', buildCollision(library, project));
+  const map = buildModel(library, project);
+  if (map) archive.treePut(tree, originalPath(tree, 'map/map/map.bmd'), map);
+  const sea = stage.buildSea(library, project);
+  if (sea) archive.treePut(tree, originalPath(tree, 'map/map/sea.bmd'), sea);
+  // An emptied stage has no goop: the game draws its layers from ymap.ymp,
+  // and stages without one (Gelato Beach) have none.
+  if (project.blank) archive.treeRemove(tree, 'map/ymap.ymp');
   let copied = 0;
   for (const [sourceScene, files] of needs) {
     if (sourceScene === project.base) continue;
@@ -748,6 +1196,94 @@ function buildArchive(library, project) {
   return { data: archive.yaz0Encode(archive.writeTree(tree)), copied };
 }
 
+// --- Playing a level in the game ---------------------------------------------------
+
+// The game's stage table (data/stageArc.bin, a JDrama node tree like
+// scene.bin): for each area, the scene archive each of its episodes loads.
+function stageTable(library) {
+  if (library.stageTableCache) return library.stageTableCache;
+  const data = library.read('data/stageArc.bin');
+  const text = at => { const n = data.readUInt16BE(at); return { value: data.toString('latin1', at + 2, at + 2 + n), end: at + 2 + n }; };
+  const node = at => { const type = text(at + 6), name = text(type.end + 2); return { body: name.end, end: at + data.readUInt32BE(at) }; };
+  const areas = [];
+  const list = node(node(0).body + 4);
+  for (let a = 0, at = list.body + 4, count = data.readUInt32BE(list.body); a < count; a++) {
+    const table = node(at), episodes = [];
+    for (let e = 0, entry = table.body + 4, n = data.readUInt32BE(table.body); e < n; e++) {
+      const item = node(entry);
+      episodes.push(text(item.body).value.toLowerCase().replace(/\.(arc|szs)$/, ''));
+      entry = item.end;
+    }
+    areas.push(episodes);
+    at = table.end;
+  }
+  return (library.stageTableCache = areas);
+}
+
+// The area and episode that load a scene (SMS_WARP takes them), or null.
+function stageStart(library, scene) {
+  const areas = stageTable(library);
+  for (let area = 0; area < areas.length; area++) {
+    const episode = areas[area].indexOf(scene.toLowerCase());
+    if (episode >= 0) return { area, episode };
+  }
+  return null;
+}
+
+// The world each area belongs to (SMS_getShineStage's table): which line
+// of the stage names its title card shows.
+const SHINE_STAGES = [
+  0, 1, 2, 3, 4, 5, 6, 6, 7, 8, 9, 1, 1, 5, 6, 1, 8, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 1, 3, 8,
+  4, 4, 5, 5, 5, 5, 5, 5, 6, 5, 7, 7, 8, 8, 2, 2, 3, 3, 5, 6, 9, 1, 1, 2, 6, 8, 5, 3, 9,
+];
+
+// A message bank (.bmg: INF1 entries, each a u32 offset into DAT1's text)
+// with some messages replaced ({ index: text }) or all of them (`all`).
+function setMessages(data, changes, all = null) {
+  let inf = -1, dat = -1;
+  for (let at = 0x20; at + 8 <= data.length; at += data.readUInt32BE(at + 4)) {
+    const magic = data.toString('ascii', at, at + 4);
+    if (magic === 'INF1') inf = at;
+    if (magic === 'DAT1') dat = at;
+    if (!data.readUInt32BE(at + 4)) break;
+  }
+  if (inf < 0 || dat < 0) throw new Error('The game\'s message file isn\'t one this editor can read.');
+  const count = data.readUInt16BE(inf + 8), size = data.readUInt16BE(inf + 10), text = dat + 8, end = dat + data.readUInt32BE(dat + 4);
+  const offsets = Array.from({ length: count }, (_, i) => data.readUInt32BE(inf + 16 + i * size));
+  const sorted = [...new Set(offsets)].sort((a, b) => a - b);
+  const original = offset => { const next = sorted.find(o => o > offset); return data.subarray(text + offset, next === undefined ? end : text + next); };
+  const encode = value => Buffer.concat([Buffer.from(value, 'latin1'), Buffer.alloc(1)]);
+  const out = Buffer.from(data.subarray(0, inf + data.readUInt32BE(inf + 4)));
+  const parts = [Buffer.alloc(1)];  // offset 0: an empty message, as the game's files start
+  let at = 1;
+  offsets.forEach((offset, i) => {
+    const bytes = all !== null ? encode(all) : i in changes ? encode(changes[i]) : original(offset);
+    out.writeUInt32BE(at, inf + 16 + i * size);
+    parts.push(bytes);
+    at += bytes.length;
+  });
+  let body = Buffer.concat(parts);
+  body = Buffer.concat([body, Buffer.alloc((32 - (body.length + 8) % 32) % 32)]);
+  const head = Buffer.from(data.subarray(dat, dat + 8));
+  head.writeUInt32BE(body.length + 8, 4);
+  const file = Buffer.concat([out, head, body]);
+  file.writeUInt32BE(file.length, 8);
+  return file;
+}
+
+// The title card's text for a level played in the game: its name for the
+// world's name, in capitals as the game writes them, and no episode name.
+// Files inside common.szs, for the game's mod folder to put there.
+function playTexts(library, project, start) {
+  const common = archive.rarc(library.read('data/common.szs'));
+  const name = project.name.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\x20-\x7e]/g, '').trim().toUpperCase().slice(0, 24) || 'MY LEVEL';
+  const world = SHINE_STAGES[start.area] ?? 1;
+  return {
+    '2d/stagename.bmg': setMessages(common.get('2d/stagename.bmg'), { [world]: name }),
+    '2d/scenarioname.bmg': setMessages(common.get('2d/scenarioname.bmg'), {}, ''),
+  };
+}
+
 // A lower-case path with each part's letter case as its archive spells it.
 function originalPath(tree, file) {
   let dir = tree.root;
@@ -760,5 +1296,6 @@ function originalPath(tree, file) {
 
 module.exports = {
   Library, WORLDS, CATEGORIES, SURFACES, GROUND_TYPES, CAMERA_TYPES, CATALOG_VERSION, PROJECT_FORMAT, FLOOR_NORMAL, worldOf, sceneLabel, buildCatalog, loadLevel, cleanProject,
-  buildScene, buildCollision, buildArchive, readTransform, writeTransform, describe, categoryOf, labelOf, humanize, fitManagers,
+  buildScene, buildCollision, buildModel, buildArchive, stageTable, stageStart, playTexts, setMessages, readTransform, writeTransform, describe, categoryOf, labelOf, humanize, fitManagers,
+  paintNpc, parseNpcLook, NPC_TYPES,
 };

@@ -119,6 +119,10 @@ function eclipseInstallActivity(value) {
       percent: total ? Math.floor(received / total * 100) : null };
   }
   if (value === 'Checking HD texture download') return { detail: 'Checking the Eclipse download', percent: null };
+  // From the player's own file (get.py --eclipse-iso or --archive), checked before it is used.
+  if (/^Checking your Eclipse image/.test(value)) return { detail: 'Checking your Super Mario Eclipse ISO', percent: null };
+  if (/^Checking your Eclipse download/.test(value)) return { detail: 'Checking your Super Mario Eclipse download', percent: null };
+  if (/^Copying it into /.test(value)) return { detail: 'Copying your Super Mario Eclipse ISO into the game folder', percent: null };
   if (/^Unpacking /.test(value)) return { detail: 'Unpacking Super Mario Eclipse (a few minutes)', percent: null };
   const patching = value.match(/^Patching your image(?:: (\d{1,3})%)?/);
   if (patching) return { detail: 'Making Super Mario Eclipse from your disc (a few minutes)',

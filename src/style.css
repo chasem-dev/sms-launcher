@@ -492,6 +492,7 @@ pre { height: 120px; margin: 0; padding: 12px; overflow: auto; border-radius: 8p
 .settings-group .range-field strong { color: #334b51; font-weight: 650; }
 .settings-group .range-field small { grid-column: 1 / -1; }
 .settings-group > .row-note { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: -4px; padding-bottom: 12px; color: #6e8183; font-size: 11px; line-height: 1.45; }
+.row-note-actions { display: flex; flex-shrink: 0; gap: 16px; }
 .settings-group > .row-note.lead { margin: 0; padding: 14px 0 2px; color: #405a60; font-size: 12px; }
 .settings-group > .row-note.lead + .actions, .settings-group > .small-path + .actions { border-top: 0; }
 .path-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; }

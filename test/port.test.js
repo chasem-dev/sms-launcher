@@ -493,6 +493,50 @@ test('a language pack is downloaded when that language is chosen and the catalog
   for (const platform of ['linux', 'darwin'])
     assert.deepEqual(port.commandFor(root, 'python', ['/games/sms.iso'], platform).args,
       [path.join(scripts, 'texture-progress.py'), path.join(root, 'tools', 'mods', 'get.py'), 'eclipse', '--iso', '/games/sms.iso']);
+  // From the player's own Eclipse ISO or download.
+  assert.deepEqual(port.commandFor(root, 'python', ['/games/sms.iso', '--eclipse-iso', '/games/Eclipse.iso'], 'linux').args.slice(2),
+    ['eclipse', '--iso', '/games/sms.iso', '--eclipse-iso', '/games/Eclipse.iso']);
+});
+
+test('takes a Super Mario Eclipse ISO or its download as the player\'s own Eclipse file', () => {
+  const dir = temporary();
+  try {
+    const file = (name, bytes) => { const at = path.join(dir, name); fs.writeFileSync(at, bytes); return at; };
+    const reason = at => { try { port.eclipseOwnFile(at); } catch (error) { return error.message; } };
+    const iso = file('Eclipse.iso', gcm('GMSE04', 0, 'Super Mario Eclipse'));
+    assert.deepEqual(port.eclipseOwnFile(iso), { file: iso, archive: false });
+    const sevenZip = Buffer.alloc(0x440); sevenZip.write('7z\xbc\xaf\x27\x1c', 0, 'latin1');
+    const download = file('super_mario_eclipse_v110.7z', sevenZip);
+    assert.deepEqual(port.eclipseOwnFile(download), { file: download, archive: true });
+    assert.match(reason(file('sms.iso', gcm())), /your Super Mario Sunshine disc. Choose Install Eclipse/);
+    assert.match(reason(file('Eclipse.ciso', ciso(gcm('GMSE04', 0, 'Super Mario Eclipse')))), /needs the \.iso file/);
+    const zip = Buffer.alloc(0x440); zip.write('PK\x03\x04', 0, 'latin1');
+    assert.match(reason(file('eclipse.zip', zip)), /Compressed disc files and other archives/);
+    assert.match(reason(file('notes.txt', Buffer.from('hello'))), /not Super Mario Eclipse's ISO or its download/);
+    assert.match(reason(path.join(dir, 'missing.iso')), /cannot be found/);
+    assert.match(reason(dir), /not a folder/);
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('Eclipse plays the movies it kept from Sunshine from the disc or the HD cutscenes, when the game can', () => {
+  const root = temporary();
+  try {
+    const eclipse = port.normalizeSettings({ eclipse: true }, 'linux');
+    assert.equal(eclipse.eclipseSunshineMovies, true);
+    assert.deepEqual(port.eclipseMovieEnvironment(root, eclipse, '/games/sms.iso'), {}); // an older game
+    fs.mkdirSync(path.join(root, 'platform', 'dvd'), { recursive: true });
+    fs.writeFileSync(path.join(root, 'platform', 'dvd', 'dvd.cpp'), 'getenv("SMS_ECLIPSE_SUNSHINE_MOVIES")');
+    assert.equal(port.gameFeatures(root).eclipseSunshineMovies, true);
+    assert.deepEqual(port.eclipseMovieEnvironment(root, eclipse, '/games/sms.iso'), { SMS_ECLIPSE_SUNSHINE_MOVIES: '/games/sms.iso' });
+    assert.deepEqual(port.eclipseMovieEnvironment(root, { ...eclipse, eclipseSunshineMovies: false }, '/games/sms.iso'),
+      { SMS_ECLIPSE_SUNSHINE_MOVIES: '0' });
+    assert.deepEqual(port.eclipseMovieEnvironment(root, { ...eclipse, eclipse: false }, '/games/sms.iso'), {});
+    // With HD cutscenes on, the pack's, once it is installed (the disc's otherwise).
+    const hd = { ...eclipse, cutscenes: true, textures: true };
+    assert.equal(port.eclipseMovieEnvironment(root, hd, '/games/sms.iso').SMS_HD_CUTSCENES, undefined);
+    // The pack itself stays off for Eclipse's other movies.
+    assert.equal(port.buildEnvironment(hd, '/games/Eclipse.iso', root).SMS_HD_CUTSCENES, '0');
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });
 
 test('Eclipse builder uses its own CMake tree without bundling the patched disc', () => {
@@ -596,8 +640,11 @@ test('Windows command passes an image path as data to MSYS2 Bash', () => {
       path.resolve(__dirname, '..', 'scripts', 'install-language.py'), 'es', es.name, es.url, es.md5, String(es.size)]);
     // The Eclipse install reports its 900 MB download through the same wrapper.
     const eclipse = port.commandFor('C:\\port', 'python', ['C:\\Games\\Sunshine.iso'], 'win32', { PATH: 'C:\\Windows', MSYS2_ROOT: dir });
-    assert.match(eclipse.args[1], /python "\$\(cygpath -u "\$2"\)" tools\/mods\/get\.py eclipse --iso "\$\(cygpath -u "\$3"\)"$/);
+    assert.match(eclipse.args[1], /python "\$\(cygpath -u "\$2"\)" tools\/mods\/get\.py eclipse --iso "\$\(cygpath -u "\$3"\)" \$\{4:\+"\$4" "\$\(cygpath -u "\$5"\)"\}$/);
     assert.deepEqual(eclipse.args.slice(3), ['C:\\port', path.resolve(__dirname, '..', 'scripts', 'texture-progress.py'), 'C:\\Games\\Sunshine.iso']);
+    const own = port.commandFor('C:\\port', 'python', ['C:\\Games\\Sunshine.iso', '--archive', 'C:\\Downloads\\eclipse.7z'], 'win32', { PATH: 'C:\\Windows', MSYS2_ROOT: dir });
+    assert.equal(own.args[1], eclipse.args[1]);
+    assert.deepEqual(own.args.slice(5), ['C:\\Games\\Sunshine.iso', '--archive', 'C:\\Downloads\\eclipse.7z']);
   } finally {
     if (old === undefined) delete process.env.MSYS2_ROOT;
     else process.env.MSYS2_ROOT = old;
@@ -807,7 +854,7 @@ test('game features come from the game version on disk', () => {
   const fs = require('node:fs'), os = require('node:os'), path = require('node:path');
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'sms-features-'));
   try {
-    const none = { vulkan: false, appleSilicon: false, mouseKeys: false, eclipseAppleSilicon: false };
+    const none = { vulkan: false, appleSilicon: false, mouseKeys: false, eclipseAppleSilicon: false, eclipseOwnFile: false, eclipseSunshineMovies: false };
     assert.deepEqual(port.gameFeatures(root), none);
     assert.deepEqual(port.gameFeatures(null), none);
     fs.mkdirSync(path.join(root, 'platform', 'gx', 'src', 'vk'), { recursive: true });
@@ -815,10 +862,13 @@ test('game features come from the game version on disk', () => {
     const mods = path.join(root, 'platform', 'mods', 'eclipse', 'lib');
     fs.mkdirSync(mods, { recursive: true });
     fs.writeFileSync(path.join(mods, 'CMakeLists.txt'), 'project(sms_eclipse C CXX)\n');
-    assert.deepEqual(port.gameFeatures(root), { vulkan: true, appleSilicon: true, mouseKeys: false, eclipseAppleSilicon: false });
+    assert.deepEqual(port.gameFeatures(root), { ...none, vulkan: true, appleSilicon: true });
     fs.appendFileSync(path.join(mods, 'CMakeLists.txt'), 'if(SMS_GAMEPTR_PLUGIN)\nendif()\n');
     fs.writeFileSync(path.join(root, 'bindings.txt'), '# defaults\nA = MOUSE_LEFT\nB = MOUSE_RIGHT\n');
-    assert.deepEqual(port.gameFeatures(root), { vulkan: true, appleSilicon: true, mouseKeys: true, eclipseAppleSilicon: true });
+    assert.deepEqual(port.gameFeatures(root), { ...none, vulkan: true, appleSilicon: true, mouseKeys: true, eclipseAppleSilicon: true });
+    fs.mkdirSync(path.join(root, 'tools', 'mods'), { recursive: true });
+    fs.writeFileSync(path.join(root, 'tools', 'mods', 'get.py'), 'ap.add_argument("--eclipse-iso")\n');
+    assert.equal(port.gameFeatures(root).eclipseOwnFile, true);
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });
 

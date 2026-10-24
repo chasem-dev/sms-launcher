@@ -57,7 +57,8 @@
       "Fixed the game failing to build on Windows when your Windows user name has letters outside the English alphabet, such as Cyrillic (\"fatal error: stdlib.h: No such file or directory\").",
       "Achievements in Super Mario Eclipse: its own 128 unlock as you play, each with the BADGE GET! banner.",
       "Multiplayer: Player Collision for the host (in the settings while hosting): players bump into each other, running into someone knocks you back, and you can bounce off heads. Server mods can now run water fights, where FLUDD's water hits other players and they react the way Shadow Mario does when you spray him. The new Splash Battle server mod uses this: last player standing wins.",
-      "Mod API 1.5 beta 6 for mod makers: mods can keep their own files beside the memory card, per save file (saved, copied and erased with the file), and new events for FLUDD's trigger, the coaster start, Shine models and colours, Yoshi's egg and the episode select's Shines."
+      "Mod API 1.5 beta 6 for mod makers: mods can keep their own files beside the memory card, per save file (saved, copied and erased with the file), and new events for FLUDD's trigger, the coaster start, Shine models and colours, Yoshi's egg and the episode select's Shines.",
+      "Server mods can now draw an arena's edge on the ground that players can't cross and that can close in during a round. They can also make water scarce: FLUDD stops refilling from the sea or items, and the server hands out water instead (the Splash Battle's water pickups)."
     ]
   },
   "releases": [

@@ -5,6 +5,7 @@
 import * as THREE from '../node_modules/three/build/three.module.js';
 import { tevMaterial, LIGHT } from './world-tev.js';
 import { Reflector } from './world-mirror.js';
+import { createGizmo } from './world-gizmo.js';
 
 const $ = id => document.getElementById(id);
 const page = $('world-editor');
@@ -354,6 +355,7 @@ function syncButtons() {
   for (const button of document.querySelectorAll('[data-world-paint-mode]')) button.classList.toggle('active', button.dataset.worldPaintMode === paintMode);
   $('world-walk-hint').hidden = tool !== 'walk';
   page.querySelector('.world-help').hidden = tool === 'walk';
+  syncHelp();
   $('world-place-hint').hidden = tool !== 'place';
   $('world-copy-hint').hidden = tool !== 'copy';
   if (placing) $('world-place-name').textContent = placing.label;
@@ -675,9 +677,18 @@ $('world-outline-search').addEventListener('input', renderOutline);
 
 function select(id) {
   selected = id;
+  syncHelp();
   syncScene();
   renderOutline();
   renderInspector();
+}
+
+// The help along the bottom: how to use the arrows while something is
+// selected, how to get round the stage otherwise.
+function syncHelp() {
+  const moving = Boolean(selected) && tool === 'select';
+  $('world-help-camera').hidden = moving;
+  $('world-help-selection').hidden = !moving;
 }
 
 const AXES = ['x', 'y', 'z'];
@@ -1281,6 +1292,18 @@ function createView(canvas) {
   selectionBox.visible = false;
   scene.add(selectionBox);
   let selectedId = null;
+  // Arrows and a ring on the selected object, to move and turn it.
+  const gizmo = createGizmo(camera, canvas);
+  scene.add(gizmo.group);
+  const readout = $('world-gizmo-readout');
+  function showReadout(text, event) {
+    readout.hidden = !text;
+    if (!text) return;
+    readout.textContent = text;
+    const rect = canvas.getBoundingClientRect();
+    readout.style.left = `${event.clientX - rect.left + 16}px`;
+    readout.style.top = `${event.clientY - rect.top + 18}px`;
+  }
 
   // Built pieces are drawn where they are (their textures laid over the
   // world), so they're made again when they move or change.
@@ -1332,6 +1355,13 @@ function createView(canvas) {
     const entry = selectedId && nodes.get(selectedId);
     selectionBox.visible = Boolean(entry);
     if (entry) { entry.root.updateMatrixWorld(true); selectionBox.box.setFromObject(entry.root); selectionBox.box.expandByScalar(15); }
+    syncGizmo();
+  }
+  // The arrows show on the selection while selecting, not with other tools.
+  function syncGizmo() {
+    const object = selectedId && nodes.has(selectedId) && tool === 'select' && !walker ? objectById(selectedId) : null;
+    if (object?.transform) gizmo.attach(object.transform.position);
+    else if (gizmo.visible) gizmo.detach();
   }
 
   // --- Ghost (the thing being placed) and preview ---
@@ -1465,7 +1495,9 @@ function createView(canvas) {
     const box = entry ? new THREE.Box3().setFromObject(entry.root) : new THREE.Box3().setFromCenterAndSize(new THREE.Vector3(...object.transform.position), new THREE.Vector3(200, 200, 200));
     const sphere = box.getBoundingSphere(new THREE.Sphere());
     const distance = Math.max(sphere.radius * 2.6, 600);
-    const direction = new THREE.Vector3(Math.sin(look.yaw), 0.55, Math.cos(look.yaw)).normalize();
+    // From the nearest diagonal, so the move arrows all point out to the side.
+    const yaw = Math.round((look.yaw - Math.PI / 4) / (Math.PI / 2)) * (Math.PI / 2) + Math.PI / 4;
+    const direction = new THREE.Vector3(Math.sin(yaw), 0.55, Math.cos(yaw)).normalize();
     camera.position.copy(sphere.center).addScaledVector(direction, distance);
     lookAt(sphere.center);
   }
@@ -1646,6 +1678,13 @@ function createView(canvas) {
       paintMode === 'texture' ? paintTextureAt(ray) : paintAt(ray);
       return;
     }
+    const handle = tool === 'select' && selected ? gizmo.hit(ray) : null;
+    const target = handle && objectById(selected);
+    if (target) {
+      drag = { kind: 'gizmo', id: target.id, state: gizmo.begin(handle, ray, target.transform), moved: false, before: JSON.stringify(project) };
+      canvas.style.cursor = 'grabbing';
+      return;
+    }
     const picked = pickObject(ray);
     select(picked ? picked.id : null);
     if (picked) {
@@ -1667,6 +1706,23 @@ function createView(canvas) {
       look.yaw -= dx * 0.004;
       look.pitch = Math.max(-1.55, Math.min(1.55, look.pitch - dy * 0.004));
       return;
+    }
+    if (drag?.kind === 'gizmo') {
+      const result = gizmo.drag(drag.state, rayFrom(event), { snap: event.ctrlKey || event.metaKey });
+      if (!result) return;
+      drag.moved = true;
+      setTransform(drag.id, result.transform);
+      syncScene();
+      renderInspector();
+      showReadout(`${result.text}${event.ctrlKey || event.metaKey ? '' : '  ·  Ctrl snaps'}`, event);
+      return;
+    }
+    if (!drag && tool === 'select') {
+      const handle = gizmo.hit(rayFrom(event));
+      gizmo.hover(handle);
+      canvas.style.cursor = handle ? 'grab' : '';
+      showReadout(gizmo.tip(handle), event);
+      if (handle) return;
     }
     if (drag?.kind === 'move') {
       const object = objectById(drag.id);
@@ -1717,7 +1773,8 @@ function createView(canvas) {
       if (box[2] - box[0] >= 150 && box[3] - box[1] >= 150) startPlacing(copiedItem(box));
       else flash('Drag a bigger box over what you want to copy.', true);
     }
-    if (drag?.kind === 'move' && drag.moved) {
+    if (drag?.kind === 'gizmo') { gizmo.end(); canvas.style.cursor = ''; showReadout(''); }
+    if ((drag?.kind === 'move' || drag?.kind === 'gizmo') && drag.moved) {
       undoStack.push(drag.before);
       redoStack = [];
       dirty = true;
@@ -1736,7 +1793,7 @@ function createView(canvas) {
   };
   canvas.addEventListener('pointerup', endPointer);
   canvas.addEventListener('pointercancel', endPointer);
-  canvas.addEventListener('pointerleave', () => { brushRing.visible = false; if (ghost) ghost.visible = false; if (buildGhost) buildGhost.visible = false; });
+  canvas.addEventListener('pointerleave', () => { if (!drag) { gizmo.hover(null); showReadout(''); } brushRing.visible = false; if (ghost) ghost.visible = false; if (buildGhost) buildGhost.visible = false; });
   let ghostYaw = 0;
   canvas.addEventListener('wheel', event => {
     event.preventDefault();
@@ -1887,6 +1944,8 @@ function createView(canvas) {
         camera.position.y += vertical * speed;
       }
     }
+    if (Boolean(selectedId && nodes.has(selectedId) && tool === 'select' && !walker) !== gizmo.visible) syncGizmo();
+    gizmo.update();
     renderer.render(scene, camera);
     if (previewRenderer && !$('world-preview').hidden) {
       const rect = previewCanvas.getBoundingClientRect();
@@ -1907,7 +1966,7 @@ function createView(canvas) {
     setLevel, syncObjects, frame, focus, groundBelow, walk, stopWalk, setGhost, preview, repaintAll, setStage, setBuildGhost, endCopy,
     setOverlay(on) { overlayOn = on; if (overlay) overlay.mesh.visible = on; brushRing.visible = brushRing.visible && tool === 'paint'; },
     setBrushRadius(radius) { brushRadius = radius; },
-    gesturing: () => Boolean(drag?.kind === 'move' || painting),
+    gesturing: () => Boolean(drag?.kind === 'move' || drag?.kind === 'gizmo' || painting),
     getCamera: () => ({ position: camera.position.toArray(), yaw: look.yaw, pitch: look.pitch }),
     setCamera(saved) { camera.position.fromArray(saved.position); look.yaw = saved.yaw; look.pitch = saved.pitch; },
     dispose() {

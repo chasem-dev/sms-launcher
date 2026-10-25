@@ -323,6 +323,14 @@ test('shader warm-up stays on unless turned off, and reaches the game as SMS_GX_
   assert.equal(env({ shaderWarmup: false }).SMS_GX_SHADER_WARMUP, '0');
 });
 
+test('precise frame timing stays off unless turned on, and reaches the game as SMS_PRECISE_TIMER', () => {
+  assert.equal(port.normalizeSettings({}).preciseTimer, false);
+  assert.equal(port.normalizeSettings({ preciseTimer: 'yes' }).preciseTimer, false);
+  assert.equal(port.normalizeSettings({ preciseTimer: true }).preciseTimer, true);
+  assert.equal(port.buildEnvironment(port.normalizeSettings({}), '/my/disc.iso', '/port').SMS_PRECISE_TIMER, '0');
+  assert.equal(port.buildEnvironment(port.normalizeSettings({ preciseTimer: true }), '/my/disc.iso', '/port').SMS_PRECISE_TIMER, '1');
+});
+
 test('the heat-wave effect stays on unless turned off, and reaches the game as SMS_HEAT_HAZE', () => {
   assert.equal(port.normalizeSettings({}).heatHaze, true);
   assert.equal(port.normalizeSettings({}).buttonPrompts, 'gamecube');

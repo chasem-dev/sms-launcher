@@ -41,6 +41,7 @@ const marioColors = require('./mario-colors');
 const marioPack = require('./mario-pack');
 const { relaunchOptions } = require('./relaunch');
 const { retrying, httpError } = require('./retry');
+const vulkanStatus = require('./vulkan-status');
 
 const DISCORD_INVITE = 'https://discord.gg/NvUXmm8dB9';
 // Microsoft's free Windows HDR Calibration app (Microsoft Store product 9N7F2SM5D1LR).
@@ -82,6 +83,8 @@ let discordPresence = null;
 let onPresence = null;
 // The running game's handler for its `[achievement]` lines (src/achievements.js).
 let onAchievement = null;
+// The running game's handler for every other line it prints (noteRenderer).
+let onGameLine = null;
 // Discord started this launcher to join a friend's game (their invite, accepted while it was closed).
 let launchedByDiscord = process.argv.some(arg => discord.isLaunchUrl(arg));
 // `--play` (for a Steam shortcut's launch options) starts the game without the
@@ -259,6 +262,8 @@ function loadConfig() {
     eclipseAppleSiliconSwitched: Boolean(saved.eclipseAppleSiliconSwitched),
     // Whether the player has opened the Achievements tab, which is highlighted until then.
     achievementsSeen: Boolean(saved.achievementsSeen),
+    // Why Vulkan couldn't start the last time the game was played with it (noteRenderer), or null.
+    vulkanFailed: typeof saved.vulkanFailed === 'string' ? saved.vulkanFailed.slice(0, 300) : null,
     // Customize Mario: the colours the player chose and the Shine shirt.
     marioLook: marioColors.normalizeLook(saved.marioLook),
     // The Multiplayer window's fields, as last used.
@@ -586,6 +591,7 @@ async function launch(command, args, options = {}, label = 'Task', isGame = fals
       if (isGame && stream === 'stdout' && achievements.isLine(value)) return onAchievement?.(value);
       completeOutput(value, stream, entry);
       if (!value) return;
+      if (isGame) onGameLine?.(value);
       if (recent.push(value) > 80) recent.shift();
       const progress = isGame ? null : readActivity(value);
       if (progress && active && active.child === child) {
@@ -1047,6 +1053,10 @@ async function build(forceFresh = false) {
   }
   // Ready for sms-standalone.exe, which players can also start from Explorer.
   shieldGame(root, settings, env);
+  if (settings.renderer === 'vulkan' && game.vulkanBuiltIn(root, settings) === false)
+    log('⚠ The game was built without Vulkan: its Vulkan downloads from github.com failed (the build\'s warnings above say which). '
+      + 'It will draw with OpenGL, which can be much slower. Check your internet connection, firewall or antivirus, '
+      + 'then choose Rebuild game under Settings → Manage game.');
   // Preferences switch only after a successful build. Closing the app or a
   // failed download/build leaves the last installation selected and playable.
   const earlier = { ...config };
@@ -1222,6 +1232,26 @@ async function installNativeMod(id) {
   return nativeModsState();
 }
 
+// The game drawing with OpenGL though the player picked Vulkan, which can make it much slower: said
+// plainly in the activity log, as the game's own line is easy to miss, and shown on the Play page
+// (state: renderer) until Vulkan draws again.
+function noteRenderer(line, settings) {
+  if (settings.renderer !== 'vulkan') return;
+  const seen = vulkanStatus.fromGameLine(line);
+  if (!seen) return;
+  const failed = seen.state === 'failed' ? seen.reason || 'Vulkan could not start' : null;
+  if (seen.state === 'missing')
+    log('⚠ The game is drawing with OpenGL, not the Vulkan you picked: this build of the game has no Vulkan backend, '
+      + 'because its downloads failed when it was built. OpenGL can be much slower. Rebuild game, under Settings → Manage game, tries again.');
+  if (seen.state === 'failed')
+    log(`⚠ Vulkan could not start${seen.reason ? ` (${seen.reason})` : ''}, so the game is drawing with OpenGL, which can be much slower. `
+      + 'Updating your graphics driver often fixes this; or choose OpenGL under Settings → Graphics.');
+  if (seen.state !== 'missing' && config.vulkanFailed !== failed) {
+    config.vulkanFailed = failed;
+    try { saveConfig(); } catch (error) { log(`Could not save preferences: ${error.message}`); }
+  }
+}
+
 async function play(installation = null, session = null) {
   keepGameSettings();
   const root = installation?.repo || requireRepo();
@@ -1285,6 +1315,7 @@ async function play(installation = null, session = null) {
   const startedAt = Date.now();
   startPresence(startedAt, settings.eclipse);
   onAchievement = line => announceAchievement(root, line);
+  onGameLine = line => noteRenderer(line, settings);
   try {
     return await launch(cmd.command, cmd.args, { cwd: cmd.cwd, env: cmd.env }, 'Play Super Mario Sunshine', true);
   } catch (error) {
@@ -1293,6 +1324,7 @@ async function play(installation = null, session = null) {
   } finally {
     stopPresence(startedAt);
     onAchievement = null;
+    onGameLine = null;
     keepGameSettings();
     try { makeSaveBackup('after-play'); }
     catch (error) { log(`Save backup failed: ${error.message}`); }
@@ -1847,6 +1879,11 @@ function state() {
     languageInstalled: repoReady && config.settings.language !== 'en' && port.languagePackInstalled(config.repo, config.settings.language),
     cutsceneRequirements: repoReady ? port.cutscenePackRequirements(config.repo) : null,
     binaryReady: ready,
+    // Vulkan was picked but the game draws with OpenGL: its build has none (building again didn't bring it),
+    // or Vulkan couldn't start the last time it was played (why).
+    renderer: config.settings.renderer === 'vulkan'
+      ? { vulkanMissing: ready && game.vulkanMissing(config.repo, config.settings), vulkanFailed: config.vulkanFailed }
+      : { vulkanMissing: false, vulkanFailed: null },
     tools: toolsStatus(),
     gameSource: config.gameSource ? { override: config.gameSource.override, version: config.gameSource.resolved.version } : null,
     game: { launcherVersion: app.getVersion(), availableVersion: currentSource().version,

@@ -88,13 +88,42 @@ function playsWithoutTools(root, settings, platform = process.platform, environm
   return windowsDlls.unresolved(binary, [path.dirname(binary)], { environment })?.length === 0;
 }
 
-// Windows builds the Vulkan backend in only for a player who picks Vulkan
-// (port.buildEnvironment), so a build from before that is made again. A build
-// whose backend could not be had keeps SMS_GX_VULKAN on in its cache and isn't.
+// Whether a build has the Vulkan backend in, or null when it can't tell (no
+// CMake cache). A build configured for it (SMS_GX_VULKAN on) is built without it
+// when its dependencies can't be downloaded, and the game then draws with OpenGL
+// though the player chose Vulkan, which can make it much slower. The game's
+// cache says which in SMS_GX_VULKAN_BUILT; older game versions only compiled
+// the backend's sources (src/vk) when they had them.
+function vulkanBuiltIn(root, settings) {
+  let cache;
+  try { cache = cmakeCache(root, settings); }
+  catch (_) { return null; }
+  if (!/^SMS_GX_VULKAN:BOOL=(ON|TRUE|1)$/mi.test(cache)) return false;
+  const built = cache.match(/^SMS_GX_VULKAN_BUILT:INTERNAL=(.*)$/m);
+  if (built) return /^(ON|TRUE|1)$/i.test(built[1].trim());
+  return fs.existsSync(path.join(path.dirname(port.binaryPath(root, settings)), 'platform', 'gx', 'CMakeFiles', 'sms_gx.dir', 'src', 'vk'));
+}
+
+// A game picked to draw with Vulkan whose build has no Vulkan backend: from a
+// Windows build made before the player picked Vulkan (Windows builds it in only
+// for them, port.buildEnvironment), or one whose downloads for it failed. Such a
+// build is made again, once: a build that still came out without it (its
+// record's vulkanMissing, as buildSafely writes it) plays with OpenGL until the
+// player rebuilds, instead of building on every Play while GitHub can't be had.
 function needsVulkanBuild(root, settings, platform = process.platform) {
-  if (platform !== 'win32' || settings.renderer !== 'vulkan' || !fs.existsSync(port.binaryPath(root, settings))) return false;
-  try { return !/^SMS_GX_VULKAN:BOOL=(ON|TRUE|1)$/mi.test(cmakeCache(root, settings)); }
-  catch (_) { return true; }
+  if (settings.renderer !== 'vulkan' || !fs.existsSync(port.binaryPath(root, settings))) return false;
+  // Linux and Mac builds have it whenever the game version does (on by default there).
+  if (platform !== 'win32' && !port.gameFeatures(root).vulkan) return false;
+  const builtIn = vulkanBuiltIn(root, settings);
+  if (builtIn) return false;
+  return builtIn === null || !installed(root, settings)?.vulkanMissing;
+}
+
+// The game draws with OpenGL though Vulkan was picked, as its build has no
+// Vulkan backend, and building again once didn't bring it (needsVulkanBuild).
+function vulkanMissing(root, settings) {
+  return settings.renderer === 'vulkan' && fs.existsSync(port.binaryPath(root, settings)) &&
+    vulkanBuiltIn(root, settings) === false && Boolean(installed(root, settings)?.vulkanMissing);
 }
 
 function matchesSource(root, source = release) {
@@ -340,6 +369,8 @@ async function buildSafely(root, settings, saveDir, compile, backups = saves.bac
     if (!matchesSource(root, source))
       throw new Error('Game files changed during setup. Please retry.');
     const record = { ...identity(settings, undefined, undefined, source), toolRoot: compilerToolRoot(root, settings), builtAt: new Date().toISOString() };
+    // Built for Vulkan, but without it (its downloads failed): needsVulkanBuild doesn't build it again by itself.
+    if (settings.renderer === 'vulkan' && vulkanBuiltIn(root, settings) === false) record.vulkanMissing = true;
     const file = metadataPath(root, settings);
     fs.writeFileSync(`${file}.tmp`, JSON.stringify(record, null, 2));
     fs.renameSync(`${file}.tmp`, file);
@@ -371,4 +402,4 @@ function recoverBuild(root, settings) {
   return true;
 }
 
-module.exports = { release, gitRevision, matchesSource, identity, installed, compilerToolRoot, toolRoot, playsWithoutTools, needsVulkanBuild, isCurrent, snapshotPath, eclipseSourcesPath, checkout, carryUserFiles, relinkUserFolders, pruneSnapshots, buildSafely, recoverBuild };
+module.exports = { release, gitRevision, matchesSource, identity, installed, compilerToolRoot, toolRoot, playsWithoutTools, vulkanBuiltIn, needsVulkanBuild, vulkanMissing, isCurrent, snapshotPath, eclipseSourcesPath, checkout, carryUserFiles, relinkUserFolders, pruneSnapshots, buildSafely, recoverBuild };

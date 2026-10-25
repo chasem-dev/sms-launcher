@@ -925,6 +925,7 @@ small.renderer-warning { color: #a8481a; }
 .world-status.loading .mario-loader { display: block; }
 .world-hint, .world-help, .world-flash { position: absolute; left: 50%; transform: translateX(-50%); max-width: calc(100% - 28px); margin: 0; padding: 7px 12px; border-radius: 9px; background: #0d2231d0; color: #e8f3f5; font-size: 11px; text-align: center; pointer-events: none; }
 .world-hint { top: 12px; }
+.world-gizmo-readout { position: absolute; margin: 0; padding: 4px 8px; border-radius: 7px; background: #0d2231e0; color: #f4f8f9; font-size: 11px; font-variant-numeric: tabular-nums; white-space: nowrap; pointer-events: none; }
 .world-help { bottom: 10px; color: #c6dde2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .world-flash { top: 54px; background: #13636ae8; }
 .world-flash.error { background: #8e3530ee; }

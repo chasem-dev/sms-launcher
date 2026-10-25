@@ -1526,7 +1526,11 @@ function worldPlayPresses(skipsIntro) {
   if (!skipsIntro) for (let at = 150; at < title - 200; at += 100) press(at, 'A', 6);
   press(title, 'START', 8);
   press(title + 150, 'START', 8);
-  for (let at = title + 300; at <= title + 2200; at += 100) { press(at, 'A', 6); press(at + 55, 'STICK_RIGHT', 10); }
+  // File select and the "hear my explanation again?" prompt (right keeps No)
+  // are done by about title + 1000; the level's intro runs until about
+  // title + 1300, when Mario becomes playable, so the presses stop before
+  // they can make him jump or walk.
+  for (let at = title + 300; at <= title + 1200; at += 100) { press(at, 'A', 6); press(at + 55, 'STICK_RIGHT', 10); }
   return presses.sort((a, b) => a[0] - b[0]).map(p => p[1]).join(',');
 }
 

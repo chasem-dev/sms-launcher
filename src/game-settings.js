@@ -13,7 +13,7 @@ const KEYS = [
   'textures', 'textureLoading', 'shaderWarmup',
   'fullscreen', 'fullscreenMode', 'exclusiveResolution', 'display', 'widescreen', 'hudEdges', 'aspect', 'brightness',
   'colorSpace', 'gameGamma', 'displayGamma',
-  'frameRate', 'vsync', 'overlay',
+  'frameRate', 'vsync', 'preciseTimer', 'overlay',
   'hdr', 'hdrCalibration', 'hdrPaperWhite', 'hdrPeak', 'hdrContrast', 'hdrSaturation', 'hdrHighlights',
   'skipMovies', 'volume', 'musicVolume', 'sfxVolume', 'invertCameraX', 'invertCameraY', 'invertFluddAimY', 'freeCamera', 'cstickOrbit', 'cameraSpeed',
   'mouseCamera', 'closeCameraMouse', 'mouseSensitivity', 'rawMouse',

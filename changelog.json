@@ -2,6 +2,7 @@
   "_instructions": "Players see this file in the launcher. Add each player-visible change here in the same commit: launcher changes to beta.launcher, game changes Beta now builds to beta.game. Releases move beta into a new entry (npm run update:game does it). One plain sentence for players per line, no commit hashes or PR numbers. See AGENTS.md.",
   "beta": {
     "launcher": [
+      "Multiplayer with Super Mario Eclipse: your Customize Mario colours now go to the other players, and theirs show on your screen, as they already did without Eclipse.",
       "Custom textures, under Settings → Graphics: choose Open custom textures folder and put texture packs made for Dolphin in it; their images replace the HD textures where both change the same texture, and they work with HD textures off too.",
       "HD cutscenes no longer need HD textures: turn them on by themselves in Settings for sharper movies with the original textures.",
       "Controls: each control on the Controls page now says what it does, like A button (jump) or Z button (map). If you had changed any keys, your whole keyboard layout stays as it was; Use classic keys, beside Reset all to defaults, brings back the old one (Space jumps, Shift dives, Q and E are L and R).",
@@ -34,6 +35,7 @@
       "Split-screen co-op: Play co-op, under ▾ beside Play, starts the game for two players on one computer. The first player plays on the keyboard or a controller as ever; a second player presses START on another controller to join as Luigi, with their own camera and half of the screen, and holds START to leave. Plain Play never takes a second player. Choose side by side or one above the other in Settings (Display)."
     ],
     "game": [
+      "Multiplayer: the other players no longer show up in your own Customize Mario colours when theirs can't be shown, they wear their sunglasses when they have them on, and in Super Mario Eclipse each player shows as the character they chose (Luigi, Il Piantissimo or Shadow Mario) instead of yours.",
       "Fixed the music playing much quieter than the sound effects: it now plays at the GameCube's level, so if you turned Sound effects volume down to hear the music, you can turn it back up.",
       "Aim with the C-stick now works while you spray in place too, not only in the close-up view Y opens: hold R all the way, or L to walk sideways, and the C-stick turns Mario and aims FLUDD up and down while the camera follows behind him. With L held, the control stick still walks him sideways, so you can move and aim at once. Turn it on under Settings → Gameplay.",
       "Achievements: 148 achievements unlock as you play, each announced by a BADGE GET! banner with its icon, name and what you did.",

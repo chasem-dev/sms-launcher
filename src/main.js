@@ -1266,7 +1266,7 @@ async function play(installation = null, session = null) {
   if (look) env.SMS_MARIO_LOOK = look;
   Object.assign(env, marioPack.outfitEnvironment(config.marioLook));
   // Together, each game paints the others in their own colours (theirs come over the network).
-  if (session && session.mode !== 'coop') Object.assign(env, marioPaintEnvironment(rom, root, settings));
+  if (session && session.mode !== 'coop') Object.assign(env, marioPaintEnvironment(rom, disc, root, settings));
   // The game puts its version in the window title: the launcher's name for the build being played.
   const gameVersion = game.installed(root, settings)?.gameVersion;
   if (gameVersion) env.SMS_GAME_VERSION = String(gameVersion);
@@ -1334,14 +1334,14 @@ function marioLookPack(rom, disc, root, settings) {
 
 // Multiplayer: what the game needs to paint the other players in their colours (SMS_MARIO_PAINT, a folder of
 // Mario's pictures and their paint maps) and to send its own (SMS_MULTIPLAYER_LOOK). Without them everyone keeps
-// their character's colours; never in the way of playing.
-function marioPaintEnvironment(rom, root, settings) {
-  if (settings.eclipse) return {};
+// their character's colours; never in the way of playing. Painted from the disc the game plays, as marioLookPack
+// is (Eclipse's Mario with Eclipse on, in a folder of its own so switching doesn't paint him again).
+function marioPaintEnvironment(rom, disc, root, settings) {
   const env = { SMS_MULTIPLAYER_LOOK: marioPack.lookText(config.marioLook) };
   try {
     const started = Date.now();
-    env.SMS_MARIO_PAINT = marioPack.bakePaint({ rom, references: marioFrom(rom).references,
-      directory: path.join(app.getPath('userData'), 'mario-paint'),
+    env.SMS_MARIO_PAINT = marioPack.bakePaint({ rom: disc, references: marioFrom(rom).references,
+      directory: path.join(app.getPath('userData'), settings.eclipse ? 'mario-paint-eclipse' : 'mario-paint'),
       packDirectories: port.texturePackFolders(settings, root, customTextureDirectory()) });
     if (Date.now() - started > 250) log(`Got Mario ready to paint the other players in ${((Date.now() - started) / 1000).toFixed(1)} s.`);
   } catch (error) {

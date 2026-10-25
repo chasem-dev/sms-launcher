@@ -16,7 +16,7 @@ const levelModel = require('./level-model');
 const stage = require('./world-stage');
 const DATA = require('./world-data.json');
 
-const CATALOG_VERSION = 9;
+const CATALOG_VERSION = 10;
 const PROJECT_FORMAT = 'sms-world';
 
 // Stage file prefixes -> the world they belong to.
@@ -979,9 +979,77 @@ function worldBound(item) {
   return table && WORLD_TABLES[table[0]] || null;
 }
 
+// Things that find another object of their stage by its name (or the one
+// object of a type) as the stage loads, or when beaten, and crash the game
+// when it isn't there: TKoopa::init reads the bathtub's position, and a boss
+// hands out its stage's "シャイン（ボス用）" (TItemManager). Copying what's
+// needed along, under the same name, does too. `stage` ones work only in
+// their own map, whose pieces they move by number; `only` limits a need to
+// stages it applies in (a cannon looks for Pinna Beach's sea gate there, and
+// Gooper Blooper hands out a Shine only in Ricco Harbor).
+const BOSS_SHINE = { what: 'the Shine a boss leaves when beaten', where: 'boss stages such as Bianco Hills · 5', names: ['シャイン（ボス用）'] };
+const BOWSER = { what: 'Bowser and his bathtub', where: 'Corona Mountain', names: ['クッパマネージャー', 'バスタブ'] };
+const count = (prefix, n) => [...Array(n).keys()].map(i => `${prefix} ${i}`);
+const NEEDS = {
+  Koopa: [{ what: 'the bathtub', where: 'Corona Mountain', names: ['バスタブ'] }],
+  Bathtub: [{ what: 'Bowser', where: 'Corona Mountain', names: ['クッパ'] }],
+  BathtubPeach: [{ what: 'the bathtub', where: 'Corona Mountain', names: ['バスタブ'] }],
+  KoopaJr: [BOWSER, { what: 'the bathtub\'s Bullet Bills and submarine', where: 'Corona Mountain', names: ['バスタブキラーマネージャー', 'クッパジュニアサブマリンマネージャー'] }],
+  KoopaJrSubmarine: [{ what: 'Bowser Jr.', where: 'Corona Mountain', types: ['KoopaJr'] }],
+  LimitKoopaJr: [BOWSER],
+  TinKoopa: [{ what: 'the roller coaster\'s Bullet Bills', where: 'Pinna Park', names: ['コースターキラーマネージャー'] }],
+  BossTelesa: [{ what: 'the ten chili peppers and coins of its room', where: 'Delfino Hotel\'s boss stage', names: [...count('唐辛子', 10), ...count('コイン', 10)] }, BOSS_SHINE],
+  BossMantaManager: [{ who: 'Phantamanta', what: 'Sirena Beach\'s fan palms', where: 'Sirena Beach', names: count('palmOugi', 7) }],
+  MareCork: [{ what: 'its cannon', where: 'Noki Bay · 1', names: ['砲台'] }],
+  Cannon: [{ what: 'the sea gate it opens', where: 'Pinna Park · Beach 2 to 5', names: ['efMareGate'], only: /^pinnabeach/, in: 'Pinna Beach' }],
+  SandCastle: [{ what: 'the sand bomb and stage door', where: 'Gelato Beach · 1', names: ['砂の城爆発の芽', 'ステージ切替（砂の城）'] }],
+  LeanMirror: [{ what: 'the sun stone', where: 'Gelato Beach', names: ['ShiningStone'] }],
+  MirrorMapOperator: [{ what: 'Gelato Beach\'s mirrors', where: 'Gelato Beach', names: ['mirrorS', 'mirrorM', 'mirrorL', '鏡内地形'] }],
+  WaterMelon: [{ what: 'the watermelon contest\'s Shine', where: 'Gelato Beach · 8', names: ['シャイン（お化けスイカ用）'] }],
+  GoalWatermelon: [{ what: 'the watermelon contest\'s Shine', where: 'Gelato Beach · 8', names: ['シャイン（お化けスイカ用）'] }],
+  riccoWatermill: [{ what: 'the submarine and its blue coin', where: 'Ricco Harbor · 1 and 9', names: ['submarine', '青コイン（潜水艦用）'] }],
+  RiccoSwitchShine: [{ what: 'its two tank switches', where: 'Ricco Harbor', names: ['タンクスイッチＡ', 'タンクスイッチＢ'] }],
+  BiaWatermillVertical: [{ what: 'the turning bridges', where: 'Bianco Hills', names: ['BiaTurnBridge 0', 'BiaTurnBridge 1'] }],
+  HideObjInfo: [{ what: 'an object switch', where: 'Gelato Beach, Noki Bay and Pinna Park', types: ['MapObjSwitch'] }],
+  MareEventBumpyWall: [{ where: 'Noki Bay', stage: /^mare\d$/ }],
+  MareEventPoint: [{ where: 'Noki Bay', stage: /^mare\d$/ }],
+  BossPakkun: [BOSS_SHINE], BossGesso: [{ ...BOSS_SHINE, only: /^ricco/, in: 'Ricco Harbor' }], BossEel: [BOSS_SHINE], BossWanwan: [BOSS_SHINE],
+  FireWanwan: [BOSS_SHINE], Hanachan: [BOSS_SHINE], SleepBossHanachan: [BOSS_SHINE],
+  AmiKing: [{ what: 'the Ferris wheel and its Shine', where: 'Pinna Park · 3', names: ['FerrisWheel', 'シャイン（観覧車シャイン用）'] }],
+};
+
+const needPhrase = need => `${need.only ? `in ${need.in}, ` : ''}it needs ${need.what}, found in ${need.where}`;
+function needsNote(type) {
+  // A character's manager comes along with it, needs and all.
+  const needs = NEEDS[type] || NEEDS[`${type}Manager`];
+  if (!needs) return '';
+  const own = needs.find(need => need.stage);
+  if (own) return `Only works in ${own.where}: it moves parts of that stage, and the game crashes anywhere else.`;
+  return `${needs.map(needPhrase).join('; ').replace(/^./, c => c.toUpperCase())}. The game crashes without ${needs.length > 1 || needs[0].names?.length > 1 ? 'them' : 'it'}.`;
+}
+
+// The first thing in a level that would crash the game for want of another
+// object, with what it needs, or null.
+function missingNeed(tree, scene) {
+  const names = new Set(), types = new Set(), needing = [];
+  sceneBin.walk(tree, node => {
+    names.add(sceneBin.decodeName(node.nameBytes));
+    types.add(node.type);
+    if (!node.children && NEEDS[node.type]) needing.push(node);
+  });
+  for (const node of needing) {
+    const need = NEEDS[node.type].find(need => need.stage ? !need.stage.test(scene)
+      : (!need.only || need.only.test(scene)) && ((need.names || []).some(name => !names.has(name)) || (need.types || []).some(type => !types.has(type))));
+    if (need) return { node, need };
+  }
+  return null;
+}
+
 function noteFor(item) {
   const bound = worldBound(item);
   if (bound) return `Only works in ${bound.name} stages: the game loads its materials there only.`;
+  const needs = needsNote(item.type);
+  if (needs) return needs;
   if (item.category === 'npcs' || item.category === 'enemies' || item.category === 'bosses')
     return 'Characters bring their manager and model folder along when you export. Some also need events or paths only their own stage has.';
   if (item.category === 'markers') return 'Shown as a marker here; the game uses it for where things happen.';
@@ -1118,6 +1186,13 @@ function buildScene(library, project) {
     // A map object's manager is named by the game's table, not the object.
     const manager = managerOf(described);
     if (manager) addManager(tree, sourceTree, manager);
+  }
+  const missing = missingNeed(tree, project.base);
+  if (missing) {
+    const { node, need } = missing, who = need.who || labelOf(node.type, describe(node).variant);
+    throw new Error(need.stage
+      ? `${who} only works in ${need.where}: it moves parts of that stage, and the game crashes anywhere else. Remove it to export or play this level.`
+      : `${who} needs ${need.what}, found in ${need.where}, and the game crashes without ${need.names?.length > 1 ? 'them' : 'it'}. Remove it, or place ${need.names?.length > 1 ? 'them' : 'it'} too, to export or play this level.`);
   }
   const raised = fitManagers(tree);
   return { tree, needs, raised };

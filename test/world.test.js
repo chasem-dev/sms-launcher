@@ -89,6 +89,26 @@ test('things from another stage bring their manager and files, and managers grow
   assert.equal(sceneBin.parse(sceneBin.serialize(tree)).children.length, 2);
 });
 
+test('things that crash the game without another object of their stage need it there', () => {
+  // Bowser looks up the bathtub as the stage loads; only his own stage has one.
+  const boss = stage(
+    [node('KoopaManager', 'koopas', managerData('koopa chara', 1))],
+    [actor('Bathtub', 'バスタブ', [0, 0, 0], str('bathtub'))],
+    [actor('Koopa', 'クッパ', [0, 0, 500], Buffer.concat([str('koopas'), str('(null)')]))]);
+  const base = library();
+  const lib = { ...base, sceneTree: scene => scene === 'boss' ? boss : base.sceneTree(scene), files: scene => scene === 'boss' ? new Map() : base.files(scene),
+    context: scene => scene === 'boss' ? { files: new Map(), tree: boss, charas: new Map() } : base.context(scene), scenes: () => ['home', 'away', 'boss'] };
+  const bowser = { uid: 'k', source: { scene: 'boss', id: '1/0/1/0' }, type: 'Koopa', label: 'Bowser', transform: t([0, 0, 0]) };
+  const scenes = ['home', 'away', 'boss'];
+  const level = changes => world.cleanProject({ format: 'sms-world', name: 'Test', base: 'home', edits: {}, added: [], paint: {}, ...changes }, scenes);
+  assert.throws(() => world.buildScene(lib, level({ added: [bowser] })), /Bowser needs the bathtub, found in Corona Mountain, and the game crashes/);
+  // With the bathtub brought along too, or in his own stage, he's fine; without it there, he isn't.
+  const bathtub = { uid: 'b', source: { scene: 'boss', id: '1/0/0/0' }, type: 'Bathtub', label: 'Bathtub', transform: t([0, 0, 0]) };
+  assert.doesNotThrow(() => world.buildScene(lib, level({ added: [bathtub, bowser] })));
+  assert.doesNotThrow(() => world.buildScene(lib, level({ base: 'boss' })));
+  assert.throws(() => world.buildScene(lib, level({ base: 'boss', edits: { '1/0/0/0': { removed: true } } })), /needs the bathtub/);
+});
+
 test('level files are checked before they are used', () => {
   assert.throws(() => world.cleanProject({ format: 'other' }, ['home']), /isn't a level file from the world editor/);
   assert.throws(() => world.cleanProject({ format: 'sms-world', base: 'gone' }, ['home']), /isn't on your disc/);

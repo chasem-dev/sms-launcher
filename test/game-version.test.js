@@ -45,7 +45,68 @@ test('a Windows game picked to draw with Vulkan is built again once with the Vul
   fs.writeFileSync(path.join(directory, 'CMakeCache.txt'), 'SMS_GX_VULKAN:BOOL=OFF\n');
   assert.equal(game.needsVulkanBuild(root, vulkan, 'win32'), true);
   fs.writeFileSync(path.join(directory, 'CMakeCache.txt'), 'SMS_GX_VULKAN:BOOL=ON\n');
+  fs.mkdirSync(path.join(directory, 'platform', 'gx', 'CMakeFiles', 'sms_gx.dir', 'src', 'vk'), { recursive: true });
   assert.equal(game.needsVulkanBuild(root, vulkan, 'win32'), false);
+});
+
+test('a build whose Vulkan downloads failed is built again once, then plays with OpenGL and says so', t => {
+  const { root, directory } = fixture(t);
+  const vulkan = { ...settings, renderer: 'vulkan' };
+  const record = path.join(directory, 'launcher-build.json');
+  fs.writeFileSync(record, JSON.stringify(game.identity(vulkan)));
+  // Configured for Vulkan (SMS_GX_VULKAN stays on in the cache), built without it.
+  fs.writeFileSync(path.join(directory, 'CMakeCache.txt'), 'SMS_GX_VULKAN:BOOL=ON\nSMS_GX_VULKAN_BUILT:INTERNAL=OFF\n');
+  assert.equal(game.vulkanBuiltIn(root, vulkan), false);
+  assert.equal(game.needsVulkanBuild(root, vulkan, 'win32'), true);
+  assert.equal(game.vulkanMissing(root, vulkan), false);
+  // Built again and still without it: no more builds by themselves, and the Play page says why.
+  fs.writeFileSync(record, JSON.stringify({ ...game.identity(vulkan), vulkanMissing: true }));
+  assert.equal(game.needsVulkanBuild(root, vulkan, 'win32'), false);
+  assert.equal(game.vulkanMissing(root, vulkan), true);
+  assert.equal(game.vulkanMissing(root, settings), false);
+  // The game's own entry wins over the compiled sources.
+  fs.mkdirSync(path.join(directory, 'platform', 'gx', 'CMakeFiles', 'sms_gx.dir', 'src', 'vk'), { recursive: true });
+  assert.equal(game.vulkanBuiltIn(root, vulkan), false);
+  fs.writeFileSync(path.join(directory, 'CMakeCache.txt'), 'SMS_GX_VULKAN:BOOL=ON\nSMS_GX_VULKAN_BUILT:INTERNAL=ON\n');
+  assert.equal(game.vulkanBuiltIn(root, vulkan), true);
+  assert.equal(game.vulkanMissing(root, vulkan), false);
+});
+
+test('older game versions without SMS_GX_VULKAN_BUILT have Vulkan when its sources were compiled', t => {
+  const { root, directory } = fixture(t);
+  const vulkan = { ...settings, renderer: 'vulkan' };
+  fs.writeFileSync(path.join(directory, 'CMakeCache.txt'), 'SMS_GX_VULKAN:BOOL=ON\n');
+  assert.equal(game.vulkanBuiltIn(root, vulkan), false);
+  assert.equal(game.needsVulkanBuild(root, vulkan, 'win32'), true);
+  fs.mkdirSync(path.join(directory, 'platform', 'gx', 'CMakeFiles', 'sms_gx.dir', 'src', 'vk'), { recursive: true });
+  assert.equal(game.vulkanBuiltIn(root, vulkan), true);
+});
+
+test('Linux and Mac builds missing Vulkan are built again only when the game version has it', t => {
+  const { root, directory } = fixture(t);
+  const vulkan = { ...settings, renderer: 'vulkan' };
+  fs.writeFileSync(path.join(directory, 'CMakeCache.txt'), 'SMS_GX_VULKAN:BOOL=ON\nSMS_GX_VULKAN_BUILT:INTERNAL=OFF\n');
+  assert.equal(game.needsVulkanBuild(root, vulkan, 'linux'), false);
+  fs.mkdirSync(path.join(root, 'platform', 'gx', 'src', 'vk'), { recursive: true });
+  assert.equal(game.needsVulkanBuild(root, vulkan, 'linux'), true);
+  assert.equal(game.needsVulkanBuild(root, vulkan, 'darwin'), true);
+});
+
+test('buildSafely records a Vulkan build that came out without Vulkan', async t => {
+  const { root, directory, backups } = fixture(t);
+  const vulkan = { ...settings, renderer: 'vulkan' };
+  await game.buildSafely(root, vulkan, path.join(root, 'saves'), async () => {
+    fs.mkdirSync(directory, { recursive: true });
+    fs.writeFileSync(port.binaryPath(root, vulkan), 'new game');
+    fs.writeFileSync(path.join(directory, 'CMakeCache.txt'), 'SMS_GX_VULKAN:BOOL=ON\nSMS_GX_VULKAN_BUILT:INTERNAL=OFF\n');
+  }, backups);
+  assert.equal(game.installed(root, vulkan).vulkanMissing, true);
+  await game.buildSafely(root, vulkan, path.join(root, 'saves'), async () => {
+    fs.mkdirSync(directory, { recursive: true });
+    fs.writeFileSync(port.binaryPath(root, vulkan), 'new game');
+    fs.writeFileSync(path.join(directory, 'CMakeCache.txt'), 'SMS_GX_VULKAN:BOOL=ON\nSMS_GX_VULKAN_BUILT:INTERNAL=ON\n');
+  }, backups);
+  assert.equal(game.installed(root, vulkan).vulkanMissing, undefined);
 });
 
 test('changed source and decomp revisions invalidate a build independently', t => {

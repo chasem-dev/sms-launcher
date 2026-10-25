@@ -802,10 +802,12 @@ function refresh(data) {
     : rosettaEclipse ? 'Update the game to play Super Mario Eclipse on Apple Silicon.'
     : 'Builds the game for Apple Silicon instead of running it through Rosetta, which is faster. Changing this builds the game again.';
   $('renderer-field').hidden = !(platform.renderers || []).includes('vulkan');
-  $('renderer-note').textContent = features.vulkan || config.settings.renderer === 'vulkan'
+  const fallback = config.settings.renderer === 'vulkan' ? vulkanFallbackText(data.renderer) : null;
+  $('renderer-note').textContent = fallback ? fallback.note : features.vulkan || config.settings.renderer === 'vulkan'
     ? 'Vulkan is often faster. If it can\'t start on this computer, the game uses OpenGL.'
       + (platform.id === 'windows' ? ' Choosing it builds the game again the first time.' : '')
     : gameNote;
+  $('renderer-note').classList.toggle('renderer-warning', Boolean(fallback));
   renderExclusiveResolutions(config.settings.exclusiveResolution);
   renderDisplays(config.settings.display);
   renderLanguages(data.languages);
@@ -843,6 +845,7 @@ function refresh(data) {
   $('update-channel-field').hidden = data.portable;
   $('update-channel-note').hidden = data.portable;
   renderGameSource(data);
+  renderVulkanFallback(data);
   for (const key of ['arch', 'widescreen', 'resolution', 'volume', 'musicVolume', 'sfxVolume', 'frameRate', 'language', 'vsync', 'skipMovies', 'skipIntro', 'pauseTracker', 'radar', 'autoSave', 'heatHaze', 'overlay', 'fullscreen', 'fullscreenMode', 'exclusiveResolution', 'display', 'invertCameraX', 'invertCameraY', 'invertFluddAimY', 'freeCamera', 'cstickAim', 'cstickOrbit', 'cameraSpeed', 'mouseCamera', 'closeCameraMouse', 'mouseSensitivity', 'rawMouse', 'msaa', 'fxaa', 'anisotropic', 'sharpen', 'brightness', 'colorSpace', 'gameGamma', 'displayGamma', 'aspect', 'presentFilter', 'hudEdges', 'textures', 'textureLoading', 'shaderWarmup', 'cutscenes', 'eclipse', 'eclipseSunshineMovies', 'autoUpdate', 'shareUsage', 'discordPresence', 'autoBackups', 'darkMode', 'updateChannel', 'buttonPrompts', 'promptPad', 'graphicsPreset', 'fsrMode', 'renderer', 'appleSilicon', 'coopSplit'])
     $(key).disabled = Boolean(data.active);
   // Turning one off stays possible once on, whatever the game version.
@@ -909,6 +912,27 @@ function renderGameSource(data) {
   $('play-source').hidden = !chosen;
   $('play-source-detail').textContent = [ref, commit !== ref && commit].filter(Boolean).join(' · ');
 }
+
+// Under Play while Vulkan is picked but the game draws with OpenGL (state: renderer), which can make it much
+// slower: players otherwise only see that it got slower. Its build has no Vulkan (its downloads failed, and
+// building again didn't bring it), or Vulkan couldn't start the last time it was played.
+function vulkanFallbackText(renderer) {
+  if (renderer?.vulkanMissing) return {
+    detail: 'Vulkan isn\'t in this build',
+    note: 'This build of the game has no Vulkan: its downloads failed when it was built, so the game draws with OpenGL, '
+      + 'which can be much slower. Rebuild game, under Manage game, tries again.' };
+  if (renderer?.vulkanFailed) return {
+    detail: 'Vulkan couldn\'t start',
+    note: `Vulkan couldn't start the last time you played (${renderer.vulkanFailed}), so the game used OpenGL, which can be much slower. `
+      + 'Updating your graphics driver often fixes this.' };
+  return null;
+}
+function renderVulkanFallback(data) {
+  const fallback = vulkanFallbackText(data.renderer);
+  $('play-renderer').hidden = !fallback;
+  $('play-renderer-detail').textContent = fallback?.detail || '';
+  $('play-renderer').title = fallback ? `${fallback.note} Click to see where.` : '';
+}
 function gameSourceValue() {
   const value = {};
   for (const [part, [repository, ref]] of Object.entries(sourceFields))
@@ -921,6 +945,13 @@ async function setGameSource(value) {
   catch (error) { showError(error); }
 }
 $('apply-game-source').addEventListener('click', () => setGameSource(gameSourceValue()));
+$('play-renderer').addEventListener('click', () => {
+  showPage('settings');
+  // Missing from the build: Rebuild game; couldn't start: the renderer, whose note says why.
+  const missing = current?.renderer?.vulkanMissing;
+  showSettingsTab(missing ? 'manage' : 'graphics');
+  $(missing ? 'build' : 'renderer-field').scrollIntoView({ block: 'center' });
+});
 $('play-source').addEventListener('click', () => {
   showPage('settings');
   showSettingsTab('manage');

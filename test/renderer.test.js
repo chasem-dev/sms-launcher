@@ -950,3 +950,23 @@ test('Manage game offers Remove build tools on Windows once the game is built, a
     assert.equal(other.elements.get('build-tools-row').hidden, true);
   }
 });
+
+test('Play shows Drawing with OpenGL while Vulkan is picked but missing from the build or unable to start', async () => {
+  const data = state();
+  data.config.settings = { ...data.config.settings, renderer: 'vulkan' };
+  data.renderer = { vulkanMissing: true, vulkanFailed: null };
+  const ui = await renderer(data);
+  assert.equal(ui.elements.get('play-renderer').hidden, false);
+  assert.equal(ui.elements.get('play-renderer-detail').textContent, 'Vulkan isn\'t in this build');
+  assert.match(ui.elements.get('renderer-note').textContent, /no Vulkan: its downloads failed.*Rebuild game/);
+  assert.equal(ui.elements.get('renderer-note').classList.contains('renderer-warning'), true);
+  ui.run('current.renderer = { vulkanMissing: false, vulkanFailed: "no Vulkan 1.1 device" }');
+  await ui.refresh();
+  assert.equal(ui.elements.get('play-renderer-detail').textContent, 'Vulkan couldn\'t start');
+  assert.match(ui.elements.get('renderer-note').textContent, /\(no Vulkan 1\.1 device\).*graphics driver/);
+  ui.run('current.renderer = { vulkanMissing: false, vulkanFailed: null }');
+  await ui.refresh();
+  assert.equal(ui.elements.get('play-renderer').hidden, true);
+  assert.equal(ui.elements.get('renderer-note').classList.contains('renderer-warning'), false);
+  assert.match(ui.elements.get('renderer-note').textContent, /Vulkan is often faster/);
+});

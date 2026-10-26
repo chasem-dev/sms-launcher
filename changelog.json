@@ -1,13 +1,27 @@
 {
   "_instructions": "Players see this file in the launcher. Add each player-visible change here in the same commit: launcher changes to beta.launcher, game changes Beta now builds to beta.game. Releases move beta into a new entry (npm run update:game does it). One plain sentence for players per line, no commit hashes or PR numbers. See AGENTS.md.",
   "beta": {
-    "launcher": [
-      "Portable launcher: downloading HD textures, language packs and cutscenes, and building Super Mario Eclipse, no longer fail with \"can't open file ... texture-progress.py\" after the launcher's .exe was opened a second time (or a Discord invite opened it) while it was already running.",
-      "Achievements: the icons are now the launcher's own download, kept once for every game version, so Download icons on the Achievements tab works whatever game version you have, without updating or building it, and opens the page straight after. On a game version from before achievements the page shows them all, with a note to update the game to start unlocking them."
-    ],
+    "launcher": [],
     "game": []
   },
   "releases": [
+    {
+      "version": "0.1.66",
+      "date": "2026-10-26",
+      "launcher": [
+        "Portable launcher: downloading HD textures, language packs and cutscenes, and building Super Mario Eclipse, no longer fail with \"can't open file ... texture-progress.py\" after the launcher's .exe was opened a second time (or a Discord invite opened it) while it was already running.",
+        "Achievements: the icons are now the launcher's own download, kept once for every game version, so Download icons on the Achievements tab works whatever game version you have, without updating or building it, and opens the page straight after. On a game version from before achievements the page shows them all, with a note to update the game to start unlocking them."
+      ],
+      "game": {
+        "version": "2026.10.26.2",
+        "commit": "bccf3e2abb2a08f7522824c460cfbb649927a5ac",
+        "changes": [
+          "Co-op: each player now has their own health meter and FLUDD gauge in their half of the screen, and player 2 is heard wherever they are: their spray, and the enemies and things around them, no longer go quiet when they are away from Mario.",
+          "Multiplayer: fixed every player showing flushed red, as if just splashed, from the start of a game until their first hit, on computers that had been on for 25 to 50 days.",
+          "Multiplayer: items a server mod places, like the Splash Battle's water capsules, now stay until someone takes them instead of flashing and vanishing after a few seconds, and the second player in a game gets them too."
+        ]
+      }
+    },
     {
       "version": "0.1.65",
       "date": "2026-10-26",

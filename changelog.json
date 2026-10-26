@@ -2,6 +2,7 @@
   "_instructions": "Players see this file in the launcher. Add each player-visible change here in the same commit: launcher changes to beta.launcher, game changes Beta now builds to beta.game. Releases move beta into a new entry (npm run update:game does it). One plain sentence for players per line, no commit hashes or PR numbers. See AGENTS.md.",
   "beta": {
     "launcher": [
+      "Fixed Customize Mario in Super Mario Eclipse leaving the skin around Mario's mouth and chin its usual colour in the game: it now takes your colours, as in the preview.",
       "Fixed updating on Windows sometimes stopping with \"EPERM: operation not permitted, rename\" while it backed up your saves: the backup no longer moves its folder into place once it's written.",
       "Fixed installing Super Mario Eclipse, textures, cutscenes and language packs on Windows when the launcher or your disc is in a folder whose name has brackets or an apostrophe, like E:\\[Games]: they stopped with \"can't open file\" and \"No such file or directory\".",
       "Multiplayer with Super Mario Eclipse: your Customize Mario colours now go to the other players, and theirs show on your screen, as they already did without Eclipse.",
@@ -38,6 +39,7 @@
       "Fixed Vulkan quietly turning into the slower OpenGL: when a game build couldn't download what Vulkan needs, the launcher now builds it again once, says so in the activity log, and shows Drawing with OpenGL under Play, with the fix beside Renderer in Settings → Graphics. It also says when Vulkan couldn't start on your computer."
     ],
     "game": [
+      "Super Mario Eclipse: playing as Luigi or Il Piantissimo, they keep their own mouth instead of wearing your Customize Mario skin colour, so Mario's mouth and chin can now take your colours too.",
       "Multiplayer: the other players no longer show up in your own Customize Mario colours when theirs can't be shown, they wear their sunglasses when they have them on, and in Super Mario Eclipse each player shows as the character they chose (Luigi, Il Piantissimo or Shadow Mario) instead of yours.",
       "Fixed the music playing much quieter than the sound effects: it now plays at the GameCube's level, so if you turned Sound effects volume down to hear the music, you can turn it back up.",
       "Aim with the C-stick now works while you spray in place too, not only in the close-up view Y opens: hold R all the way, or L to walk sideways, and the C-stick turns Mario and aims FLUDD up and down while the camera follows behind him. With L held, the control stick still walks him sideways, so you can move and aim at once. Turn it on under Settings → Gameplay.",

@@ -1,37 +1,37 @@
 {
   "_about": "The language packs the Language setting offers (chasem-dev/sms-hd-texture-extras releases). The launcher downloads them itself, so a new language needs only a new release and this file. \"community\": not from the official game; \"note\": what the Language setting says about it (else that some menus and pictures stay in English).",
-  "name": "Super Mario Sunshine language packs v1.2.0",
+  "name": "Super Mario Sunshine language packs v1.3.0",
   "page": "https://github.com/chasem-dev/sms-hd-texture-extras#language-packs",
   "languages": {
     "fr": {
       "name": "Français",
       "english": "French",
-      "url": "https://github.com/chasem-dev/sms-hd-texture-extras/releases/download/languages-v1.2.0/sms-language-fr-1.2.0.zip",
-      "file": "sms-language-fr-1.2.0.zip",
+      "url": "https://github.com/chasem-dev/sms-hd-texture-extras/releases/download/languages-v1.3.0/sms-language-fr-1.3.0.zip",
+      "file": "sms-language-fr-1.3.0.zip",
       "md5": "0d245b00074d7778150e5537623327d4",
       "size": 958617
     },
     "de": {
       "name": "Deutsch",
       "english": "German",
-      "url": "https://github.com/chasem-dev/sms-hd-texture-extras/releases/download/languages-v1.2.0/sms-language-de-1.2.0.zip",
-      "file": "sms-language-de-1.2.0.zip",
+      "url": "https://github.com/chasem-dev/sms-hd-texture-extras/releases/download/languages-v1.3.0/sms-language-de-1.3.0.zip",
+      "file": "sms-language-de-1.3.0.zip",
       "md5": "2340cce8a05bf69157fa64a9e55ef905",
       "size": 953597
     },
     "es": {
       "name": "Español",
       "english": "Spanish",
-      "url": "https://github.com/chasem-dev/sms-hd-texture-extras/releases/download/languages-v1.2.0/sms-language-es-1.2.0.zip",
-      "file": "sms-language-es-1.2.0.zip",
+      "url": "https://github.com/chasem-dev/sms-hd-texture-extras/releases/download/languages-v1.3.0/sms-language-es-1.3.0.zip",
+      "file": "sms-language-es-1.3.0.zip",
       "md5": "30beaa95f380f27a372e328d76c7d9fe",
       "size": 977287
     },
     "it": {
       "name": "Italiano",
       "english": "Italian",
-      "url": "https://github.com/chasem-dev/sms-hd-texture-extras/releases/download/languages-v1.2.0/sms-language-it-1.2.0.zip",
-      "file": "sms-language-it-1.2.0.zip",
+      "url": "https://github.com/chasem-dev/sms-hd-texture-extras/releases/download/languages-v1.3.0/sms-language-it-1.3.0.zip",
+      "file": "sms-language-it-1.3.0.zip",
       "md5": "0de4e06ef0732fa6e5b0b6edab2e6c3c",
       "size": 962769
     },
@@ -39,18 +39,18 @@
       "name": "Polski",
       "english": "Polish",
       "community": true,
-      "url": "https://github.com/chasem-dev/sms-hd-texture-extras/releases/download/languages-v1.2.0/sms-language-pl-1.2.0.zip",
-      "file": "sms-language-pl-1.2.0.zip",
-      "md5": "f2ae9adfed276f9fd9cc6da2ec6ef25e",
-      "size": 165187
+      "url": "https://github.com/chasem-dev/sms-hd-texture-extras/releases/download/languages-v1.3.0/sms-language-pl-1.3.0.zip",
+      "file": "sms-language-pl-1.3.0.zip",
+      "md5": "b4c5c12f9c7cb537994239023b300935",
+      "size": 160499
     },
     "pt-br": {
       "name": "Português (Brasil)",
       "english": "Brazilian Portuguese",
       "community": true,
       "note": "Português (Brasil) is a community translation, made for Super Mario 3D All-Stars; some pictures stay in Spanish.",
-      "url": "https://github.com/chasem-dev/sms-hd-texture-extras/releases/download/languages-v1.2.0/sms-language-pt-br-1.2.0.zip",
-      "file": "sms-language-pt-br-1.2.0.zip",
+      "url": "https://github.com/chasem-dev/sms-hd-texture-extras/releases/download/languages-v1.3.0/sms-language-pt-br-1.3.0.zip",
+      "file": "sms-language-pt-br-1.3.0.zip",
       "md5": "2b7d423664c11363e0577119f0d3bb67",
       "size": 968520
     }

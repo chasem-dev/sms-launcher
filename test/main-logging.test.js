@@ -184,9 +184,10 @@ test('a task that runs out of disk space says the drive is full, in the alert an
   runtime.registerHandlers();
   const full = () => { throw Object.assign(new Error('ENOSPC: no space left on device, write'), { code: 'ENOSPC' }); };
   await assert.rejects(runtime.exclusive('Download port source', full),
-    error => error.buildHint === 'disk-full' && error.message.includes(`launcher's data folder (${runtime.root})`));
+    // Windows names the drive letter first ("Your C: drive (the launcher's data folder, …)")
+    error => error.buildHint === 'disk-full' && error.message.includes(runtime.root) && /launcher's data folder/.test(error.message));
   runtime.handlers['copy-activity-log']();
-  assert.match(runtime.copied.at(-1), /\[launcher\] ✕ Download port source: The drive holding the launcher's data folder .+ is full \(ENOSPC/);
+  assert.match(runtime.copied.at(-1), /\[launcher\] ✕ Download port source: .*launcher's data folder.+ is full \(ENOSPC/);
   // Anything else is shown as it was.
   await assert.rejects(runtime.exclusive('Download port source', () => { throw new Error('fatal: early EOF'); }), /^Error: fatal: early EOF$/);
 });

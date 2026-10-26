@@ -1343,7 +1343,8 @@ function marioFrom(rom) {
 // the disc the game plays (Eclipse's own, with Eclipse on), so the names match
 // what the game loads, with the preview's colours from the player's disc.
 // Made again only when the colours, the disc or the HD images change; never in
-// the way of playing.
+// the way of playing. Mario's mouth, which Eclipse's Luigi and Il Piantissimo
+// draw too, is painted only for a game that keeps them out of the look.
 function marioLookPack(rom, disc, root, settings) {
   const directory = path.join(app.getPath('userData'), 'mario-look');
   const look = marioColors.normalizeLook(config.marioLook);
@@ -1355,7 +1356,8 @@ function marioLookPack(rom, disc, root, settings) {
   try {
     const started = Date.now();
     const made = marioPack.bake({ rom: disc, look, references: marioFrom(rom).references, directory,
-      packDirectories: port.texturePackFolders(settings, root, customTextureDirectory()) });
+      packDirectories: port.texturePackFolders(settings, root, customTextureDirectory()),
+      othersKeepOwn: port.gameFeatures(root).characterLook });
     if (Date.now() - started > 250) log(`Painted Mario in your colours in ${((Date.now() - started) / 1000).toFixed(1)} s.`);
     return made;
   } catch (error) {

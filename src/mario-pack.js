@@ -66,7 +66,9 @@ function readModels(disc) {
 
 // The pack names of the textures other characters on this disc draw. The game
 // finds pack images by texture, not by model, so a texture Mario shares with
-// them (Eclipse's Luigi and Piantissimo use his mouth) is left as it is.
+// them (Eclipse's Luigi and Piantissimo use his mouth) is left as it is, unless
+// the game keeps the other characters out of Mario's look (bake's
+// `othersKeepOwn`, the game's ext/look).
 function othersTextures(disc) {
   const names = new Set();
   for (const archive of OTHER_CHARACTERS) {
@@ -137,8 +139,10 @@ function stamp(file) {
 // already made for the same look, disc and HD images is kept as it is.
 // `rom` is the disc the game plays (Eclipse's own with Eclipse on); `references`
 // are the regions' typical colours from loadMario, so the game matches the
-// customizer's preview.
-function bake({ rom, look, references, packDirectories = [], directory }) {
+// customizer's preview. `othersKeepOwn`: the game draws the other characters'
+// textures as they are (gameFeatures characterLook), so the ones Mario shares
+// with them are painted too.
+function bake({ rom, look, references, packDirectories = [], directory, othersKeepOwn = false }) {
   const chosen = colors.normalize(look?.colors);
   if (!Object.keys(chosen).length) {
     fs.rmSync(directory, { recursive: true, force: true });
@@ -146,12 +150,12 @@ function bake({ rom, look, references, packDirectories = [], directory }) {
   }
   const disc = new Disc(rom);
   let model, fludd, shared;
-  try { ({ model, fludd } = readModels(disc)); shared = othersTextures(disc); }
+  try { ({ model, fludd } = readModels(disc)); shared = othersKeepOwn ? new Set() : othersTextures(disc); }
   finally { disc.close(); }
   const index = packIndex(packDirectories);
   const list = targets(model, fludd).filter(target => !shared.has(target.name)).map(target => ({ ...target, hd: index.get(target.name) || null }));
   const key = crypto.createHash('sha256').update(JSON.stringify({
-    VERSION, chosen, rom: stamp(rom), hd: list.map(t => t.hd && stamp(t.hd)),
+    VERSION, chosen, rom: stamp(rom), names: list.map(t => t.name), hd: list.map(t => t.hd && stamp(t.hd)),
   })).digest('hex');
   try {
     if (JSON.parse(fs.readFileSync(path.join(directory, 'look.json'), 'utf8')).key === key) return directory;

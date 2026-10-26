@@ -243,6 +243,17 @@ test('with Eclipse, Mario is painted from the Eclipse disc the game plays', asyn
   assert.equal(eclipse.starts[0].options.env.SMS_MARIO_LOOK, path.join(eclipse.directory, 'mario-look'));
 });
 
+test("Mario's mouth is painted for a game that keeps Eclipse's other characters out of his look", async t => {
+  const older = fixture(t, { eclipse: true, marioLook: { colors: { skin: '#3150c0' } } });
+  await older.play();
+  assert.equal(older.bakes[0].othersKeepOwn, false, 'an older game would paint Luigi\'s mouth too');
+  const current = fixture(t, { eclipse: true, marioLook: { colors: { skin: '#3150c0' } } });
+  fs.mkdirSync(path.join(current.root, 'ext', 'look', 'game'), { recursive: true });
+  fs.writeFileSync(path.join(current.root, 'ext', 'look', 'game', 'look_game.cpp'), '// ext/look\n');
+  await current.play();
+  assert.equal(current.bakes[0].othersKeepOwn, true);
+});
+
 test('the Shine shirt and the sunglasses reach the game each on its own, with or without chosen colours, in Eclipse too', async t => {
   const shirt = fixture(t, { marioLook: { colors: {}, aloha: true } });
   await shirt.play();

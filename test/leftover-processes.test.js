@@ -42,7 +42,7 @@ async function until(check, ms = 10000) {
 // Node, copied as addr2line.exe, stands in for the crash reporter's: it waits, with the game it "reads" in its command
 // line (after --, which Node leaves to the script).
 test('Windows: ends the addr2line reading a game in the launcher\'s folders, or left by the game, and no other',
-  { skip: process.platform !== 'win32', timeout: 60000 }, async () => {
+  { skip: process.platform !== 'win32', timeout: 60000 }, async t => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "sms leftover [O'Brien]-"));
     const tools = path.join(root, 'tools'), games = path.join(root, 'games');
     fs.mkdirSync(tools);
@@ -67,6 +67,7 @@ test('Windows: ends the addr2line reading a game in the launcher\'s folders, or 
       game.stdout.on('data', data => { text += data; });
       await new Promise(resolve => game.on('close', resolve));
       const left = Number(text.trim());
+      assert.ok(left > 0, `the game said ${JSON.stringify(text)}`);
       started.push(left);
       assert.ok(await until(() => [reading, other, left].every(running)));
 
@@ -77,6 +78,9 @@ test('Windows: ends the addr2line reading a game in the launcher\'s folders, or 
     } finally {
       for (const pid of started) { try { process.kill(pid); } catch (_) { /* already exited */ } }
       await until(() => !started.some(running));
-      fs.rmSync(root, { recursive: true, force: true });
+      // Windows keeps a program's file locked for a moment after it ends (and an antivirus scans a new one):
+      // a folder left in the temp directory is no reason to fail.
+      try { fs.rmSync(root, { recursive: true, force: true, maxRetries: 20, retryDelay: 250 }); }
+      catch (error) { t.diagnostic(`left ${root}: ${error.message}`); }
     }
   });

@@ -299,11 +299,12 @@
               <div id="binding-list" class="binding-list"></div>
               <div class="actions"><button class="subtle" id="reset-bindings">Reset all to defaults</button><button class="subtle" id="classic-bindings" title="The keyboard-only layout from before: Space jumps, Shift dives, V and F are X and Y, Q and E are L and R">Use classic keys</button><span id="binding-note" class="helper" role="status">Choose Change, then press a key or click a mouse button. Esc cancels.</span></div>
             </div>
-            <h2 class="group-title">Prompts, triggers and rumble</h2>
+            <h2 class="group-title">Prompts, sticks, triggers and rumble</h2>
             <div class="settings-group">
               <label class="field"><span>Button prompts<small>The buttons shown in the game's text. Original keeps the game's own; Automatic switches between keyboard and controller as you play.</small></span><select id="buttonPrompts"></select></label>
               <label class="field" id="promptPad-field" hidden><span>Controller prompts</span><select id="promptPad"></select></label>
               <div id="prompt-preview" class="prompt-preview" aria-label="Button prompt preview"></div>
+              <label class="field range-field"><span><strong>Stick dead zone</strong><output id="stickDeadzone-value" for="stickDeadzone">15%</output><small>How far a controller's sticks move before Mario or the camera does. 15% matches the console; raise it if Mario walks or the camera turns by itself, lower it for small movements to count.</small></span><input id="stickDeadzone" type="range" min="0" max="50" step="1" aria-label="Stick dead zone"></label>
               <label class="field range-field"><span><strong>Soft press depth</strong><output id="softTrigger-value" for="softTrigger">95%</output><small>How far Soft L and Soft R press the trigger without the click, such as spraying FLUDD on the move (Soft R is middle click). Deeper sprays harder.</small></span><input id="softTrigger" type="range" min="5" max="95" step="5" aria-label="Soft press depth"></label>
               <label class="field range-field"><span><strong>Rumble strength</strong><output id="rumbleStrength-value" for="rumbleStrength">50%</output><small>How hard your controller rumbles. 50% matches the console; higher makes light rumbles stronger, and 0% turns rumble off. Your controller rumbles as you move the slider.</small></span><input id="rumbleStrength" type="range" min="0" max="100" step="5" aria-label="Rumble strength"></label>
             </div>

@@ -212,6 +212,9 @@ function normalizeSettings(input = {}, platform = process.platform, hostArch = p
     // How far the soft L / R bindings press the trigger, in percent (the game caps it below the click): by
     // default as far as a trigger goes without the click.
     softTrigger: numberSetting(input.softTrigger, 95, 5, 95),
+    // How far a controller's sticks move before the game sees them, in percent of their travel: by default
+    // the console's own (15). Games from before the setting ignore it and keep the console's.
+    stickDeadzone: numberSetting(input.stickDeadzone, 15, 0, 50),
     // The keyboard layout these bindings are changes from (savedSettings moves older ones over).
     controlsLayout: CONTROLS_LAYOUT,
     // Controller rumble in percent of the slider: 0 turns it off and 50, the default, is the console's rumble.
@@ -519,6 +522,7 @@ function buildEnvironment(settings, disc, root, { customTextures = null } = {}) 
     SMS_SKIP_INTRO: settings.skipIntro ? '1' : '0',
     SMS_LANGUAGE: root && !languageAvailable(root, gameLanguage(settings)) ? 'en' : gameLanguage(settings),
     SMS_SOFT_TRIGGER: String(settings.softTrigger ?? 95),
+    SMS_STICK_DEADZONE: String(settings.stickDeadzone ?? 15),
     SMS_RUMBLE: settings.rumbleStrength === 0 ? '0' : '1',
     SMS_RUMBLE_STRENGTH: String(rumbleGameStrength(settings.rumbleStrength)),
     SMS_HEAT_HAZE: settings.heatHaze === false ? '0' : '1',

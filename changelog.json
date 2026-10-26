@@ -1,8 +1,11 @@
 {
   "_instructions": "Players see this file in the launcher. Add each player-visible change here in the same commit: launcher changes to beta.launcher, game changes Beta now builds to beta.game. Releases move beta into a new entry (npm run update:game does it). One plain sentence for players per line, no commit hashes or PR numbers. See AGENTS.md.",
   "beta": {
-    "launcher": [],
+    "launcher": [
+      "Stick dead zone: set how far your controller's sticks move before Mario or the camera does, to stop a stick that drifts or make small movements count. Find it under Settings, Controls; 15% matches the console."
+    ],
     "game": [
+      "Stick Dead Zone in the game's settings menu (pause, then Y), under Controls, sets the same dead zone while you play, for Super Mario Eclipse too.",
       "Co-op in Super Mario Eclipse: fixed player 2 being stuck in the Shine Get pose for good after getting a Shine that keeps you in the level (like a red coin Shine), while player 1 carried on."
     ]
   },

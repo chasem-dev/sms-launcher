@@ -16,14 +16,14 @@ function written(settings) {
 
 test('the settings changed in the game become the launcher\'s, in its own values', () => {
   const { dir, file } = written({ msaa: 4, fxaa: true, widescreen: '21:9', musicVolume: 40, display: 'monitor2',
-    exclusiveResolution: '2560x1440', fullscreenMode: 'exclusive', rumbleStrength: 75, vsync: 'adaptive' });
+    exclusiveResolution: '2560x1440', fullscreenMode: 'exclusive', rumbleStrength: 75, stickDeadzone: 25, vsync: 'adaptive' });
   try {
     const before = port.normalizeSettings({});
     const after = port.normalizeSettings(gameSettings.merge(before, gameSettings.read(file)));
     assert.deepEqual([after.msaa, after.fxaa, after.widescreen, after.musicVolume, after.display, after.exclusiveResolution,
-      after.fullscreenMode, after.rumbleStrength, after.vsync], [4, true, '21:9', 40, 'monitor2', '2560x1440', 'exclusive', 75, 'adaptive']);
+      after.fullscreenMode, after.rumbleStrength, after.stickDeadzone, after.vsync], [4, true, '21:9', 40, 'monitor2', '2560x1440', 'exclusive', 75, 25, 'adaptive']);
     assert.deepEqual(gameSettings.changedKeys(before, after).sort(),
-      ['display', 'exclusiveResolution', 'fullscreenMode', 'fxaa', 'msaa', 'musicVolume', 'rumbleStrength', 'vsync', 'widescreen']);
+      ['display', 'exclusiveResolution', 'fullscreenMode', 'fxaa', 'msaa', 'musicVolume', 'rumbleStrength', 'stickDeadzone', 'vsync', 'widescreen']);
     // unchanged settings stay the launcher's
     assert.equal(after.volume, before.volume);
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }

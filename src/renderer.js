@@ -88,6 +88,10 @@ function renderSoftTrigger() { $('softTrigger-value').textContent = `${$('softTr
 $('softTrigger').addEventListener('input', renderSoftTrigger);
 $('softTrigger').addEventListener('change', () => saveSettings());
 
+function renderStickDeadzone() { $('stickDeadzone-value').textContent = `${$('stickDeadzone').value}%`; }
+$('stickDeadzone').addEventListener('input', renderStickDeadzone);
+$('stickDeadzone').addEventListener('change', () => saveSettings());
+
 // Rumble strength: the controller rumbles as the slider moves, as the game would (src/rumble.js).
 const rumblePreview = window.smsRumble.createPreview({ getGamepads: () => navigator.getGamepads?.() });
 let rumbleTimer = 0;
@@ -832,6 +836,9 @@ function refresh(data) {
   $('softTrigger').value = String(config.settings.softTrigger ?? 95);
   renderSoftTrigger();
   $('softTrigger').disabled = Boolean(data.active);
+  $('stickDeadzone').value = String(config.settings.stickDeadzone ?? 15);
+  renderStickDeadzone();
+  $('stickDeadzone').disabled = Boolean(data.active);
   $('rumbleStrength').value = String(config.settings.rumbleStrength ?? 50);
   renderRumbleStrength();
   $('rumbleStrength').disabled = Boolean(data.active);
@@ -1209,7 +1216,7 @@ function settingsValue() {
     invertCameraX: $('invertCameraX').checked, invertCameraY: $('invertCameraY').checked, invertFluddAimY: $('invertFluddAimY').checked, hudEdges: $('hudEdges').checked, textures: $('textures').checked, cutscenes: $('cutscenes').checked,
     textureLoading: $('textureLoading').value, shaderWarmup: $('shaderWarmup').checked,
     eclipse: $('eclipse').checked, eclipseSunshineMovies: $('eclipseSunshineMovies').checked, autoUpdate: $('autoUpdate').checked, shareUsage: $('shareUsage').checked, discordPresence: $('discordPresence').checked, autoBackups: $('autoBackups').checked, darkMode: $('darkMode').checked, updateChannel: $('updateChannel').value,
-    keyBindings, padBindings, softTrigger: Number($('softTrigger').value),
+    keyBindings, padBindings, softTrigger: Number($('softTrigger').value), stickDeadzone: Number($('stickDeadzone').value),
     rumbleStrength: Number($('rumbleStrength').value), buttonPrompts: $('buttonPrompts').value,
     promptPad: $('promptPad').value, graphicsPreset: $('graphicsPreset').value,
     hdr: $('hdr').checked, hdrCalibration: $('hdrCalibration').checked, hdrPaperWhite: Number($('hdrPaperWhite').value),

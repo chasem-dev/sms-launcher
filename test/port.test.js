@@ -786,6 +786,16 @@ test('soft L / R presses go as deep as a trigger goes without the click, and rea
   assert.deepEqual(port.normalizeSettings({ keyBindings: { R_SOFT: [] } }).keyBindings, { R_SOFT: [] });
 });
 
+test('the stick dead zone is the console\'s 15% by default and reaches the game as SMS_STICK_DEADZONE', () => {
+  assert.equal(port.normalizeSettings({}).stickDeadzone, 15);
+  assert.equal(port.normalizeSettings({ stickDeadzone: 0 }).stickDeadzone, 0);
+  assert.equal(port.normalizeSettings({ stickDeadzone: 80 }).stickDeadzone, 50);
+  assert.equal(port.normalizeSettings({ stickDeadzone: 'big' }).stickDeadzone, 15);
+  const env = settings => port.buildEnvironment(port.normalizeSettings(settings), '/my/disc.iso', '/port');
+  assert.equal(env({}).SMS_STICK_DEADZONE, '15');
+  assert.equal(env({ stickDeadzone: 25 }).SMS_STICK_DEADZONE, '25');
+});
+
 test('the rumble slider reaches the game at twice its value, 50% the console\'s, and 0 turns rumble off', () => {
   assert.equal(port.normalizeSettings({}).rumbleStrength, 50);
   assert.equal(port.normalizeSettings({ rumbleStrength: 500 }).rumbleStrength, 100);

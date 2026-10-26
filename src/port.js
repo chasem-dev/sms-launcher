@@ -460,7 +460,9 @@ function gameFeatures(root) {
     // HD cutscenes with HD textures off; an older game plays them only with HD textures on
     cutscenesWithoutTextures: mentions(path.join('platform', 'thp', 'hd_movie_pack.cpp'), 'without HD textures'),
     // split-screen co-op (SMS_COOP): a second player on this computer
-    coop: has(path.join('ext', 'coop', 'game', 'coop.cpp')) };
+    coop: has(path.join('ext', 'coop', 'game', 'coop.cpp')),
+    // Eclipse's other characters keep their own textures, out of Customize Mario's look (ext/look)
+    characterLook: has(path.join('ext', 'look', 'game', 'look_game.cpp')) };
 }
 
 function hdVisualsInstalled(root, settings) {

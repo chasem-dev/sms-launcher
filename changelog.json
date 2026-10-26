@@ -3,6 +3,7 @@
   "beta": {
     "launcher": [
       "Fixed turning on Super Mario Eclipse with a disc it can't patch failing only midway through setup with an MD5 error: the launcher now checks your disc when you turn Eclipse on and before it sets Eclipse up, and says plainly that Eclipse needs a full 1:1 copy of the North American disc, not a trimmed, compressed or other copy. Sunshine still plays from it.",
+      "Fixed setup on Windows stopping at Unpacking build tools with \"Error opening archive: Failed to open\" when the launcher is in a folder whose name has an emoji, or letters from another alphabet than your Windows language uses.",
       "Updating or switching between Beta and Stable no longer downloads Super Mario Eclipse's radar maps, the achievement icons or your language pack again when the new version uses the same ones.",
       "Fixed Customize Mario in Super Mario Eclipse leaving the skin around Mario's mouth and chin its usual colour in the game: it now takes your colours, as in the preview.",
       "Fixed updating on Windows sometimes stopping with \"EPERM: operation not permitted, rename\" while it backed up your saves: the backup no longer moves its folder into place once it's written.",

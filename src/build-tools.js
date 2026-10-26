@@ -481,9 +481,23 @@ function unpackAdvice(problems, folder) {
     'or move the launcher to a short folder such as C:\\Games.';
 }
 
-function unpackNative(tarPath, args, progress, { stallMs = 5 * 60 * 1000, folder = '' } = {}) {
+// Windows' tar.exe reads its arguments in the system's ANSI code page, so a
+// character that code page lacks, like an emoji in a folder name, reaches it
+// as "?" and it can't open the archive ("Failed to open 'C:\Onedrive\?? Games\…'").
+// tar runs in the folder holding the archive and the staging folder instead
+// and is given their names relative to it; the folder itself is set as the
+// working directory through Windows' Unicode API, which takes any name.
+function nativeUnpackArgs(archive, staging, top, folder, paths = path) {
+  const inside = file => {
+    const relative = paths.relative(folder, file);
+    return relative && !relative.startsWith('..') && !paths.isAbsolute(relative) ? relative : file;
+  };
+  return { args: ['-xvzf', inside(archive), '-C', inside(staging), top], cwd: folder };
+}
+
+function unpackNative(tarPath, args, progress, { stallMs = 5 * 60 * 1000, folder = '', cwd } = {}) {
   return new Promise((resolve, reject) => {
-    const child = spawn(tarPath, args, { windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
+    const child = spawn(tarPath, args, { cwd, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
     // recent: the last lines; problems: the first that say why a file failed
     // (a file name alone has no ": "), which tar prints long before it exits.
     const recent = [], problems = [];
@@ -554,7 +568,8 @@ async function prepare(userData, { platform = process.platform, run, progress = 
       ? path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'tar.exe') : null;
     if (nativeTar && fs.existsSync(nativeTar) && commandWorks(nativeTar, ['--version'])) {
       // Windows includes bsdtar; its native extraction avoids slow per-file JS filesystem work.
-      await unpackNative(nativeTar, ['-xvzf', archive, '-C', staging, top], progress, { folder: parent });
+      const { args, cwd } = nativeUnpackArgs(archive, staging, top, parent);
+      await unpackNative(nativeTar, args, progress, { folder: parent, cwd });
     } else {
       let entries = 0;
       await require('tar').x({ file: archive, cwd: staging, strict: true,
@@ -642,4 +657,4 @@ async function pruneToolsets(userData, keep = [], { platform = process.platform,
 
 module.exports = { TOOLSET, toolsetFor, platformId, rootFor, legacyRootFor, privateReady, missingTools, deletedToolsError, blockedToolError,
   outOfSpace, forkFailed, outOfSpaceError, forkFailedError, hintedError, systemReady, status, environment, environmentAtRoot, check,
-  fetchVerified, hashFile, assetFor, prepare, pruneToolsets, unpackNative, renameRetrying };
+  fetchVerified, hashFile, assetFor, prepare, pruneToolsets, unpackNative, nativeUnpackArgs, renameRetrying };

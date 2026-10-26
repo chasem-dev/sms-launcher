@@ -351,6 +351,34 @@ test('native unpacking counts the files tar names and reports progress', posixOn
   assert.ok(fs.existsSync(path.join(staging, 'msys64', 'f2499')));
 });
 
+test('Windows tar is given the archive and staging folder by names without the folder above them', () => {
+  // Windows' tar.exe gets "?" for an emoji in its arguments, and can't open the archive.
+  const folder = 'C:\\Onedrive\\OD Games\\\u{1F3AE} PC Recomps\\SMS-Launcher-Portable\\build-tools';
+  const { args, cwd } = tools.nativeUnpackArgs(`${folder}\\sms-build-tools-windows-x64.tar.gz`,
+    `${folder}\\.unpack-a1B2c3`, 'msys64', folder, path.win32);
+  assert.deepEqual(args, ['-xvzf', 'sms-build-tools-windows-x64.tar.gz', '-C', '.unpack-a1B2c3', 'msys64']);
+  assert.equal(cwd, folder);
+  assert.ok(args.every(arg => /^[\x20-\x7e]+$/.test(arg)), args.join(' '));
+  // An archive chosen from elsewhere keeps its full path.
+  assert.equal(tools.nativeUnpackArgs('D:\\tools.tar.gz', `${folder}\\.unpack-x`, 'msys64', folder, path.win32).args[1],
+    'D:\\tools.tar.gz');
+});
+
+test('native unpacking runs tar in the given folder, with names relative to it', posixOnly, async t => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sms-native-cwd-'));
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+  const folder = path.join(dir, '\u{1F3AE} Games', 'build-tools');
+  fs.mkdirSync(path.join(folder, 'source', 'msys64'), { recursive: true });
+  fs.writeFileSync(path.join(folder, 'source', 'msys64', 'ok'), '');
+  const archive = path.join(folder, 'tools.tar.gz');
+  await tar.c({ gzip: true, file: archive, cwd: path.join(folder, 'source') }, ['msys64']);
+  const staging = fs.mkdtempSync(path.join(folder, '.unpack-'));
+  const { args, cwd } = tools.nativeUnpackArgs(archive, staging, 'msys64', folder);
+  assert.ok(args.every(arg => !arg.includes(dir)), args.join(' '));
+  await tools.unpackNative('tar', args, () => {}, { folder, cwd });
+  assert.ok(fs.existsSync(path.join(staging, 'msys64', 'ok')));
+});
+
 test('native unpacking stops a tar that names no file for the stall time', posixOnly, async t => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sms-native-stall-'));
   t.after(() => fs.rmSync(dir, { recursive: true, force: true }));

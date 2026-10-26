@@ -79,12 +79,14 @@ class Disc {
 }
 
 // Disc image and archive formats the game can't read, by their first bytes.
+// An NKit .iso isn't here: it's a GameCube image whose file table points at
+// every file (only the junk between them is gone), so the game reads it, and
+// the checks below treat it like any trimmed image.
 const OTHER_FORMATS = [
   ['rvz', head => head.toString('latin1', 0, 4) === 'RVZ\x01'],
   ['wia', head => head.toString('latin1', 0, 4) === 'WIA\x01'],
   ['gcz', head => head.length >= 4 && head.readUInt32LE(0) === 0xb10bc001],
   ['wbfs', head => head.toString('latin1', 0, 4) === 'WBFS'],
-  ['nkit', head => head.toString('latin1', 0x200, 0x204) === 'NKIT'],
   ['zip', head => head.toString('latin1', 0, 4) === 'PK\x03\x04'],
   ['7z', head => head.toString('latin1', 0, 6) === '7z\xbc\xaf\x27\x1c'],
   ['rar', head => head.toString('latin1', 0, 4) === 'Rar!']

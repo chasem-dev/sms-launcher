@@ -37,7 +37,6 @@ const OTHER_FORMATS = {
   rvz: `This is an RVZ file, a compressed format the game can't read. ${CONVERT}`,
   wia: `This is a WIA file, a compressed format the game can't read. ${CONVERT}`,
   gcz: `This is a GCZ file, a compressed format the game can't read. ${CONVERT}`,
-  nkit: 'This is an NKit image, which the game can\'t read. Use NKit\'s Recover to ISO to turn it back into a full .iso, and choose that.',
   zip: 'This is a ZIP archive. Extract the disc file inside it first, and choose that.',
   '7z': 'This is a 7-Zip archive. Extract the disc file inside it first, and choose that.',
   rar: 'This is a RAR archive. Extract the disc file inside it first, and choose that.',

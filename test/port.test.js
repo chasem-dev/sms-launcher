@@ -43,6 +43,21 @@ test('requires an owned GMSE01 Rev 0 image and supports plain and CISO headers',
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });
 
+test('takes an NKit .iso that holds every file the game reads', () => {
+  const dir = temporary();
+  try {
+    const iso = path.join(dir, 'Super Mario Sunshine.nkit.iso');
+    const nkit = gcm(); nkit.write('NKIT', 0x200, 'latin1');
+    fs.writeFileSync(iso, nkit);
+    assert.equal(port.validateRom(iso), iso);
+    fs.writeFileSync(iso, nkit.subarray(0, 0x3f00));
+    assert.throws(() => port.validateRom(iso), /incomplete/);
+    const europe = gcm('GMSP01'); europe.write('NKIT', 0x200, 'latin1');
+    fs.writeFileSync(iso, europe);
+    assert.throws(() => port.validateRom(iso), /European release/);
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
 test('names incomplete discs before a build reads past their end', () => {
   const dir = temporary();
   try {
@@ -74,8 +89,6 @@ test('names disc files the game cannot read, whatever they are called', () => {
     assert.match(reason(magic('WIA\x01')), /WIA file/);
     const gcz = Buffer.alloc(0x440); gcz.writeUInt32LE(0xb10bc001, 0);
     assert.match(reason(gcz), /GCZ file/);
-    const nkit = gcm(); nkit.write('NKIT', 0x200, 'latin1');
-    assert.match(reason(nkit), /NKit image.*Recover to ISO/);
     assert.match(reason(magic('PK\x03\x04')), /ZIP archive/);
     assert.match(reason(magic('7z\xbc\xaf\x27\x1c')), /7-Zip archive/);
     assert.match(reason(magic('Rar!')), /RAR archive/);

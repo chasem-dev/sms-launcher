@@ -53,7 +53,7 @@ To play through Steam (on a Steam Deck, in Desktop Mode), choose the **Add to St
 The launcher walks you through three steps:
 
 1. **Download setup files.** Use the suggested location, or choose a different folder before downloading.
-2. **Choose disc image.** Select a copy of your own original North American Super Mario Sunshine disc — **GMSE01, revision 0**. Supported files are `.iso`, `.gcm`, and Dolphin `.ciso`. The launcher checks the file's contents when you choose it: it names RVZ, WIA, GCZ and NKit images (convert them to a full `.iso` first), archives, other regions and other games, and catches an incomplete copy before anything is built.
+2. **Choose disc image.** Select a copy of your own original North American Super Mario Sunshine disc — **GMSE01, revision 0**. Supported files are `.iso` (NKit `.iso` too), `.gcm`, and Dolphin `.ciso`. The launcher checks the file's contents when you choose it: it names RVZ, WIA and GCZ images (convert them to a full `.iso` first), archives, other regions and other games, and catches an incomplete copy before anything is built.
 3. **Begin setup.** The launcher downloads HD textures and prepares your game on your computer. This first setup can take a while.
 
 On Mac, setup may ask you to install Apple's Command Line Tools and, on Apple Silicon, Rosetta. Follow **Mac setup help** in the launcher.

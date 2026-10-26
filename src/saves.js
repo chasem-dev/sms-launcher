@@ -132,13 +132,14 @@ function backupSaves(saveDir, destination = backupRoot(), reason = 'manual') {
   if (!files.length) return { empty: true, message: 'No memory card files to back up yet.' };
   fs.mkdirSync(destination, { recursive: true, mode: 0o700 });
   const id = `${new Date().toISOString().replace(/[:.]/g, '-')}-${crypto.randomBytes(3).toString('hex')}`;
-  const pending = path.join(destination, `.${id}.pending`);
+  // Written in place, manifest last: a folder without a manifest isn't a backup (listBackups skips it).
+  // Renaming a finished folder into place failed on Windows (EPERM) while something still had a new file open.
   const complete = path.join(destination, id);
-  fs.mkdirSync(path.join(pending, 'files'), { recursive: true, mode: 0o700 });
+  fs.mkdirSync(path.join(complete, 'files'), { recursive: true, mode: 0o700 });
   try {
     const records = files.map(name => {
       const source = path.join(saveDir, name);
-      const target = path.join(pending, 'files', name);
+      const target = path.join(complete, 'files', name);
       fs.copyFileSync(source, target, fs.constants.COPYFILE_EXCL);
       const hash = digest(source);
       if (digest(target) !== hash) throw new Error(`Backup verification failed for ${name}`);
@@ -147,19 +148,18 @@ function backupSaves(saveDir, destination = backupRoot(), reason = 'manual') {
     const modDir = modSaveDirectory(saveDir);
     const mods = modSaveFiles(modDir).map(name => {
       const source = path.join(modDir, ...name.split('/'));
-      const target = path.join(pending, 'mods', ...name.split('/'));
+      const target = path.join(complete, 'mods', ...name.split('/'));
       fs.mkdirSync(path.dirname(target), { recursive: true, mode: 0o700 });
       fs.copyFileSync(source, target, fs.constants.COPYFILE_EXCL);
       const hash = digest(source);
       if (digest(target) !== hash) throw new Error(`Backup verification failed for ${name}`);
       return { name, hash };
     });
-    fs.writeFileSync(path.join(pending, 'manifest.json'), JSON.stringify({ version: 1, reason,
+    fs.writeFileSync(path.join(complete, 'manifest.json'), JSON.stringify({ version: 1, reason,
       createdAt: new Date().toISOString(), source: saveDir, files: records, mods }, null, 2), { flag: 'wx' });
-    fs.renameSync(pending, complete);
     return { id, directory: complete, count: files.length, mods: mods.length };
   } catch (error) {
-    fs.rmSync(pending, { recursive: true, force: true });
+    try { fs.rmSync(complete, { recursive: true, force: true, maxRetries: 5 }); } catch (_) { /* the backup error matters more */ }
     throw error;
   }
 }

@@ -282,3 +282,45 @@ test('a restore with no mods\' files keeps a synced mods folder\'s marker', () =
     assert.deepEqual(fs.readdirSync(mods), ['.stfolder']);
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });
+
+test('a backup is written in place, so Windows holding a new file open cannot fail it on a rename', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'sms-save-backup-in-place-'));
+  const card = path.join(root, 'card-a');
+  const backups = path.join(root, 'backups');
+  const rename = fs.renameSync;
+  try {
+    fs.mkdirSync(card);
+    fs.writeFileSync(path.join(card, 'GMSE01.dat'), 'progress');
+    fs.renameSync = (from, to) => {
+      throw Object.assign(new Error(`EPERM: operation not permitted, rename '${from}' -> '${to}'`), { code: 'EPERM' });
+    };
+    const backup = saves.backupSaves(card, backups, 'before-update');
+    fs.renameSync = rename;
+    assert.equal(backup.count, 1);
+    assert.deepEqual(fs.readdirSync(backups), [backup.id]);
+    // An unfinished one (no manifest yet, or the launcher stopped mid-copy) isn't offered for restoring.
+    fs.mkdirSync(path.join(backups, '2026-01-01T00-00-00-000Z-abcdef', 'files'), { recursive: true });
+    assert.deepEqual(saves.listBackups(backups).map(entry => entry.id), [backup.id]);
+  } finally {
+    fs.renameSync = rename;
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('a failed backup leaves no folder behind', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'sms-save-backup-failed-'));
+  const card = path.join(root, 'card-a');
+  const backups = path.join(root, 'backups');
+  const copy = fs.copyFileSync;
+  try {
+    fs.mkdirSync(card);
+    fs.writeFileSync(path.join(card, 'GMSE01.dat'), 'progress');
+    fs.copyFileSync = () => { throw Object.assign(new Error('ENOSPC: no space left on device'), { code: 'ENOSPC' }); };
+    assert.throws(() => saves.backupSaves(card, backups), /ENOSPC/);
+    fs.copyFileSync = copy;
+    assert.deepEqual(fs.readdirSync(backups), []);
+  } finally {
+    fs.copyFileSync = copy;
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});

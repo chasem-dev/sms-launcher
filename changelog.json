@@ -2,6 +2,8 @@
   "_instructions": "Players see this file in the launcher. Add each player-visible change here in the same commit: launcher changes to beta.launcher, game changes Beta now builds to beta.game. Releases move beta into a new entry (npm run update:game does it). One plain sentence for players per line, no commit hashes or PR numbers. See AGENTS.md.",
   "beta": {
     "launcher": [
+      "Fixed updating on Windows sometimes stopping with \"EPERM: operation not permitted, rename\" while it backed up your saves: the backup no longer moves its folder into place once it's written.",
+      "Fixed installing Super Mario Eclipse, textures, cutscenes and language packs on Windows when the launcher or your disc is in a folder whose name has brackets or an apostrophe, like E:\\[Games]: they stopped with \"can't open file\" and \"No such file or directory\".",
       "Multiplayer with Super Mario Eclipse: your Customize Mario colours now go to the other players, and theirs show on your screen, as they already did without Eclipse.",
       "Custom textures, under Settings → Graphics: choose Open custom textures folder and put texture packs made for Dolphin in it; their images replace the HD textures where both change the same texture, and they work with HD textures off too.",
       "HD cutscenes no longer need HD textures: turn them on by themselves in Settings for sharper movies with the original textures.",

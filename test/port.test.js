@@ -683,7 +683,7 @@ test('Windows command passes an image path as data to MSYS2 Bash', () => {
     assert.doesNotMatch(cmd.args[1], /Sunshine/);
     assert.match(cmd.env.PATH, /mingw64/);
     const textures = port.commandFor('C:\\port', 'textures', [], 'win32', { PATH: 'C:\\Windows', MSYS2_ROOT: dir });
-    assert.match(textures.args[1], /python "\$\(cygpath -u "\$2"\)" tools\/mods\/get\.py/);
+    assert.match(textures.args[1], /python "\$2" tools\/mods\/get\.py/);
     assert.equal(textures.args[3], 'C:\\port');
     assert.equal(textures.args[4], path.resolve(__dirname, '..', 'scripts', 'texture-progress.py'));
     const extras = port.commandFor('C:\\port', 'texture-extras', [], 'win32', { PATH: 'C:\\Windows', MSYS2_ROOT: dir });
@@ -695,14 +695,19 @@ test('Windows command passes an image path as data to MSYS2 Bash', () => {
     assert.match(icons.args[1], /tools\/mods\/get\.py achievement-icons --if-outdated$/);
     assert.equal(maps.args[4], path.resolve(__dirname, '..', 'scripts', 'texture-progress.py'));
     const language = port.commandFor('C:\\port', 'language', ['es'], 'win32', { PATH: 'C:\\Windows', MSYS2_ROOT: dir });
-    assert.match(language.args[1], /python "\$\(cygpath -u "\$2"\)" "\$\(cygpath -u "\$3"\)" "\$\{@:4\}"$/);
+    assert.match(language.args[1], /python "\$2" "\$3" "\$\{@:4\}"$/);
     const es = port.LANGUAGE_PACKS.es;
     assert.deepEqual(language.args.slice(3), ['C:\\port', path.resolve(__dirname, '..', 'scripts', 'texture-progress.py'),
       path.resolve(__dirname, '..', 'scripts', 'install-language.py'), 'es', es.name, es.url, es.md5, String(es.size)]);
     // The Eclipse install reports its 900 MB download through the same wrapper.
     const eclipse = port.commandFor('C:\\port', 'python', ['C:\\Games\\Sunshine.iso'], 'win32', { PATH: 'C:\\Windows', MSYS2_ROOT: dir });
-    assert.match(eclipse.args[1], /python "\$\(cygpath -u "\$2"\)" tools\/mods\/get\.py eclipse --iso "\$\(cygpath -u "\$3"\)"$/);
+    assert.match(eclipse.args[1], /python "\$2" tools\/mods\/get\.py eclipse --iso "\$3"$/);
     assert.deepEqual(eclipse.args.slice(3), ['C:\\port', path.resolve(__dirname, '..', 'scripts', 'texture-progress.py'), 'C:\\Games\\Sunshine.iso']);
+    // MSYS2 doesn't convert a /e/... argument holding [ ] ' * ? for a native program, so nothing Python
+    // opens goes through cygpath -u (E:\[Games]\...\texture-progress.py reached it as C:\e\[Games]\...).
+    for (const action of ['python', 'cutscenes', 'textures', 'texture-extras', 'eclipse-maps', 'achievement-icons', 'language'])
+      assert.doesNotMatch(port.commandFor('C:\\port', action, action === 'language' ? ['es'] : ['C:\\Games\\Sunshine.iso'], 'win32',
+        { PATH: 'C:\\Windows', MSYS2_ROOT: dir }).args[1], /python[^&]*cygpath/, action);
   } finally {
     if (old === undefined) delete process.env.MSYS2_ROOT;
     else process.env.MSYS2_ROOT = old;

@@ -691,20 +691,23 @@ function commandFor(root, action, args = [], platform = process.platform, enviro
   const msys = environment.MSYS2_ROOT || 'C:\\msys64';
   const bash = path.join(msys, 'usr', 'bin', 'bash.exe');
   if (!fs.existsSync(bash)) throw new Error(`The Windows build tools are missing. Install it at ${msys} or set MSYS2_ROOT.`);
+  // Python is a native Windows program: it gets the Windows paths as they are. A /e/... path relies on MSYS2
+  // converting it on the way, which it skips for any argument holding ` ' * ? [ or ] (E:\[Games]\... reached
+  // Python as /e/[Games]/..., which it opened as C:\e\[Games]\...).
   const script = action === 'python'
-    ? 'cd "$(cygpath -u "$1")" && python "$(cygpath -u "$2")" tools/mods/get.py eclipse --iso "$(cygpath -u "$3")"'
+    ? 'cd "$(cygpath -u "$1")" && python "$2" tools/mods/get.py eclipse --iso "$3"'
     : action === 'cutscenes'
-      ? 'cd "$(cygpath -u "$1")" && python "$(cygpath -u "$2")" tools/media/install_cutscenes.py --iso "$(cygpath -u "$3")"'
+      ? 'cd "$(cygpath -u "$1")" && python "$2" tools/media/install_cutscenes.py --iso "$3"'
     : action === 'textures'
-      ? 'cd "$(cygpath -u "$1")" && python "$(cygpath -u "$2")" tools/mods/get.py'
+      ? 'cd "$(cygpath -u "$1")" && python "$2" tools/mods/get.py'
     : action === 'texture-extras'
-      ? 'cd "$(cygpath -u "$1")" && python "$(cygpath -u "$2")" tools/mods/get.py extras --if-outdated'
+      ? 'cd "$(cygpath -u "$1")" && python "$2" tools/mods/get.py extras --if-outdated'
     : action === 'eclipse-maps'
-      ? 'cd "$(cygpath -u "$1")" && python "$(cygpath -u "$2")" tools/mods/get.py eclipse-maps --if-outdated'
+      ? 'cd "$(cygpath -u "$1")" && python "$2" tools/mods/get.py eclipse-maps --if-outdated'
     : action === 'achievement-icons'
-      ? 'cd "$(cygpath -u "$1")" && python "$(cygpath -u "$2")" tools/mods/get.py achievement-icons --if-outdated'
+      ? 'cd "$(cygpath -u "$1")" && python "$2" tools/mods/get.py achievement-icons --if-outdated'
     : action === 'language'
-      ? 'cd "$(cygpath -u "$1")" && python "$(cygpath -u "$2")" "$(cygpath -u "$3")" "${@:4}"'
+      ? 'cd "$(cygpath -u "$1")" && python "$2" "$3" "${@:4}"'
     : action === 'clean'
       ? 'cd "$(cygpath -u "$1")" && ./clean.sh "${@:2}"'
       : `cd "$(cygpath -u "$1")" && ./${action}.sh "$(cygpath -u "$2")"`;

@@ -176,6 +176,40 @@ test('new source snapshots share optional downloads and keep user settings in th
   assert.equal(fs.readFileSync(path.join(root, 'settings.txt'), 'utf8'), 'save_dir=./custom-saves');
 });
 
+test('a new version copies the radar maps, achievement icons and language packs it pins the same release of', t => {
+  const { root } = fixture(t);
+  const next = path.join(root, 'next');
+  const md5 = digit => digit.repeat(32);
+  const pin = (version, file, sum) => {
+    fs.mkdirSync(path.join(version, 'tools', 'mods'), { recursive: true });
+    fs.writeFileSync(path.join(version, 'tools', 'mods', file), JSON.stringify({ md5: sum }));
+  };
+  const install = (directory, sum, file) => {
+    fs.mkdirSync(directory, { recursive: true });
+    fs.writeFileSync(path.join(directory, '.release'), JSON.stringify({ md5: sum }));
+    fs.writeFileSync(path.join(directory, file), 'downloaded');
+  };
+  fs.mkdirSync(path.join(next, 'mods'), { recursive: true });
+  pin(root, 'eclipse-maps.json', md5('a'));
+  pin(next, 'eclipse-maps.json', md5('a'));
+  pin(root, 'achievement-icons.json', md5('b'));
+  pin(next, 'achievement-icons.json', md5('c'));
+  const [code] = Object.keys(port.LANGUAGE_PACKS);
+  install(port.eclipseMapsDirectory(root), md5('a'), 'bianco.jpg');
+  install(port.achievementIconsDirectory(root), md5('b'), '1.png');
+  install(port.languagePackDirectory(root, code), port.LANGUAGE_PACKS[code].md5, 'text.bmg');
+  game.carryUserFiles(root, next);
+  // The same pin: a copy of its own, not a link into the last version.
+  assert.ok(port.eclipseMapsInstalled(next));
+  assert.ok(!fs.lstatSync(port.eclipseMapsDirectory(next)).isSymbolicLink());
+  assert.equal(fs.readFileSync(path.join(port.eclipseMapsDirectory(next), 'bianco.jpg'), 'utf8'), 'downloaded');
+  assert.ok(port.languagePackInstalled(next, code));
+  // A new pin: left for the update to download, the last version's untouched.
+  assert.ok(!fs.existsSync(port.achievementIconsDirectory(next)));
+  assert.ok(port.achievementIconsInstalled(root));
+  assert.ok(!fs.readdirSync(path.join(next, 'mods', 'maps')).some(name => name.endsWith('.carry-part')));
+});
+
 test('a mod folder link left pointing at a removed version is replaced, not tripped over', t => {
   const { root } = fixture(t);
   const next = path.join(root, 'next');

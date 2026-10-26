@@ -1220,7 +1220,13 @@ function settingsValue() {
 
 async function saveSettings() {
   if (changing) return;
-  try { refresh(await window.sms.saveSettings(settingsValue())); }
+  // Turning Eclipse on first reads the whole disc, which takes a few seconds.
+  const checkingDisc = $('eclipse').checked && !current?.config?.settings?.eclipse && current?.romReady && !current?.eclipseInstalled;
+  if (checkingDisc) setMessage('Checking that Super Mario Eclipse can patch your disc…');
+  try {
+    refresh(await window.sms.saveSettings(settingsValue()));
+    if (checkingDisc) setMessage('');
+  }
   // A refused change (a task started) must not stay shown as if it were saved.
   catch (error) { if (current) refresh(current); showError(error); }
 }

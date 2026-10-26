@@ -2,6 +2,7 @@
   "_instructions": "Players see this file in the launcher. Add each player-visible change here in the same commit: launcher changes to beta.launcher, game changes Beta now builds to beta.game. Releases move beta into a new entry (npm run update:game does it). One plain sentence for players per line, no commit hashes or PR numbers. See AGENTS.md.",
   "beta": {
     "launcher": [
+      "Fixed turning on Super Mario Eclipse with a disc it can't patch failing only midway through setup with an MD5 error: the launcher now checks your disc when you turn Eclipse on and before it sets Eclipse up, and says plainly that Eclipse needs a full 1:1 copy of the North American disc, not a trimmed, compressed or other copy. Sunshine still plays from it.",
       "Updating or switching between Beta and Stable no longer downloads Super Mario Eclipse's radar maps, the achievement icons or your language pack again when the new version uses the same ones.",
       "Fixed Customize Mario in Super Mario Eclipse leaving the skin around Mario's mouth and chin its usual colour in the game: it now takes your colours, as in the preview.",
       "Fixed updating on Windows sometimes stopping with \"EPERM: operation not permitted, rename\" while it backed up your saves: the backup no longer moves its folder into place once it's written.",

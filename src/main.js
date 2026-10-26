@@ -31,6 +31,7 @@ const multiplayer = require('./multiplayer');
 const nat = require('./nat');
 const rooms = require('./rooms');
 const nativeMods = require('./native-mods');
+const eclipseDisc = require('./eclipse-disc');
 const { cleanOutputLine, createActivityReader } = require('./progress');
 const { createActivityLog } = require('./activity-log');
 const { observeProcess, exitDescription, failureMessage } = require('./process-output');
@@ -816,9 +817,22 @@ async function installPort() {
   return { ok: true };
 }
 
+// Eclipse patches only a 1:1 copy of the North American disc. Says so before
+// any download or build, instead of the game's installer failing midway.
+async function checkEclipseDisc(rom, root = config.repo) {
+  log('Checking that Super Mario Eclipse can patch your disc…');
+  try {
+    await eclipseDisc.check(rom, { root: port.isPort(root) ? root : null });
+  } catch (error) {
+    if (error.eclipseDisc) log(`Your disc's MD5 is ${error.md5}; Super Mario Eclipse needs ${error.expected}.`);
+    throw error;
+  }
+}
+
 async function installEclipse(root = requireRepo()) {
-  await ensureBuildTools();
   const rom = port.validateRom(config.rom);
+  await checkEclipseDisc(rom, root);
+  await ensureBuildTools();
   const cmd = port.commandFor(root, 'python', [rom], process.platform, toolEnv());
   return launch(cmd.command, cmd.args, { cwd: cmd.cwd, env: cmd.env }, 'Install Eclipse from your disc');
 }
@@ -999,6 +1013,7 @@ async function build(forceFresh = false) {
   const original = requireRepo();
   const settings = { ...config.settings };
   const rom = port.validateRom(config.rom);
+  if (settings.eclipse && !fs.existsSync(path.join(original, port.ECLIPSE_ISO))) await checkEclipseDisc(rom, original);
   const saveDirectory = currentSaveDirectory();
   makeSaveBackup('before-port-update');
   await ensureBuildTools();
@@ -2090,9 +2105,16 @@ function registerHandlers() {
       if (match) fs.writeFileSync(path.join(dir, `${style}.png`), Buffer.from(match[1], 'base64'));
     }
   });
-  ipcMain.handle('save-settings', (_event, input) => {
+  ipcMain.handle('save-settings', async (_event, input) => {
     if (operation || active) throw new Error('Finish the current task before changing settings.');
     const settings = port.normalizeSettings(input, process.platform, process.arch, port.gameFeatures(port.isPort(config.repo) ? config.repo : null));
+    // Turning Eclipse on with a disc it can't patch says so now, not midway through setup.
+    if (settings.eclipse && !config.settings.eclipse && !fs.existsSync(path.join(config.repo, port.ECLIPSE_ISO))) {
+      let rom = null;
+      try { rom = port.validateRom(config.rom); } catch (_) { /* no usable disc yet: setup checks it later */ }
+      if (rom) await checkEclipseDisc(rom);
+      if (operation || active) throw new Error('Finish the current task before changing settings.');
+    }
     if (settings.arch !== config.settings.arch || settings.eclipse !== config.settings.eclipse)
       config.previousInstall = port.playableInstall({ ...config, saveDirectory: currentSaveDirectory() }) || config.previousInstall;
     const channelChanged = settings.updateChannel !== config.settings.updateChannel;

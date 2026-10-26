@@ -34,6 +34,7 @@ const nativeMods = require('./native-mods');
 const { cleanOutputLine, createActivityReader } = require('./progress');
 const { createActivityLog } = require('./activity-log');
 const { observeProcess, exitDescription, failureMessage } = require('./process-output');
+const { stopLeftoverAddr2line } = require('./leftover-processes');
 const { createSessionLog } = require('./session-log');
 const displayScale = require('./display-scale');
 const marioModel = require('./mario-model');
@@ -599,7 +600,9 @@ async function launch(command, args, options = {}, label = 'Task', isGame = fals
         broadcast('activity', activityState());
       }
     }
-    const { error, code, signal } = await observeProcess(child, { output, line });
+    // The game ends when it exits, even with something it started still holding its output.
+    const { error, code, signal } = await observeProcess(child, { output, line,
+      ...(isGame ? { settleAfterExit: 5000, lingering: () => endGameLeftovers(child) } : {}) });
     active = null;
     broadcast('activity', activityState());
     if (error) throw error;
@@ -613,6 +616,19 @@ async function launch(command, args, options = {}, label = 'Task', isGame = fals
     error.activityLogged = true;
     throw error;
   }
+}
+
+// A game older than pc-port#269 left its crash reporter's addr2line running, holding the game's
+// output and files (leftover-processes.js). With parent, the game's own too, wherever it reads.
+async function stopLeftoverSymbolisers(parent = 0) {
+  const ended = await stopLeftoverAddr2line({ parent, roots: [config.installRoot, config.repo, config.previousInstall?.repo] });
+  if (ended.length) log(`Ended ${ended.length === 1 ? 'an addr2line.exe' : `${ended.length} addr2line.exe`} that the game's crash reporter left running.`);
+}
+
+function endGameLeftovers(child) {
+  log('The game has closed, but a program it started still had its output open. Ending it.');
+  if (process.platform === 'win32') stopLeftoverSymbolisers(child.pid);
+  else { try { process.kill(-child.pid, 'SIGTERM'); } catch (_) { /* already exited */ } }
 }
 
 async function capture(command, args, cwd, env = process.env) {
@@ -1117,6 +1133,8 @@ async function removeOldBuildTools() {
 // Keep the current and previous game versions; older ones only take up space.
 async function removeOldVersions(shouldStop) {
   if (!config.installRoot || !binaryReady()) return;
+  // One from an earlier crash keeps an old version's disc open.
+  if (!active) await stopLeftoverSymbolisers();
   const removed = await game.pruneSnapshots(config.installRoot, [config.repo, config.previousInstall?.repo],
     [currentSaveDirectory(), config.previousInstall?.saveDirectory, config.rom, config.previousInstall?.rom],
     (error, folder) => log(['EBUSY', 'EPERM', 'EACCES'].includes(error.code) && error.path
@@ -2327,7 +2345,11 @@ function registerHandlers() {
     if (!active) return false;
     if (!active.child) return false;
     stoppedAt = Date.now();
-    if (process.platform === 'win32') spawn('taskkill', ['/PID', String(active.child.pid), '/T', '/F'], { windowsHide: true });
+    if (process.platform === 'win32') {
+      spawn('taskkill', ['/PID', String(active.child.pid), '/T', '/F'], { windowsHide: true });
+      // taskkill /T follows children only while the game runs: one it left behind is ended by name.
+      if (active.label === 'Play Super Mario Sunshine') stopLeftoverSymbolisers(active.child.pid);
+    }
     else { try { process.kill(-active.child.pid, 'SIGTERM'); } catch (error) { if (error.code !== 'ESRCH') throw error; } }
     return true;
   });

@@ -69,7 +69,11 @@ function decodeLines(bytes, fallback) {
 // Each pipe keeps its own undecoded bytes and partial line. Show partial output
 // as it arrives, then update that entry instead of duplicating it at the next chunk.
 // codePage: the decoder for lines that aren't UTF-8 (default: Windows' ANSI code page).
-function observeProcess(child, { output, line = () => {}, capture = false, codePage } = {}) {
+// A program the child started can hold its pipes open after it ends, as the game's
+// crash reporter's addr2line did: settleAfterExit is how long, in milliseconds, to
+// wait for the rest of the output once the child exits. Then lingering() is told,
+// the pipes are closed, and the child counts as finished.
+function observeProcess(child, { output, line = () => {}, capture = false, codePage, settleAfterExit, lingering } = {}) {
   const fallback = () => (codePage !== undefined ? codePage : windowsCodePage());
   return new Promise(resolve => {
     const readers = [];
@@ -120,9 +124,22 @@ function observeProcess(child, { output, line = () => {}, capture = false, codeP
       });
     }
     child.on('error', value => { error = value; });
-    child.on('close', (code, signal) => {
+    let finished = false, settling = null;
+    function finish(code, signal) {
+      if (finished) return;
+      finished = true;
+      clearTimeout(settling);
       for (const end of readers) end();
       resolve({ code, signal, error, ...captured });
+    }
+    child.on('close', finish);
+    if (settleAfterExit !== undefined) child.on('exit', (code, signal) => {
+      settling = setTimeout(() => {
+        lingering?.();
+        child.stdout?.destroy();
+        child.stderr?.destroy();
+        finish(code, signal);
+      }, settleAfterExit);
     });
   });
 }

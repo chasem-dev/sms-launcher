@@ -113,6 +113,41 @@ test('signal termination and spawn failure retain their actual cause', { timeout
   assert.equal(failed.error.code, 'ENOENT');
 });
 
+// As the game's crash reporter's addr2line did: started with the game's pipes, and still running after it.
+test('a child ends when it exits, after settleAfterExit, though a program it started holds its pipes', { timeout: 10000 }, async () => {
+  const lines = [];
+  let lingered = 0, holder = 0;
+  const { result } = start(`
+    const { spawn } = require('node:child_process');
+    const holder = spawn(process.execPath, ['-e', 'setTimeout(() => {}, 30000)'], { stdio: 'inherit', detached: true });
+    holder.unref();
+    console.log('holder ' + holder.pid);
+    console.error('crashed');
+    process.exit(3);
+  `, () => null, { line: value => { lines.push(value); holder ||= Number(/^holder (\d+)$/.exec(value)?.[1] || 0); },
+    settleAfterExit: 300, lingering: () => { lingered++; } });
+  try {
+    const started = Date.now();
+    const status = await result;
+    assert.equal(status.code, 3);
+    assert.equal(lingered, 1);
+    assert.ok(Date.now() - started < 5000);
+    assert.ok(lines.includes('crashed'));
+    assert.ok(holder > 0);
+    assert.doesNotThrow(() => process.kill(holder, 0), 'the holder still runs: only the launcher stopped waiting');
+  } finally {
+    try { process.kill(holder, 'SIGKILL'); } catch (_) { /* already exited */ }
+  }
+});
+
+test('a child whose pipes close as it exits is not lingering', async () => {
+  let lingered = 0;
+  const { result } = start('console.log("done")', () => null, { settleAfterExit: 50, lingering: () => { lingered++; } });
+  assert.equal((await result).code, 0);
+  await new Promise(resolve => setTimeout(resolve, 150));
+  assert.equal(lingered, 0);
+});
+
 test('Windows native statuses use hexadecimal and signed or unsigned codes mean the same exception', () => {
   for (const [code, name] of [[0xC0000374, 'heap corruption'], [0xC0000409, 'fast-fail'],
     [0xC00000FD, 'stack overflow'], [0xC0000005, 'access violation']]) {

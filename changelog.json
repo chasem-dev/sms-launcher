@@ -2,6 +2,7 @@
   "_instructions": "Players see this file in the launcher. Add each player-visible change here in the same commit: launcher changes to beta.launcher, game changes Beta now builds to beta.game. Releases move beta into a new entry (npm run update:game does it). One plain sentence for players per line, no commit hashes or PR numbers. See AGENTS.md.",
   "beta": {
     "launcher": [
+      "Fixed the game still showing as running in Activity on Windows after it had closed, with Stop doing nothing: addr2line.exe, which the game starts when it crashes, was still running. The launcher now ends it when the game closes, when you press Stop and when the launcher starts, so it no longer keeps old game versions from being removed either.",
       "Fixed updating on Windows sometimes stopping with \"EPERM: operation not permitted, rename\" while it backed up your saves: the backup no longer moves its folder into place once it's written.",
       "Fixed installing Super Mario Eclipse, textures, cutscenes and language packs on Windows when the launcher or your disc is in a folder whose name has brackets or an apostrophe, like E:\\[Games]: they stopped with \"can't open file\" and \"No such file or directory\".",
       "Multiplayer with Super Mario Eclipse: your Customize Mario colours now go to the other players, and theirs show on your screen, as they already did without Eclipse.",

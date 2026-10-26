@@ -1,0 +1,773 @@
+{
+ "comment": "Super Mario Eclipse's achievements: their names and what to do, as the in-game banner and SMS Launcher's Achievements page show them in Eclipse. Ids are the numbers the game unlocks (an Eclipse build's own, kept apart from Sunshine's); icons are assets/achievements/eclipse/<id>.png.",
+ "achievements": [
+  {
+   "id": 1,
+   "title": "Trials Passed",
+   "description": "Clear every trial and open the temple gate.",
+   "stage": "Tutorial"
+  },
+  {
+   "id": 2,
+   "title": "Seventh Heaven",
+   "description": "Finish Episode 7 in all 11 areas of Isle Delfino.",
+   "stage": "Anywhere"
+  },
+  {
+   "id": 3,
+   "title": "Brother's Turn",
+   "description": "Get the Shine Sprite at the top of Corona Mountain.",
+   "stage": "Corona Mountain"
+  },
+  {
+   "id": 4,
+   "title": "Out of Breath",
+   "description": "Beat Il Piantissimo in all 4 of his races.",
+   "stage": "Anywhere"
+  },
+  {
+   "id": 5,
+   "title": "Welcome Back",
+   "description": "Get the first Shine Sprite at the Delfino Airstrip.",
+   "stage": "Delfino Airstrip"
+  },
+  {
+   "id": 6,
+   "title": "Bianco Bright",
+   "description": "Get all 11 Shine Sprites in Bianco Hills.",
+   "stage": "Bianco Hills"
+  },
+  {
+   "id": 7,
+   "title": "Windmill Wallet",
+   "description": "Find all 30 Blue Coins in Bianco Hills.",
+   "stage": "Bianco Hills"
+  },
+  {
+   "id": 8,
+   "title": "Ricco Regular",
+   "description": "Get all 11 Shine Sprites in Ricco Harbor.",
+   "stage": "Ricco Harbor"
+  },
+  {
+   "id": 9,
+   "title": "Dockside Blues",
+   "description": "Find all 30 Blue Coins in Ricco Harbor.",
+   "stage": "Ricco Harbor"
+  },
+  {
+   "id": 10,
+   "title": "Gelato Grand Tour",
+   "description": "Get all 11 Shine Sprites in Gelato Beach.",
+   "stage": "Gelato Beach"
+  },
+  {
+   "id": 11,
+   "title": "Sandy Savings",
+   "description": "Find all 30 Blue Coins in Gelato Beach.",
+   "stage": "Gelato Beach"
+  },
+  {
+   "id": 12,
+   "title": "Park Pass",
+   "description": "Get all 11 Shine Sprites in Pinna Park.",
+   "stage": "Pinna Park"
+  },
+  {
+   "id": 13,
+   "title": "Coaster Change",
+   "description": "Find all 30 Blue Coins in Pinna Park.",
+   "stage": "Pinna Park"
+  },
+  {
+   "id": 14,
+   "title": "Five-Star Stay",
+   "description": "Get all 11 Shine Sprites in Sirena Beach.",
+   "stage": "Sirena Beach"
+  },
+  {
+   "id": 15,
+   "title": "Lost and Found",
+   "description": "Find all 30 Blue Coins in Sirena Beach.",
+   "stage": "Sirena Beach"
+  },
+  {
+   "id": 16,
+   "title": "Village Light",
+   "description": "Get all 11 Shine Sprites in Pianta Village.",
+   "stage": "Pianta Village"
+  },
+  {
+   "id": 17,
+   "title": "Under the Mushrooms",
+   "description": "Find all 30 Blue Coins in Pianta Village.",
+   "stage": "Pianta Village"
+  },
+  {
+   "id": 18,
+   "title": "Cliffside Shine",
+   "description": "Get all 11 Shine Sprites in Noki Bay.",
+   "stage": "Noki Bay"
+  },
+  {
+   "id": 19,
+   "title": "Bay of Blues",
+   "description": "Find all 30 Blue Coins in Noki Bay.",
+   "stage": "Noki Bay"
+  },
+  {
+   "id": 20,
+   "title": "Pride of the Plaza",
+   "description": "Get all 60 Shine Sprites in Delfino Plaza and the places it leads to.",
+   "stage": "Delfino Plaza"
+  },
+  {
+   "id": 21,
+   "title": "Plaza Pocket Money",
+   "description": "Find all 20 Blue Coins in Delfino Plaza and the places it leads to.",
+   "stage": "Delfino Plaza"
+  },
+  {
+   "id": 22,
+   "title": "Volcanic Blues",
+   "description": "Find all 10 Blue Coins in Corona Mountain.",
+   "stage": "Corona Mountain"
+  },
+  {
+   "id": 23,
+   "title": "Top of Erto",
+   "description": "Get all 11 Shine Sprites in Erto Rock.",
+   "stage": "Erto Rock"
+  },
+  {
+   "id": 24,
+   "title": "Rock Bottom Blues",
+   "description": "Find all 20 Blue Coins in Erto Rock.",
+   "stage": "Erto Rock"
+  },
+  {
+   "id": 25,
+   "title": "Keeper of the Light",
+   "description": "Get all 11 Shine Sprites in Lighthouse Island.",
+   "stage": "Lighthouse Island"
+  },
+  {
+   "id": 26,
+   "title": "Beacon Blues",
+   "description": "Find all 20 Blue Coins in Lighthouse Island.",
+   "stage": "Lighthouse Island"
+  },
+  {
+   "id": 27,
+   "title": "Fleet Admiral",
+   "description": "Get all 11 Shine Sprites in Warship Island.",
+   "stage": "Warship Island"
+  },
+  {
+   "id": 28,
+   "title": "War Chest",
+   "description": "Find all 20 Blue Coins in Warship Island.",
+   "stage": "Warship Island"
+  },
+  {
+   "id": 29,
+   "title": "Suite Success",
+   "description": "Get all 11 Shine Sprites in Hotel Lacrima.",
+   "stage": "Hotel Lacrima"
+  },
+  {
+   "id": 30,
+   "title": "Room Service Tips",
+   "description": "Find all 20 Blue Coins in Hotel Lacrima.",
+   "stage": "Hotel Lacrima"
+  },
+  {
+   "id": 31,
+   "title": "Pit Stop",
+   "description": "Get all 7 Shine Sprites in Pianta Pit.",
+   "stage": "Pianta Pit"
+  },
+  {
+   "id": 32,
+   "title": "Pit Fortune",
+   "description": "Find all 20 Blue Coins in Pianta Pit.",
+   "stage": "Pianta Pit"
+  },
+  {
+   "id": 33,
+   "title": "Captain of the Cruiser",
+   "description": "Get all 6 Shine Sprites in Daisy Cruiser.",
+   "stage": "Daisy Cruiser"
+  },
+  {
+   "id": 34,
+   "title": "Deckhand Savings",
+   "description": "Find all 10 Blue Coins in Daisy Cruiser.",
+   "stage": "Daisy Cruiser"
+  },
+  {
+   "id": 35,
+   "title": "Sweet Dreams",
+   "description": "Get all 5 Shine Sprites in Mario's Dream.",
+   "stage": "Mario's Dream"
+  },
+  {
+   "id": 36,
+   "title": "Dream Money",
+   "description": "Find all 10 Blue Coins in Mario's Dream.",
+   "stage": "Mario's Dream"
+  },
+  {
+   "id": 37,
+   "title": "Summit Shine",
+   "description": "Get all 5 Shine Sprites in Lancia Fredda Peaks.",
+   "stage": "Lancia Fredda Peaks"
+  },
+  {
+   "id": 38,
+   "title": "Frozen Assets",
+   "description": "Find all 10 Blue Coins in Lancia Fredda Peaks.",
+   "stage": "Lancia Fredda Peaks"
+  },
+  {
+   "id": 39,
+   "title": "Aesthetic Achieved",
+   "description": "Get all 5 Shine Sprites in Vaporwave.",
+   "stage": "Vaporwave"
+  },
+  {
+   "id": 40,
+   "title": "Retro Revenue",
+   "description": "Find all 10 Blue Coins in Vaporwave.",
+   "stage": "Vaporwave"
+  },
+  {
+   "id": 41,
+   "title": "Yoshi's Hero",
+   "description": "Get all 5 Shine Sprites in Yoshi Village.",
+   "stage": "Yoshi Village"
+  },
+  {
+   "id": 42,
+   "title": "Egg Money",
+   "description": "Find all 10 Blue Coins in Yoshi Village.",
+   "stage": "Yoshi Village"
+  },
+  {
+   "id": 43,
+   "title": "Lights of Red Lily",
+   "description": "Get all 5 Shine Sprites in Red Lily City.",
+   "stage": "Red Lily City"
+  },
+  {
+   "id": 44,
+   "title": "City Savings",
+   "description": "Find all 10 Blue Coins in Red Lily City.",
+   "stage": "Red Lily City"
+  },
+  {
+   "id": 45,
+   "title": "Beach Patrol",
+   "description": "Get all 5 Shine Sprites in Peach Beach.",
+   "stage": "Peach Beach"
+  },
+  {
+   "id": 46,
+   "title": "Shoreline Change",
+   "description": "Find all 10 Blue Coins in Peach Beach.",
+   "stage": "Peach Beach"
+  },
+  {
+   "id": 47,
+   "title": "The House Shines",
+   "description": "Get all 5 Shine Sprites in Spettro Casino.",
+   "stage": "Spettro Casino"
+  },
+  {
+   "id": 48,
+   "title": "High Roller",
+   "description": "Find all 10 Blue Coins in Spettro Casino.",
+   "stage": "Spettro Casino"
+  },
+  {
+   "id": 49,
+   "title": "Trailblazer",
+   "description": "Get all 9 Shine Sprites on the trails that link Isle Delfino.",
+   "stage": "Isle Delfino"
+  },
+  {
+   "id": 50,
+   "title": "Every Last Shine",
+   "description": "Get all 240 Shine Sprites.",
+   "stage": "Anywhere"
+  },
+  {
+   "id": 51,
+   "title": "Every Last Blue",
+   "description": "Find all 420 Blue Coins.",
+   "stage": "Anywhere"
+  },
+  {
+   "id": 52,
+   "title": "Learner's Permit",
+   "description": "Get all 4 1-Ups in the Tutorial in one visit.",
+   "stage": "Tutorial"
+  },
+  {
+   "id": 53,
+   "title": "Trial by Fire",
+   "description": "Get both 1-Ups in Corona Mountain's Fire Shrine in one visit.",
+   "stage": "Corona Mountain"
+  },
+  {
+   "id": 54,
+   "title": "Rock Steady",
+   "description": "Get both 1-Ups in Erto Rock in one visit.",
+   "stage": "Erto Rock"
+  },
+  {
+   "id": 55,
+   "title": "Garden Shed Bounty",
+   "description": "Get both 1-Ups in the Secret of the Shed in one visit.",
+   "stage": "Erto Rock"
+  },
+  {
+   "id": 56,
+   "title": "Three Lights",
+   "description": "Get all 3 1-Ups in Lighthouse Island in one visit.",
+   "stage": "Lighthouse Island"
+  },
+  {
+   "id": 57,
+   "title": "Down in the Basement",
+   "description": "Get both 1-Ups in the Secret of the Basement in one visit.",
+   "stage": "Lighthouse Island"
+  },
+  {
+   "id": 58,
+   "title": "Shipshape",
+   "description": "Get all 4 1-Ups in Warship Island in one visit.",
+   "stage": "Warship Island"
+  },
+  {
+   "id": 59,
+   "title": "Periscope Up",
+   "description": "Get both 1-Ups in the (Sub)Marine Biology Secret in one visit.",
+   "stage": "Warship Island"
+  },
+  {
+   "id": 60,
+   "title": "Seaside Stroll",
+   "description": "Get the 1-Up on Lacrima's beach.",
+   "stage": "Hotel Lacrima"
+  },
+  {
+   "id": 61,
+   "title": "Room With a View",
+   "description": "Get the 1-Up inside Hotel Lacrima.",
+   "stage": "Hotel Lacrima"
+  },
+  {
+   "id": 62,
+   "title": "Ventilation",
+   "description": "Get all 3 1-Ups in the Secret of the Air Vent in one visit.",
+   "stage": "Hotel Lacrima"
+  },
+  {
+   "id": 63,
+   "title": "Deep Pockets",
+   "description": "Get all 6 1-Ups in Pianta Pit in one visit.",
+   "stage": "Pianta Pit"
+  },
+  {
+   "id": 64,
+   "title": "All Aboard",
+   "description": "Get all 4 1-Ups in Daisy Cruiser in one visit.",
+   "stage": "Daisy Cruiser"
+  },
+  {
+   "id": 65,
+   "title": "Cargo Hold",
+   "description": "Get both 1-Ups in Planes and Trains in one visit.",
+   "stage": "Daisy Cruiser"
+  },
+  {
+   "id": 66,
+   "title": "Daydreamer",
+   "description": "Get all 4 1-Ups in Mario's Dream in one visit.",
+   "stage": "Mario's Dream"
+  },
+  {
+   "id": 67,
+   "title": "Mountain Air",
+   "description": "Get all 4 1-Ups in Lancia Fredda Peaks in one visit.",
+   "stage": "Lancia Fredda Peaks"
+  },
+  {
+   "id": 68,
+   "title": "Cold Feet",
+   "description": "Get both 1-Ups in the Secret of the Ice Cave in one visit.",
+   "stage": "Lancia Fredda Peaks"
+  },
+  {
+   "id": 69,
+   "title": "Pixel Perfect",
+   "description": "Get the 1-Up in Vaporwave.",
+   "stage": "Vaporwave"
+  },
+  {
+   "id": 70,
+   "title": "Memphis Two-Step",
+   "description": "Get both 1-Ups in Memphis Mania in one visit.",
+   "stage": "Vaporwave"
+  },
+  {
+   "id": 71,
+   "title": "A Dozen Lives",
+   "description": "Get all 12 1-Ups in Yoshi Village in one visit.",
+   "stage": "Yoshi Village"
+  },
+  {
+   "id": 72,
+   "title": "Block Party",
+   "description": "Get all 4 1-Ups in Red Lily City in one visit.",
+   "stage": "Red Lily City"
+  },
+  {
+   "id": 73,
+   "title": "Beachcomber",
+   "description": "Get all 5 1-Ups in Peach Beach in one visit.",
+   "stage": "Peach Beach"
+  },
+  {
+   "id": 74,
+   "title": "Double Down",
+   "description": "Get both 1-Ups in Spettro Casino in one visit.",
+   "stage": "Spettro Casino"
+  },
+  {
+   "id": 75,
+   "title": "Rook and Roll",
+   "description": "Get both 1-Ups in the Secret of the Haunted Rook in one visit.",
+   "stage": "Spettro Casino"
+  },
+  {
+   "id": 76,
+   "title": "Haunted Halls",
+   "description": "Get the Power Star on the castle's second floor.",
+   "stage": "Peach's Castle"
+  },
+  {
+   "id": 77,
+   "title": "Early Bianco",
+   "description": "Get the Power Star in Beta Bianco Hills.",
+   "stage": "Peach's Castle"
+  },
+  {
+   "id": 78,
+   "title": "Fishbowl",
+   "description": "Get the Power Star in the Secret Aquarium.",
+   "stage": "Peach's Castle"
+  },
+  {
+   "id": 79,
+   "title": "Fort Knocks",
+   "description": "Get the Power Star in Battle Fort.",
+   "stage": "Peach's Castle"
+  },
+  {
+   "id": 80,
+   "title": "Island Hopper",
+   "description": "Get the Power Star in Sunshine Isles.",
+   "stage": "Peach's Castle"
+  },
+  {
+   "id": 81,
+   "title": "Star-Studded Beach",
+   "description": "Get all 4 Power Stars in Starshine Beach in one visit.",
+   "stage": "Peach's Castle"
+  },
+  {
+   "id": 82,
+   "title": "Harbor Blueprint",
+   "description": "Get the Power Star in Beta Ricco Harbor.",
+   "stage": "Peach's Castle"
+  },
+  {
+   "id": 83,
+   "title": "Show Floor Hills",
+   "description": "Get the Power Star in E3 Bianco Hills.",
+   "stage": "Peach's Castle"
+  },
+  {
+   "id": 84,
+   "title": "Show Floor Town",
+   "description": "Get the Power Star in E3 Dolpic Town.",
+   "stage": "Peach's Castle"
+  },
+  {
+   "id": 85,
+   "title": "Prototype Town",
+   "description": "Get the Power Star in Spaceworld Dolpic Town.",
+   "stage": "Peach's Castle"
+  },
+  {
+   "id": 86,
+   "title": "Rolling Along",
+   "description": "Get the Power Star in Super Monkey Ball.",
+   "stage": "Peach's Castle"
+  },
+  {
+   "id": 87,
+   "title": "Shell Prototype",
+   "description": "Get both Power Stars in Beta Shell Secret in one visit.",
+   "stage": "Peach's Castle"
+  },
+  {
+   "id": 88,
+   "title": "Egg Hunt",
+   "description": "Get all 3 Power Stars in Easter Egg Island in one visit.",
+   "stage": "Peach's Castle"
+  },
+  {
+   "id": 89,
+   "title": "Prototype Hills",
+   "description": "Get the Power Star in Spaceworld Bianco Hills.",
+   "stage": "Peach's Castle"
+  },
+  {
+   "id": 90,
+   "title": "Gravity Check",
+   "description": "Get the Power Star in Super Galaxy.",
+   "stage": "Peach's Castle"
+  },
+  {
+   "id": 91,
+   "title": "Sail Away",
+   "description": "Get the Power Star in Windfall Island.",
+   "stage": "Peach's Castle"
+  },
+  {
+   "id": 92,
+   "title": "Old Flame",
+   "description": "Get the Power Star in Old Lighthouse Island.",
+   "stage": "Peach's Castle"
+  },
+  {
+   "id": 93,
+   "title": "First Draft Peaks",
+   "description": "Get all 3 Power Stars in Lancia Fredda Peaks v1 in one visit.",
+   "stage": "Peach's Castle"
+  },
+  {
+   "id": 94,
+   "title": "Early Eggs",
+   "description": "Get the Power Star in Beta Yoshi Village.",
+   "stage": "Peach's Castle"
+  },
+  {
+   "id": 95,
+   "title": "Square One",
+   "description": "Get the Power Star in Beta Delfino Square.",
+   "stage": "Peach's Castle"
+  },
+  {
+   "id": 96,
+   "title": "Trust Issues",
+   "description": "Get both Power Stars in False Block Nexus in one visit.",
+   "stage": "Peach's Castle"
+  },
+  {
+   "id": 97,
+   "title": "Raft Party",
+   "description": "Get both Power Stars in Floating Island Floatilla in one visit.",
+   "stage": "Peach's Castle"
+  },
+  {
+   "id": 98,
+   "title": "Stone Cold",
+   "description": "Get the Power Star in Isle Medusa.",
+   "stage": "Peach's Castle"
+  },
+  {
+   "id": 99,
+   "title": "Splash Zone",
+   "description": "Get the Power Star in Waterpark.",
+   "stage": "Peach's Castle"
+  },
+  {
+   "id": 100,
+   "title": "Hop Along",
+   "description": "Get both Power Stars in Lily Pad Obstacle Course in one visit.",
+   "stage": "Peach's Castle"
+  },
+  {
+   "id": 101,
+   "title": "Jungle Spin",
+   "description": "Get the Power Star in N. Sanity Jungle.",
+   "stage": "Peach's Castle"
+  },
+  {
+   "id": 102,
+   "title": "Low Poly",
+   "description": "Get both Power Stars in Beta Vaporwave in one visit.",
+   "stage": "Peach's Castle"
+  },
+  {
+   "id": 103,
+   "title": "Fresh Paint",
+   "description": "Get the Power Star in New Plaza.",
+   "stage": "Peach's Castle"
+  },
+  {
+   "id": 104,
+   "title": "Clockwork Forest",
+   "description": "Get the Power Star in Click Clock Wood.",
+   "stage": "Peach's Castle"
+  },
+  {
+   "id": 105,
+   "title": "Memphis Draft",
+   "description": "Get both Power Stars in Beta Memphis in one visit.",
+   "stage": "Peach's Castle"
+  },
+  {
+   "id": 106,
+   "title": "Cellar Dweller",
+   "description": "Get both 1-Ups in the castle's basement in one visit.",
+   "stage": "Peach's Castle"
+  },
+  {
+   "id": 107,
+   "title": "Tank Life",
+   "description": "Get the 1-Up in the Secret Aquarium.",
+   "stage": "Peach's Castle"
+  },
+  {
+   "id": 108,
+   "title": "Under Siege",
+   "description": "Get both 1-Ups in Battle Fort in one visit.",
+   "stage": "Peach's Castle"
+  },
+  {
+   "id": 109,
+   "title": "Coconut Life",
+   "description": "Get the 1-Up in Sunshine Isles.",
+   "stage": "Peach's Castle"
+  },
+  {
+   "id": 110,
+   "title": "Nine Lives",
+   "description": "Get all 9 1-Ups in Starshine Beach in one visit.",
+   "stage": "Peach's Castle"
+  },
+  {
+   "id": 111,
+   "title": "Hot Shells",
+   "description": "Get all 3 1-Ups in Beta Shell Secret in one visit.",
+   "stage": "Peach's Castle"
+  },
+  {
+   "id": 112,
+   "title": "Ledge Life",
+   "description": "Get the 1-Up in Easter Egg Island.",
+   "stage": "Peach's Castle"
+  },
+  {
+   "id": 113,
+   "title": "Space Life",
+   "description": "Get the 1-Up in Super Galaxy.",
+   "stage": "Peach's Castle"
+  },
+  {
+   "id": 114,
+   "title": "Island Treasure",
+   "description": "Get all 3 1-Ups in Windfall Island in one visit.",
+   "stage": "Peach's Castle"
+  },
+  {
+   "id": 115,
+   "title": "Castle Climber",
+   "description": "Get all 7 1-Ups in Lancia Fredda Peaks v1 in one visit.",
+   "stage": "Peach's Castle"
+  },
+  {
+   "id": 116,
+   "title": "Basic Life",
+   "description": "Get the 1-Up in Beta Vaporwave.",
+   "stage": "Peach's Castle"
+  },
+  {
+   "id": 117,
+   "title": "Pattern Lives",
+   "description": "Get both 1-Ups in Beta Memphis in one visit.",
+   "stage": "Peach's Castle"
+  },
+  {
+   "id": 118,
+   "title": "Hands-On Approach",
+   "description": "Get the first Shine Sprite at the Delfino Airstrip before meeting F.L.U.D.D.",
+   "stage": "Delfino Airstrip"
+  },
+  {
+   "id": 119,
+   "title": "Back Door",
+   "description": "Reach the flooded Delfino Plaza without beating the brown Gatekeeper above the Grand Pianta Statue.",
+   "stage": "Delfino Plaza"
+  },
+  {
+   "id": 120,
+   "title": "Sinking Feeling",
+   "description": "Get caught in the quicksand goop in Episode 7 of Erto Rock.",
+   "stage": "Erto Rock"
+  },
+  {
+   "id": 121,
+   "title": "Minefield Mistake",
+   "description": "Lose 8 health at once to a mine in Episode 1 of Warship Island.",
+   "stage": "Warship Island"
+  },
+  {
+   "id": 122,
+   "title": "Hot Delivery",
+   "description": "Finish the pizza delivery in Episode 8 of Hotel Lacrima with 1 second or less to spare.",
+   "stage": "Hotel Lacrima"
+  },
+  {
+   "id": 123,
+   "title": "Cleaning House",
+   "description": "Defeat the boss of Hotel Lacrima's mafia hideout.",
+   "stage": "Hotel Lacrima"
+  },
+  {
+   "id": 124,
+   "title": "Too Hot to Handle",
+   "description": "Talk to the Yoshi in the burning house in Episode 1 of Yoshi Village.",
+   "stage": "Yoshi Village"
+  },
+  {
+   "id": 125,
+   "title": "Banana Dash",
+   "description": "Reach the finish line in under 30 seconds in Episode 2 of Peach Beach, without Shadow Mario.",
+   "stage": "Peach Beach"
+  },
+  {
+   "id": 126,
+   "title": "No Fan Club",
+   "description": "Talk to the brown Pianta at Ricco Station.",
+   "stage": "Isle Delfino"
+  },
+  {
+   "id": 127,
+   "title": "Mirror Match",
+   "description": "Race Il Piantissimo while playing as him.",
+   "stage": "Anywhere"
+  },
+  {
+   "id": 128,
+   "title": "Player Two",
+   "description": "Walk up to the star statue in the castle's courtyard as Luigi.",
+   "stage": "Peach's Castle"
+  }
+ ]
+}

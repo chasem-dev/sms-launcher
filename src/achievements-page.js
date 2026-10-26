@@ -51,6 +51,11 @@
     $('achievements-ring').style.setProperty('--done', total ? String(unlocked / total) : '0');
     const latest = achievements.filter(item => item.unlockedAt).sort((a, b) => b.unlockedAt - a.unlockedAt)[0];
     $('achievements-latest').textContent = latest ? `Latest: ${latest.title}` : 'None unlocked yet';
+    // The launcher's own list, for a game from before achievements (or none yet): only the game unlocks them.
+    $('achievements-update').hidden = state.counted !== false;
+    $('achievements-update-text').textContent = !current?.repoReady ? 'Set up the game on Play to start unlocking these.'
+      : current.gameSource && !current.game?.needsUpdate ? 'Your custom game source builds a version from before achievements: choose the default one in Settings to start unlocking these.'
+      : 'Your game version came out before achievements: update the game on Play to start unlocking these.';
     for (const button of document.querySelectorAll('[data-achievement-filter]')) {
       const on = button.dataset.achievementFilter === filter;
       button.classList.toggle('active', on);
@@ -110,6 +115,7 @@
     if (page === 'achievements') render();
   }
 
+  $('achievements-update-go').addEventListener('click', () => showPage('play'));
   for (const button of document.querySelectorAll('[data-achievement-filter]')) button.addEventListener('click', () => {
     filter = button.dataset.achievementFilter;
     render();

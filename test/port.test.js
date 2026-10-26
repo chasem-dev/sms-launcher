@@ -455,38 +455,6 @@ test('texture extras are downloaded again only when the port pins another releas
       [progressScript, path.join(root, 'tools', 'mods', 'get.py'), 'extras', '--if-outdated']);
 });
 
-test('achievement icons are downloaded for every player, Eclipse too, again only for another pinned release', t => {
-  const root = temporary(); t.after(() => fs.rmSync(root, { recursive: true, force: true }));
-  const plain = port.normalizeSettings({}), noTextures = port.normalizeSettings({ textures: false });
-  const pin = md5 => {
-    fs.mkdirSync(path.join(root, 'tools', 'mods'), { recursive: true });
-    fs.writeFileSync(path.join(root, 'tools', 'mods', 'achievement-icons.json'), JSON.stringify({ md5 }));
-  };
-  const record = md5 => {
-    fs.mkdirSync(port.achievementIconsDirectory(root), { recursive: true });
-    fs.writeFileSync(path.join(port.achievementIconsDirectory(root), '.release'), JSON.stringify({ md5 }));
-  };
-  assert.equal(port.achievementIconsDirectory(root), path.join(root, 'assets', 'achievements'));
-  // An older port without achievements: nothing to download.
-  assert.equal(port.achievementIconsSupported(root), false);
-  assert.equal(port.achievementIconsWanted(root, plain), false);
-  pin('4989fef3cb8bb19d579258b3dbf39939');
-  assert.equal(port.achievementIconsWanted(root, plain), true);
-  assert.equal(port.achievementIconsWanted(root, noTextures), true, 'whatever the texture settings');
-  // Eclipse's icons come in the same release, in eclipse/.
-  assert.equal(port.achievementIconsWanted(root, port.normalizeSettings({ eclipse: true })), true);
-  assert.equal(port.achievementIconsDirectory(root, true), path.join(root, 'assets', 'achievements', 'eclipse'));
-  record('4989fef3cb8bb19d579258b3dbf39939');
-  assert.equal(port.achievementIconsInstalled(root), true);
-  assert.equal(port.achievementIconsWanted(root, plain), false);
-  pin('0123456789abcdef0123456789abcdef');                  // a newer release pinned
-  assert.equal(port.achievementIconsWanted(root, plain), true);
-  const progressScript = path.resolve(__dirname, '..', 'scripts', 'texture-progress.py');
-  for (const platform of ['linux', 'darwin'])
-    assert.deepEqual(port.commandFor(root, 'achievement-icons', [], platform).args,
-      [progressScript, path.join(root, 'tools', 'mods', 'get.py'), 'achievement-icons', '--if-outdated']);
-});
-
 test('Eclipse radar maps are downloaded for Eclipse with the radar, again only for another pinned release', t => {
   const root = temporary(); t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   const on = port.normalizeSettings({ eclipse: true, radar: true });
@@ -704,8 +672,6 @@ test('Windows command passes an image path as data to MSYS2 Bash', () => {
     assert.equal(extras.args[4], path.resolve(__dirname, '..', 'scripts', 'texture-progress.py'));
     const maps = port.commandFor('C:\\port', 'eclipse-maps', [], 'win32', { PATH: 'C:\\Windows', MSYS2_ROOT: dir });
     assert.match(maps.args[1], /tools\/mods\/get\.py eclipse-maps --if-outdated$/);
-    const icons = port.commandFor('C:\\port', 'achievement-icons', [], 'win32', { PATH: 'C:\\Windows', MSYS2_ROOT: dir });
-    assert.match(icons.args[1], /tools\/mods\/get\.py achievement-icons --if-outdated$/);
     assert.equal(maps.args[4], path.resolve(__dirname, '..', 'scripts', 'texture-progress.py'));
     const language = port.commandFor('C:\\port', 'language', ['es'], 'win32', { PATH: 'C:\\Windows', MSYS2_ROOT: dir });
     assert.match(language.args[1], /python "\$2" "\$3" "\$\{@:4\}"$/);
@@ -718,7 +684,7 @@ test('Windows command passes an image path as data to MSYS2 Bash', () => {
     assert.deepEqual(eclipse.args.slice(3), ['C:\\port', path.resolve(__dirname, '..', 'scripts', 'texture-progress.py'), 'C:\\Games\\Sunshine.iso']);
     // MSYS2 doesn't convert a /e/... argument holding [ ] ' * ? for a native program, so nothing Python
     // opens goes through cygpath -u (E:\[Games]\...\texture-progress.py reached it as C:\e\[Games]\...).
-    for (const action of ['python', 'cutscenes', 'textures', 'texture-extras', 'eclipse-maps', 'achievement-icons', 'language'])
+    for (const action of ['python', 'cutscenes', 'textures', 'texture-extras', 'eclipse-maps', 'language'])
       assert.doesNotMatch(port.commandFor('C:\\port', action, action === 'language' ? ['es'] : ['C:\\Games\\Sunshine.iso'], 'win32',
         { PATH: 'C:\\Windows', MSYS2_ROOT: dir }).args[1], /python[^&]*cygpath/, action);
   } finally {

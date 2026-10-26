@@ -5,6 +5,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
+const port = require('../src/port');
 const portable = require('../src/portable');
 const saves = require('../src/saves');
 
@@ -74,6 +75,32 @@ test('paths recorded inside the portable folder follow it to another drive or co
   assert.equal(portable.relocated('C:/Old/SMS-Launcher-Portable/gone', moved), 'C:/Old/SMS-Launcher-Portable/gone');
   assert.equal(portable.relocated('C:/Old/SMS-Launcher-Portable/build-tools/windows-x64', null),
     'C:/Old/SMS-Launcher-Portable/build-tools/windows-x64');
+});
+
+test("the launcher's scripts outlive the temporary folder a second start of the .exe deletes", t => {
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'sms portable scripts-'));
+  t.after(() => { port.useLauncherScripts(null); fs.rmSync(home, { recursive: true, force: true }); });
+  const resources = path.join(home, 'Temp', '3LF9DEMpouSi8ltUsux9N94UxIw', 'resources', 'scripts');
+  const base = path.join(home, 'SMS-Launcher-Portable');
+  fs.mkdirSync(resources, { recursive: true });
+  for (const name of ['texture-progress.py', 'install-language.py', 'resume_downloads.py', 'build-eclipse.sh'])
+    fs.writeFileSync(path.join(resources, name), `# ${name}\n`);
+  const copy = portable.copyScripts(resources, base);
+  assert.equal(copy, path.join(base, 'launcher-scripts'));
+  fs.rmSync(path.join(home, 'Temp'), { recursive: true });   // the second start's stub, on its way out
+  port.useLauncherScripts(copy);
+  const repo = path.join(base, 'sms-pc-port');
+  const progress = port.commandFor(repo, 'textures', [], 'linux').args[0];
+  assert.equal(progress, path.join(copy, 'texture-progress.py'));
+  assert.equal(fs.readFileSync(progress, 'utf8'), '# texture-progress.py\n');
+  assert.equal(port.commandFor(repo, 'language', ['pl'], 'linux').args[1], path.join(copy, 'install-language.py'));
+  assert.equal(port.eclipseBuildCommand(repo, { arch: '64' }, 'linux').command, path.join(copy, 'build-eclipse.sh'));
+  // The next start finds its resources gone too early: the copy from before still serves.
+  assert.equal(portable.copyScripts(resources, base), copy);
+  // Without a copy, the scripts come from the launcher's own folder as before.
+  port.useLauncherScripts(null);
+  assert.equal(port.commandFor(repo, 'textures', [], 'linux').args[0],
+    path.resolve(__dirname, '..', 'scripts', 'texture-progress.py'));
 });
 
 test('a disc left on the old computer is found in the portable folder or beside the exe', t => {

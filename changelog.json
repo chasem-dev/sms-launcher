@@ -1,7 +1,10 @@
 {
   "_instructions": "Players see this file in the launcher. Add each player-visible change here in the same commit: launcher changes to beta.launcher, game changes Beta now builds to beta.game. Releases move beta into a new entry (npm run update:game does it). One plain sentence for players per line, no commit hashes or PR numbers. See AGENTS.md.",
   "beta": {
-    "launcher": [],
+    "launcher": [
+      "Portable launcher: downloading HD textures, language packs and cutscenes, and building Super Mario Eclipse, no longer fail with \"can't open file ... texture-progress.py\" after the launcher's .exe was opened a second time (or a Discord invite opened it) while it was already running.",
+      "Achievements: the icons are now the launcher's own download, kept once for every game version, so Download icons on the Achievements tab works whatever game version you have, without updating or building it, and opens the page straight after. On a game version from before achievements the page shows them all, with a note to update the game to start unlocking them."
+    ],
     "game": []
   },
   "releases": [

@@ -158,6 +158,7 @@
         <div id="achievement-stages" class="achievement-stages" aria-label="Jump to a stage"></div>
       </div>
       <div class="modal-body" id="achievements-body">
+        <div id="achievements-update" class="achievements-update" hidden><p id="achievements-update-text"></p><button id="achievements-update-go" class="subtle">Go to Play</button></div>
         <p id="achievements-empty" class="achievements-empty" hidden></p>
         <div id="achievement-groups"></div>
       </div>
@@ -408,7 +409,7 @@
     <dialog id="achievements-get" class="launcher-modal path-modal" aria-labelledby="achievements-get-title">
       <div class="modal-head"><div><p class="eyebrow">ACHIEVEMENTS</p><h1 id="achievements-get-title">Download the achievement icons</h1><p>One download, then the Achievements page opens.</p></div><button class="modal-close" data-close-modal aria-label="Close">×</button></div>
       <div class="modal-body">
-        <p class="path-summary" id="achievements-get-text">Each achievement has its own icon, about 40 MB in all. Only the icons download: your game and saves stay as they are.</p>
+        <p class="path-summary" id="achievements-get-text">Each achievement has its own icon, about 70 MB in all. Only the icons download: your game and saves stay as they are.</p>
         <div id="achievements-get-progress" class="achievements-get-progress" hidden><i><b id="achievements-get-bar"></b></i><span id="achievements-get-detail">Starting…</span></div>
         <p id="achievements-get-error" class="achievements-get-error" role="alert" hidden></p>
         <div class="actions path-actions"><button id="achievements-get-cancel" class="subtle" data-close-modal>Not now</button><button id="achievements-get-go" class="solid">Download icons</button></div>

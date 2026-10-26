@@ -317,28 +317,6 @@ function eclipseMapsWanted(root, settings) {
   return Boolean(settings.eclipse && settings.radar) && eclipseMapsSupported(root) && !eclipseMapsInstalled(root);
 }
 
-// The achievements' icons (1.png to 148.png, and Super Mario Eclipse's in
-// eclipse/), published with the texture extras. The port pins their release in
-// tools/mods/achievement-icons.json, installs them in assets/achievements/
-// (get.py achievement-icons) and records the one it installed there in
-// .release, as for the extras; every player gets them, whatever the texture
-// settings, Eclipse's with Sunshine's.
-function achievementIconsDirectory(root, eclipse = false) {
-  return eclipse ? path.join(root, 'assets', 'achievements', 'eclipse') : path.join(root, 'assets', 'achievements');
-}
-
-function achievementIconsSupported(root) {
-  return fs.existsSync(path.join(root, 'tools', 'mods', 'achievement-icons.json'));
-}
-
-function achievementIconsInstalled(root) {
-  return holdsRelease(achievementIconsDirectory(root), pinnedRelease(root, 'achievement-icons.json'));
-}
-
-function achievementIconsWanted(root, _settings) {
-  return achievementIconsSupported(root) && !achievementIconsInstalled(root);
-}
-
 // Languages other than the disc's English come from language packs (the
 // European release's four and community translations, published with the
 // texture extras). The launcher's own catalog, language-packs.json, says
@@ -394,13 +372,12 @@ function languagePackWanted(root, settings) {
 }
 
 // The pinned downloads each game version keeps in its own folder: Eclipse's
-// radar maps, the achievement icons and the language packs. A new version
-// that pins the same release as the last one can take that one's copy
-// (game.carryUserFiles) instead of downloading it again.
+// radar maps and the language packs (the achievement icons are the launcher's,
+// for every version: achievement-icons.js). A new version that pins
+// the same release as the last one can take that one's copy (game.carryUserFiles) instead of downloading it again.
 function pinnedDownloads(root) {
   return [
     { directory: eclipseMapsDirectory(root), pinned: pinnedRelease(root, 'eclipse-maps.json') },
-    { directory: achievementIconsDirectory(root), pinned: pinnedRelease(root, 'achievement-icons.json') },
     ...Object.keys(LANGUAGE_PACKS).map(code => ({ directory: languagePackDirectory(root, code), pinned: LANGUAGE_PACKS[code] })),
   ];
 }
@@ -680,25 +657,34 @@ function msysEnvironment(msys, environment) {
     MSYSTEM: environment.SMS_ARCH === '32' && !environment.SMS_WINDOWS_32_CROSS ? 'MINGW32' : 'MINGW64', CHERE_INVOKING: '1' };
 }
 
+// The launcher's own scripts (texture-progress.py and the rest): in its
+// resources once packaged. The portable launcher runs them from its own copy
+// (useLauncherScripts), since its resources sit in a temporary folder that
+// opening the .exe a second time deletes while this one is still running.
+let launcherScripts = null;
+function useLauncherScripts(directory) { launcherScripts = directory; }
+
+function launcherScript(name) {
+  if (launcherScripts && fs.existsSync(path.join(launcherScripts, name))) return path.join(launcherScripts, name);
+  return __dirname.includes('app.asar') ? path.join(process.resourcesPath, 'scripts', name) : path.resolve(__dirname, '..', 'scripts', name);
+}
+
 function commandFor(root, action, args = [], platform = process.platform, environment = process.env) {
   if (platform === 'win32' && action === 'run')
     return gameRunCommand(root, { arch: environment.SMS_ARCH || '64' }, args[0], platform, environment);
-  const textureProgress = __dirname.includes('app.asar')
-    ? path.join(process.resourcesPath, 'scripts', 'texture-progress.py')
-    : path.resolve(__dirname, '..', 'scripts', 'texture-progress.py');
-  const installLanguage = path.join(path.dirname(textureProgress), 'install-language.py');
-  const resumeDownloads = path.join(path.dirname(textureProgress), 'resume_downloads.py');
+  const textureProgress = launcherScript('texture-progress.py');
+  const installLanguage = launcherScript('install-language.py');
+  const resumeDownloads = launcherScript('resume_downloads.py');
   // a language pack: [code, name, url, md5, size] from the catalog
   const pack = action === 'language' ? LANGUAGE_PACKS[args[0]] : null;
   if (action === 'language' && !pack) throw new Error(`There is no language pack "${args[0]}".`);
   const packArgs = pack ? [args[0], pack.name, pack.url, pack.md5, String(pack.size)] : [];
   if (platform !== 'win32') {
-    const file = ['python', 'textures', 'texture-extras', 'eclipse-maps', 'achievement-icons', 'language', 'cutscenes'].includes(action) ? 'python3' : path.join(root, `${action}.sh`);
+    const file = ['python', 'textures', 'texture-extras', 'eclipse-maps', 'language', 'cutscenes'].includes(action) ? 'python3' : path.join(root, `${action}.sh`);
     const commandArgs = action === 'python' ? [textureProgress, path.join(root, 'tools', 'mods', 'get.py'), 'eclipse', '--iso', ...args]
       : action === 'textures' ? [textureProgress, path.join(root, 'tools', 'mods', 'get.py')]
         : action === 'texture-extras' ? [textureProgress, path.join(root, 'tools', 'mods', 'get.py'), 'extras', '--if-outdated']
         : action === 'eclipse-maps' ? [textureProgress, path.join(root, 'tools', 'mods', 'get.py'), 'eclipse-maps', '--if-outdated']
-        : action === 'achievement-icons' ? [textureProgress, path.join(root, 'tools', 'mods', 'get.py'), 'achievement-icons', '--if-outdated']
         : action === 'language' ? [textureProgress, installLanguage, ...packArgs]
         : action === 'cutscenes' ? [resumeDownloads, 'tools/media/install_cutscenes.py', '--iso', ...args] : args;
     return { command: file, args: commandArgs, cwd: root, env: environment };
@@ -719,8 +705,6 @@ function commandFor(root, action, args = [], platform = process.platform, enviro
       ? 'cd "$(cygpath -u "$1")" && python "$2" tools/mods/get.py extras --if-outdated'
     : action === 'eclipse-maps'
       ? 'cd "$(cygpath -u "$1")" && python "$2" tools/mods/get.py eclipse-maps --if-outdated'
-    : action === 'achievement-icons'
-      ? 'cd "$(cygpath -u "$1")" && python "$2" tools/mods/get.py achievement-icons --if-outdated'
     : action === 'language'
       ? 'cd "$(cygpath -u "$1")" && python "$2" "$3" "${@:4}"'
     : action === 'clean'
@@ -728,7 +712,7 @@ function commandFor(root, action, args = [], platform = process.platform, enviro
       : `cd "$(cygpath -u "$1")" && ./${action}.sh "$(cygpath -u "$2")"`;
   return {
     command: bash,
-    args: ['-c', script, 'sms-launcher', root, ...(action === 'textures' || action === 'texture-extras' || action === 'eclipse-maps' || action === 'achievement-icons' ? [textureProgress]
+    args: ['-c', script, 'sms-launcher', root, ...(action === 'textures' || action === 'texture-extras' || action === 'eclipse-maps' ? [textureProgress]
       : action === 'language' ? [textureProgress, installLanguage, ...packArgs]
       : action === 'python' ? [textureProgress, args[0]]
       : action === 'cutscenes' ? [resumeDownloads, args[0]] : args)], cwd: root,
@@ -737,9 +721,7 @@ function commandFor(root, action, args = [], platform = process.platform, enviro
 }
 
 function eclipseBuildCommand(root, settings, platform = process.platform, environment = process.env) {
-  const script = __dirname.includes('app.asar')
-    ? path.join(process.resourcesPath, 'scripts', 'build-eclipse.sh')
-    : path.resolve(__dirname, '..', 'scripts', 'build-eclipse.sh');
+  const script = launcherScript('build-eclipse.sh');
   if (platform !== 'win32') return { command: script, args: [root, settings.arch], cwd: root, env: environment };
   const msys = environment.MSYS2_ROOT || 'C:\\msys64';
   const bash = path.join(msys, 'usr', 'bin', 'bash.exe');
@@ -781,8 +763,7 @@ function eclipseRunCommand(...args) { return gameRunCommand(...args); }
 module.exports = { PORT_URL, ECLIPSE_ISO, platformInfo, isPort, validateRom, normalizeSettings, savedSettings, gameFeatures,
   texturePackDirectory, texturePackInstalled, customTextureDirectory, customTexturesPresent, texturePackFolders, textureExtrasDirectory, textureExtrasSupported, textureExtrasInstalled, textureExtrasWanted,
   eclipseMapsDirectory, eclipseMapsSupported, eclipseMapsInstalled, eclipseMapsWanted,
-  achievementIconsDirectory, achievementIconsSupported, achievementIconsInstalled, achievementIconsWanted,
   LANGUAGES, LANGUAGE_PACKS, gameLanguage, languagePackDirectory, languagePacksSupported, languageAvailable, languageChoices,
   languagePackInstalled, languagePackWanted, holdsRelease, pinnedDownloads,
   cutscenePackDirectory, cutscenePackInstalled, cutscenePackSupported, cutscenePackRequirements, wantsCutscenes, hdVisualsInstalled, buildEnvironment, eclipseMovieEnvironment, gameDisc, binaryPath,
-  commandFor, eclipseBuildCommand, eclipseRunCommand, gameRuntimeFolders, playableInstall, windowsPathLimit, longPathProblem };
+  useLauncherScripts, launcherScript, commandFor, eclipseBuildCommand, eclipseRunCommand, gameRuntimeFolders, playableInstall, windowsPathLimit, longPathProblem };

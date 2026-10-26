@@ -40,6 +40,22 @@ function addChangelogEntry(version, game, previousCommit) {
   return beta.launcher.length || beta.game.length;
 }
 
+// The launcher's copy of the game's achievement lists and icon pin (src/achievement-data), for players
+// whose game is from before achievements: the same as the selected game's. True when any changed.
+const ACHIEVEMENT_DATA = { 'achievements.json': 'ext/achievements/achievements.json', 'eclipse.json': 'ext/achievements/eclipse.json',
+  'icons.json': 'tools/mods/achievement-icons.json' };
+function syncAchievementData(commit) {
+  let changed = false;
+  for (const [name, source] of Object.entries(ACHIEVEMENT_DATA)) {
+    const file = path.join(launcherRoot, 'src', 'achievement-data', name);
+    const data = git(['show', `${commit}:${source}`]) + '\n';
+    if (fs.readFileSync(file, 'utf8') === data) continue;
+    fs.writeFileSync(file, data);
+    changed = true;
+  }
+  return changed;
+}
+
 try {
   git(['clone', '--filter=blob:none', '--no-checkout', '--branch', current.branch, current.repository, '.']);
   const commit = git(['rev-parse', '--verify', `${ref}^{commit}`]);
@@ -56,6 +72,7 @@ try {
       { cwd: path.join(__dirname, '..'), stdio: 'inherit', shell: process.platform === 'win32' });
     const version = JSON.parse(fs.readFileSync(path.join(launcherRoot, 'package.json'), 'utf8')).version;
     const fromBeta = addChangelogEntry(version, next, current.commit);
+    if (syncAchievementData(commit)) console.log('Updated src/achievement-data from this game revision.');
     console.log(`Selected game ${next.version}: ${commit} (decomp ${decomp}).`);
     console.log(fromBeta
       ? `Moved Beta's notes into changelog.json v${version}. Check they match this game commit, then commit and push to run the release checks.`

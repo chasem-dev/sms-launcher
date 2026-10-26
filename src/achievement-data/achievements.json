@@ -1,0 +1,893 @@
+{
+ "comment": "The Core achievements: their names and what to do, as the in-game banner and SMS Launcher's Achievements page show them. Ids are the numbers the game unlocks; icons are assets/achievements/<id>.png (tools/mods/achievement-icons.json).",
+ "achievements": [
+  {
+   "id": 1,
+   "title": "Paint Job",
+   "description": "Get the first Shine Sprite at the Delfino Airstrip.",
+   "stage": "Delfino Airstrip"
+  },
+  {
+   "id": 2,
+   "title": "Guardian of the Statue",
+   "description": "Clean up the brown goop Piranha Plant blocking the Grand Pianta Statue.",
+   "stage": "Delfino Plaza"
+  },
+  {
+   "id": 3,
+   "title": "Three of a Kind",
+   "description": "Have 3 Shine Sprites.",
+   "stage": "Anywhere"
+  },
+  {
+   "id": 4,
+   "title": "High Five",
+   "description": "Have 5 Shine Sprites.",
+   "stage": "Anywhere"
+  },
+  {
+   "id": 5,
+   "title": "Double Digits",
+   "description": "Have 10 Shine Sprites.",
+   "stage": "Anywhere"
+  },
+  {
+   "id": 6,
+   "title": "Score of Shines",
+   "description": "Have 20 Shine Sprites.",
+   "stage": "Anywhere"
+  },
+  {
+   "id": 7,
+   "title": "Egg-cellent Friend",
+   "description": "Hatch Yoshi in Delfino Plaza.",
+   "stage": "Delfino Plaza"
+  },
+  {
+   "id": 8,
+   "title": "Full Speed Ahead",
+   "description": "Open the Turbo Nozzle box in Delfino Plaza.",
+   "stage": "Delfino Plaza"
+  },
+  {
+   "id": 9,
+   "title": "Liftoff",
+   "description": "Open the Rocket Nozzle box in Delfino Plaza.",
+   "stage": "Delfino Plaza"
+  },
+  {
+   "id": 10,
+   "title": "Shadow Chaser",
+   "description": "Finish Episode 7 in every one of the seven main stages.",
+   "stage": "Anywhere"
+  },
+  {
+   "id": 11,
+   "title": "Family Feud",
+   "description": "Get the last Shine Sprite at the top of Corona Mountain.",
+   "stage": "Corona Mountain"
+  },
+  {
+   "id": 12,
+   "title": "Hillside Hero",
+   "description": "Finish all 8 episodes of Bianco Hills.",
+   "stage": "Bianco Hills"
+  },
+  {
+   "id": 13,
+   "title": "Off the Beaten Path",
+   "description": "Get both secret-level Shine Sprites of Bianco Hills.",
+   "stage": "Bianco Hills"
+  },
+  {
+   "id": 14,
+   "title": "Bianco Bank",
+   "description": "Gather 100 coins in Bianco Hills and get the Shine Sprite.",
+   "stage": "Bianco Hills"
+  },
+  {
+   "id": 15,
+   "title": "Blue in the Hills",
+   "description": "Find all 30 Blue Coins in Bianco Hills.",
+   "stage": "Bianco Hills"
+  },
+  {
+   "id": 16,
+   "title": "Harbor Master",
+   "description": "Finish all 8 episodes of Ricco Harbor.",
+   "stage": "Ricco Harbor"
+  },
+  {
+   "id": 17,
+   "title": "Dockside Secrets",
+   "description": "Get both secret-level Shine Sprites of Ricco Harbor.",
+   "stage": "Ricco Harbor"
+  },
+  {
+   "id": 18,
+   "title": "Ricco Riches",
+   "description": "Gather 100 coins in Ricco Harbor and get the Shine Sprite.",
+   "stage": "Ricco Harbor"
+  },
+  {
+   "id": 19,
+   "title": "Blue on the Docks",
+   "description": "Find all 30 Blue Coins in Ricco Harbor.",
+   "stage": "Ricco Harbor"
+  },
+  {
+   "id": 20,
+   "title": "Gelato Getaway",
+   "description": "Finish all 8 episodes of Gelato Beach.",
+   "stage": "Gelato Beach"
+  },
+  {
+   "id": 21,
+   "title": "Sandcastle Secrets",
+   "description": "Get both secret-level Shine Sprites of Gelato Beach.",
+   "stage": "Gelato Beach"
+  },
+  {
+   "id": 22,
+   "title": "Gelato Gold",
+   "description": "Gather 100 coins in Gelato Beach and get the Shine Sprite.",
+   "stage": "Gelato Beach"
+  },
+  {
+   "id": 23,
+   "title": "Blue on the Sand",
+   "description": "Find all 30 Blue Coins in Gelato Beach.",
+   "stage": "Gelato Beach"
+  },
+  {
+   "id": 24,
+   "title": "Park Regular",
+   "description": "Finish all 8 episodes of Pinna Park.",
+   "stage": "Pinna Park"
+  },
+  {
+   "id": 25,
+   "title": "Behind the Rides",
+   "description": "Get both secret-level Shine Sprites of Pinna Park.",
+   "stage": "Pinna Park"
+  },
+  {
+   "id": 26,
+   "title": "Ticket Money",
+   "description": "Gather 100 coins in Pinna Park and get the Shine Sprite.",
+   "stage": "Pinna Park"
+  },
+  {
+   "id": 27,
+   "title": "Blue at the Fair",
+   "description": "Find all 30 Blue Coins in Pinna Park.",
+   "stage": "Pinna Park"
+  },
+  {
+   "id": 28,
+   "title": "Checked In",
+   "description": "Finish all 8 episodes of Sirena Beach.",
+   "stage": "Sirena Beach"
+  },
+  {
+   "id": 29,
+   "title": "Room Service Secrets",
+   "description": "Get both secret-level Shine Sprites of Sirena Beach.",
+   "stage": "Sirena Beach"
+  },
+  {
+   "id": 30,
+   "title": "Hotel Tips",
+   "description": "Gather 100 coins in Sirena Beach and get the Shine Sprite.",
+   "stage": "Sirena Beach"
+  },
+  {
+   "id": 31,
+   "title": "Blue in the Lobby",
+   "description": "Find all 30 Blue Coins in Sirena Beach.",
+   "stage": "Sirena Beach"
+  },
+  {
+   "id": 32,
+   "title": "Cliffside Climber",
+   "description": "Finish all 8 episodes of Noki Bay.",
+   "stage": "Noki Bay"
+  },
+  {
+   "id": 33,
+   "title": "Shell Seeker",
+   "description": "Get both secret-level Shine Sprites of Noki Bay.",
+   "stage": "Noki Bay"
+  },
+  {
+   "id": 34,
+   "title": "Noki Nest Egg",
+   "description": "Gather 100 coins in Noki Bay and get the Shine Sprite.",
+   "stage": "Noki Bay"
+  },
+  {
+   "id": 35,
+   "title": "Blue Under the Moon",
+   "description": "Find all 30 Blue Coins in Pianta Village.",
+   "stage": "Pianta Village"
+  },
+  {
+   "id": 36,
+   "title": "Village Regular",
+   "description": "Finish all 8 episodes of Pianta Village.",
+   "stage": "Pianta Village"
+  },
+  {
+   "id": 37,
+   "title": "Under the Village",
+   "description": "Get both secret-level Shine Sprites of Pianta Village.",
+   "stage": "Pianta Village"
+  },
+  {
+   "id": 38,
+   "title": "Mushroom Money",
+   "description": "Gather 100 coins in Pianta Village and get the Shine Sprite.",
+   "stage": "Pianta Village"
+  },
+  {
+   "id": 39,
+   "title": "Blue by the Bay",
+   "description": "Find all 30 Blue Coins in Noki Bay.",
+   "stage": "Noki Bay"
+  },
+  {
+   "id": 40,
+   "title": "Bianco Nozzles",
+   "description": "Open both nozzle boxes in Bianco Hills.",
+   "stage": "Bianco Hills"
+  },
+  {
+   "id": 41,
+   "title": "Ricco Nozzles",
+   "description": "Open both nozzle boxes in Ricco Harbor.",
+   "stage": "Ricco Harbor"
+  },
+  {
+   "id": 42,
+   "title": "Gelato Nozzles",
+   "description": "Open both nozzle boxes in Gelato Beach.",
+   "stage": "Gelato Beach"
+  },
+  {
+   "id": 43,
+   "title": "Rocket in the Trees",
+   "description": "Open the Rocket Nozzle box in Pianta Village.",
+   "stage": "Pianta Village"
+  },
+  {
+   "id": 44,
+   "title": "Noki Nozzles",
+   "description": "Open both nozzle boxes in Noki Bay.",
+   "stage": "Noki Bay"
+  },
+  {
+   "id": 45,
+   "title": "Plaza Sweep",
+   "description": "Get all 10 Shine Sprites found in Delfino Plaza.",
+   "stage": "Delfino Plaza"
+  },
+  {
+   "id": 46,
+   "title": "Down the Slide",
+   "description": "Get the Shine Sprite in the Super Slide.",
+   "stage": "Delfino Plaza"
+  },
+  {
+   "id": 47,
+   "title": "Pins and Needles",
+   "description": "Get the Shine Sprite in the Pachinko Game.",
+   "stage": "Delfino Plaza"
+  },
+  {
+   "id": 48,
+   "title": "Lily Pad Rider",
+   "description": "Get the Shine Sprite in the Lily Pad Ride.",
+   "stage": "Delfino Plaza"
+  },
+  {
+   "id": 49,
+   "title": "Turbo Lap",
+   "description": "Get the Shine Sprite in the Turbo Track.",
+   "stage": "Delfino Plaza"
+  },
+  {
+   "id": 50,
+   "title": "Red Coin Hunt",
+   "description": "Get the Shine Sprite in the Red Coin Field.",
+   "stage": "Delfino Plaza"
+  },
+  {
+   "id": 51,
+   "title": "Tanooki's Best Customer",
+   "description": "Trade all 240 Blue Coins for 24 Shine Sprites at the boathouse.",
+   "stage": "Delfino Plaza"
+  },
+  {
+   "id": 52,
+   "title": "Plaza Pocket Change",
+   "description": "Gather 100 coins in Delfino Plaza, the Red Coin Field or the Airstrip and get the Shine Sprite.",
+   "stage": "Delfino Plaza"
+  },
+  {
+   "id": 53,
+   "title": "Blue Around Town",
+   "description": "Find all 19 Blue Coins in Delfino Plaza.",
+   "stage": "Delfino Plaza"
+  },
+  {
+   "id": 54,
+   "title": "Blue in the Fire",
+   "description": "Find all 10 Blue Coins in Corona Mountain.",
+   "stage": "Corona Mountain"
+  },
+  {
+   "id": 55,
+   "title": "Return Flight",
+   "description": "After Corona Mountain, get the Shine Sprite at the Delfino Airstrip.",
+   "stage": "Delfino Airstrip"
+  },
+  {
+   "id": 56,
+   "title": "Ice Breaker",
+   "description": "After Corona Mountain, get the Blue Coin at the Delfino Airstrip.",
+   "stage": "Delfino Airstrip"
+  },
+  {
+   "id": 57,
+   "title": "All That Glitters",
+   "description": "Have all 120 Shine Sprites.",
+   "stage": "Anywhere"
+  },
+  {
+   "id": 58,
+   "title": "Blue Coin Collector",
+   "description": "Find all 240 Blue Coins.",
+   "stage": "Anywhere"
+  },
+  {
+   "id": 59,
+   "title": "Shady Look",
+   "description": "Get a pair of sunglasses from a Pianta.",
+   "stage": "Delfino Plaza"
+  },
+  {
+   "id": 60,
+   "title": "Island Shirt",
+   "description": "Get a tropical shirt from a Pianta.",
+   "stage": "Delfino Plaza"
+  },
+  {
+   "id": 61,
+   "title": "Postcard Ending",
+   "description": "Beat the game with all 120 Shine Sprites and see the special ending.",
+   "stage": "Corona Mountain"
+  },
+  {
+   "id": 62,
+   "title": "Flag Day",
+   "description": "Climb to the very top of the flagpole at the Delfino Airstrip.",
+   "stage": "Delfino Airstrip"
+  },
+  {
+   "id": 63,
+   "title": "Plaza Lives",
+   "description": "Get all 4 of Delfino Plaza's 1-Ups in one visit.",
+   "stage": "Delfino Plaza"
+  },
+  {
+   "id": 64,
+   "title": "Lily Pad Life",
+   "description": "Get the 1-Up in the Lily Pad Ride.",
+   "stage": "Delfino Plaza"
+  },
+  {
+   "id": 65,
+   "title": "Bird Watcher",
+   "description": "Beat all 17 green birds in Delfino Plaza in one visit, while it is flooded or after Corona Mountain.",
+   "stage": "Delfino Plaza"
+  },
+  {
+   "id": 66,
+   "title": "Slam Dunk",
+   "description": "Throw a coconut into the orange Pianta's basket while ground pounding at full speed.",
+   "stage": "Delfino Plaza"
+  },
+  {
+   "id": 67,
+   "title": "Three-Pointer",
+   "description": "Throw a pineapple into the yellow Pianta's basket from behind the third line.",
+   "stage": "Delfino Plaza"
+  },
+  {
+   "id": 68,
+   "title": "Durian Juggler",
+   "description": "Keep a durian in the air with 10 jumps in a row.",
+   "stage": "Delfino Plaza"
+  },
+  {
+   "id": 69,
+   "title": "Banana Backflip",
+   "description": "Backflip off the roof and throw bananas into the purple Pianta's basket.",
+   "stage": "Delfino Plaza"
+  },
+  {
+   "id": 70,
+   "title": "Early Bird Gets the Coin",
+   "description": "On your first visit to Delfino Plaza, get the Blue Coin from the Pianta with mushrooms on his back.",
+   "stage": "Delfino Plaza"
+  },
+  {
+   "id": 71,
+   "title": "Hover to the Pins",
+   "description": "Reach the Pachinko Game from the dry plaza using only the Hover Nozzle.",
+   "stage": "Delfino Plaza"
+  },
+  {
+   "id": 72,
+   "title": "Hover to the Village",
+   "description": "Reach Pianta Village from Delfino Plaza using only the Hover Nozzle.",
+   "stage": "Delfino Plaza"
+  },
+  {
+   "id": 73,
+   "title": "Hover to the Field",
+   "description": "Reach the Red Coin Field from the dry plaza using only the Hover Nozzle.",
+   "stage": "Delfino Plaza"
+  },
+  {
+   "id": 74,
+   "title": "Bell Ringer, West",
+   "description": "Get the West Bell Shine Sprite using only the spray nozzle.",
+   "stage": "Delfino Plaza"
+  },
+  {
+   "id": 75,
+   "title": "Bell Ringer, East",
+   "description": "Get the East Bell Shine Sprite with only Yoshi's help.",
+   "stage": "Delfino Plaza"
+  },
+  {
+   "id": 76,
+   "title": "Yoshi's Allowance",
+   "description": "Get the plaza's 100-coin Shine Sprite riding Yoshi, before the flood and without the boats.",
+   "stage": "Delfino Plaza"
+  },
+  {
+   "id": 77,
+   "title": "Golden Bird, Turbo Style",
+   "description": "Get the golden bird's Shine Sprite in the dry plaza using only the Turbo Nozzle.",
+   "stage": "Delfino Plaza"
+  },
+  {
+   "id": 78,
+   "title": "Never Touch the Ground",
+   "description": "Get the Super Slide's Shine Sprite without touching the ground after the start.",
+   "stage": "Delfino Plaza"
+  },
+  {
+   "id": 79,
+   "title": "Track Without Turbo",
+   "description": "Get the Turbo Track's Shine Sprite using only the Hover Nozzle.",
+   "stage": "Delfino Plaza"
+  },
+  {
+   "id": 80,
+   "title": "Bees and Bonuses",
+   "description": "Get all 3 of the 1-Ups in Episode 8 of Bianco Hills in one visit.",
+   "stage": "Bianco Hills"
+  },
+  {
+   "id": 81,
+   "title": "Cave Lives",
+   "description": "Get both 1-Ups in the Hillside Cave Secret in one visit.",
+   "stage": "Bianco Hills"
+  },
+  {
+   "id": 82,
+   "title": "Lake Lives",
+   "description": "Get both 1-Ups in the Secret of the Dirty Lake in one visit.",
+   "stage": "Bianco Hills"
+  },
+  {
+   "id": 83,
+   "title": "Wash and Wave",
+   "description": "Clean and talk to the brown-hatted Pianta with the Blue Coin in all 6 episodes he's in, in one session.",
+   "stage": "Bianco Hills"
+  },
+  {
+   "id": 84,
+   "title": "Ahead of Schedule",
+   "description": "Finish Episode 2 of Bianco Hills while in Episode 1.",
+   "stage": "Bianco Hills"
+  },
+  {
+   "id": 85,
+   "title": "No Windmill Shortcuts",
+   "description": "Reach Petey Piranha in Episode 1 or 2 of Bianco Hills without the windmill platforms or the Hover Nozzle.",
+   "stage": "Bianco Hills"
+  },
+  {
+   "id": 86,
+   "title": "Feet on the Floor",
+   "description": "Get the Hillside Cave Secret's first Shine Sprite without jumping or using F.L.U.D.D.",
+   "stage": "Bianco Hills"
+  },
+  {
+   "id": 87,
+   "title": "Nap Time",
+   "description": "Fall asleep next to Petey Piranha in Episode 5 of Bianco Hills.",
+   "stage": "Bianco Hills"
+  },
+  {
+   "id": 88,
+   "title": "Dry Run",
+   "description": "Reach the Secret of the Dirty Lake in Episode 6 of Bianco Hills without swimming or using F.L.U.D.D.",
+   "stage": "Bianco Hills"
+  },
+  {
+   "id": 89,
+   "title": "Steady Footing",
+   "description": "Get the Dirty Lake Secret's first Shine Sprite without more than 1 second on moving platforms, and no Rocket tricks.",
+   "stage": "Bianco Hills"
+  },
+  {
+   "id": 90,
+   "title": "Ring Rescue",
+   "description": "Talk to the 3 duck-ring riders in Episode 8 of Ricco Harbor and collect the 1-Up they give you.",
+   "stage": "Ricco Harbor"
+  },
+  {
+   "id": 91,
+   "title": "Harbor Lives",
+   "description": "Get all 3 of the 1-Ups in Episode 8 of Ricco Harbor in one visit.",
+   "stage": "Ricco Harbor"
+  },
+  {
+   "id": 92,
+   "title": "Tower Lives",
+   "description": "Get both 1-Ups in the Secret of Ricco Tower in one visit.",
+   "stage": "Ricco Harbor"
+  },
+  {
+   "id": 93,
+   "title": "Purple Racer",
+   "description": "Win the Blooper Surfing Safari Shine Sprite riding the purple Blooper.",
+   "stage": "Ricco Harbor"
+  },
+  {
+   "id": 94,
+   "title": "Ground Floor",
+   "description": "Finish Episode 3 of Ricco Harbor without the metal scaffolding or the Rocket Nozzle.",
+   "stage": "Ricco Harbor"
+  },
+  {
+   "id": 95,
+   "title": "No Water Needed",
+   "description": "Reach the Secret of Ricco Tower in Episode 4 of Ricco Harbor without using F.L.U.D.D.",
+   "stage": "Ricco Harbor"
+  },
+  {
+   "id": 96,
+   "title": "Turbo All the Way",
+   "description": "Get the Ricco Tower Secret's first Shine Sprite without letting go of the Turbo Nozzle or running dry after the start.",
+   "stage": "Ricco Harbor"
+  },
+  {
+   "id": 97,
+   "title": "Catch and Release",
+   "description": "Beat Gooper Blooper in Episode 5 of Ricco Harbor without tearing off a tentacle.",
+   "stage": "Ricco Harbor"
+  },
+  {
+   "id": 98,
+   "title": "Juice Run",
+   "description": "Finish Episode 8 of Ricco Harbor without Yoshi stepping on grass or metal, and without the Rocket Nozzle.",
+   "stage": "Ricco Harbor"
+  },
+  {
+   "id": 99,
+   "title": "Beach Life",
+   "description": "Get the 1-Up in Gelato Beach.",
+   "stage": "Gelato Beach"
+  },
+  {
+   "id": 100,
+   "title": "Castle Lives",
+   "description": "Get both 1-Ups in the Sand Castle Secret in one visit.",
+   "stage": "Gelato Beach"
+  },
+  {
+   "id": 101,
+   "title": "Cloud Life",
+   "description": "Get the 1-Up in The Sand Bird is Born.",
+   "stage": "Gelato Beach"
+  },
+  {
+   "id": 102,
+   "title": "Palm Tree Blast",
+   "description": "In Episode 1 of Gelato Beach, open the sand castle from a palm tree and go in without touching the sand.",
+   "stage": "Gelato Beach"
+  },
+  {
+   "id": 103,
+   "title": "Grass Is for Losers",
+   "description": "Beat Il Piantissimo's 35 seconds in Episode 5 of Gelato Beach without touching grass or using F.L.U.D.D.",
+   "stage": "Gelato Beach"
+  },
+  {
+   "id": 104,
+   "title": "Duck Parade",
+   "description": "Have 10 Cataquacks chasing you at once in Episode 8 of Gelato Beach.",
+   "stage": "Gelato Beach"
+  },
+  {
+   "id": 105,
+   "title": "Duck Pond",
+   "description": "Sink 15 Cataquacks into the sand at once in Episode 8 of Gelato Beach.",
+   "stage": "Gelato Beach"
+  },
+  {
+   "id": 106,
+   "title": "Beachfront Life",
+   "description": "Get the 1-Up on the Pinna Park beach.",
+   "stage": "Pinna Park"
+  },
+  {
+   "id": 107,
+   "title": "Park Life",
+   "description": "Get the 1-Up in Pinna Park.",
+   "stage": "Pinna Park"
+  },
+  {
+   "id": 108,
+   "title": "Cannon Lives",
+   "description": "Get both 1-Ups in the Beach Cannon's Secret in one visit.",
+   "stage": "Pinna Park"
+  },
+  {
+   "id": 109,
+   "title": "Go-Round Lives",
+   "description": "Get all 3 of the 1-Ups in the Yoshi-Go-Round's Secret in one visit.",
+   "stage": "Pinna Park"
+  },
+  {
+   "id": 110,
+   "title": "One Lap Wonder",
+   "description": "Beat Mecha-Bowser in Episode 1 of Pinna Park within one lap of the roller coaster.",
+   "stage": "Pinna Park"
+  },
+  {
+   "id": 111,
+   "title": "No Bombs Required",
+   "description": "Reach the Beach Cannon's Secret in Episode 2 of Pinna Park without picking up a Bob-omb.",
+   "stage": "Pinna Park"
+  },
+  {
+   "id": 112,
+   "title": "Fence-Free Flowers",
+   "description": "Finish Episode 5 of Pinna Park without climbing a fence.",
+   "stage": "Pinna Park"
+  },
+  {
+   "id": 113,
+   "title": "Lifeguard Life",
+   "description": "Get the 1-Up in Sirena Beach.",
+   "stage": "Sirena Beach"
+  },
+  {
+   "id": 114,
+   "title": "Lucky Life",
+   "description": "Get the 1-Up in Casino Delfino.",
+   "stage": "Sirena Beach"
+  },
+  {
+   "id": 115,
+   "title": "Lobby Lives",
+   "description": "Get all 3 of the 1-Ups in the Hotel Lobby's Secret in one visit.",
+   "stage": "Sirena Beach"
+  },
+  {
+   "id": 116,
+   "title": "Casino Lives",
+   "description": "Get both 1-Ups in the Secret of Casino Delfino in one visit.",
+   "stage": "Sirena Beach"
+  },
+  {
+   "id": 117,
+   "title": "Stairs Are Overrated",
+   "description": "Reach the Hotel Lobby's Secret in Episode 2 of Sirena Beach without wall jumping or using F.L.U.D.D.",
+   "stage": "Sirena Beach"
+  },
+  {
+   "id": 118,
+   "title": "Fruit Salad",
+   "description": "Turn King Boo all 3 fruit colours in Episode 5 of Sirena Beach.",
+   "stage": "Sirena Beach"
+  },
+  {
+   "id": 119,
+   "title": "Spotless",
+   "description": "Clean Sirena Beach in Episode 6 with a minute to spare, without refilling F.L.U.D.D.",
+   "stage": "Sirena Beach"
+  },
+  {
+   "id": 120,
+   "title": "Bay Lives",
+   "description": "Get all 4 of Noki Bay's 1-Ups in one visit, in Episode 4, 5, 7 or 8.",
+   "stage": "Noki Bay"
+  },
+  {
+   "id": 121,
+   "title": "Bait and Switch",
+   "description": "Get the 1-Up that only appears in Episode 6 of Noki Bay.",
+   "stage": "Noki Bay"
+  },
+  {
+   "id": 122,
+   "title": "Shell Lives",
+   "description": "Get all 3 of the 1-Ups in the Shell's Secret in one visit.",
+   "stage": "Noki Bay"
+  },
+  {
+   "id": 123,
+   "title": "Leave No Trace",
+   "description": "Finish Episode 1 of Noki Bay without uncovering a hidden platform or touching goop.",
+   "stage": "Noki Bay"
+  },
+  {
+   "id": 124,
+   "title": "The Long Way Round",
+   "description": "Finish Episode 2 of Noki Bay without opening the hidden path or grabbing the springboard.",
+   "stage": "Noki Bay"
+  },
+  {
+   "id": 125,
+   "title": "High and Dry",
+   "description": "Beat Il Piantissimo's 40 seconds in Episode 5 of Noki Bay without swimming or the Hover Nozzle.",
+   "stage": "Noki Bay"
+  },
+  {
+   "id": 126,
+   "title": "Ropes Are Optional",
+   "description": "Reach the Shell's Secret in Episode 6 of Noki Bay without ropes or the Rocket Nozzle.",
+   "stage": "Noki Bay"
+  },
+  {
+   "id": 127,
+   "title": "Bare Hands",
+   "description": "Get the Shell's Secret's first Shine Sprite in Episode 6 of Noki Bay without the pole, the rope or F.L.U.D.D.",
+   "stage": "Noki Bay"
+  },
+  {
+   "id": 128,
+   "title": "Treetop Lives",
+   "description": "Get all 4 of the 1-Ups in Episode 5 of Pianta Village in one visit.",
+   "stage": "Pianta Village"
+  },
+  {
+   "id": 129,
+   "title": "Cage Life",
+   "description": "Get the 1-Up that only appears in Episode 3 of Pianta Village.",
+   "stage": "Pianta Village"
+  },
+  {
+   "id": 130,
+   "title": "Underground Lives",
+   "description": "Get all 3 of the 1-Ups in the Secret of the Village Underside in one visit.",
+   "stage": "Pianta Village"
+  },
+  {
+   "id": 131,
+   "title": "Cannonball",
+   "description": "In daytime, dive from the Shine Sprite platform straight into Pianta Village's hot spring.",
+   "stage": "Pianta Village"
+  },
+  {
+   "id": 132,
+   "title": "Gentle Touch",
+   "description": "Finish Episode 1 of Pianta Village without stunning a Chain Chomplet.",
+   "stage": "Pianta Village"
+  },
+  {
+   "id": 133,
+   "title": "Trunk Line",
+   "description": "Reach the flagpole in Episode 2 of Pianta Village touching only tree trunks after the first Pianta.",
+   "stage": "Pianta Village"
+  },
+  {
+   "id": 134,
+   "title": "Above It All",
+   "description": "Finish Episode 3 of Pianta Village without going under the village or getting hurt.",
+   "stage": "Pianta Village"
+  },
+  {
+   "id": 135,
+   "title": "Bath Time",
+   "description": "Get the Chain Chomp into the hot spring in Episode 4 of Pianta Village while you stand on the dirt path.",
+   "stage": "Pianta Village"
+  },
+  {
+   "id": 136,
+   "title": "Keep Your Cool",
+   "description": "Get the Village Underside's Shine Sprite without angering a Chuckster.",
+   "stage": "Pianta Village"
+  },
+  {
+   "id": 137,
+   "title": "Treetop Rescue",
+   "description": "Rescue every Pianta in Episode 6 of Pianta Village touching only treetops and mushrooms after the bridge.",
+   "stage": "Pianta Village"
+  },
+  {
+   "id": 138,
+   "title": "Volcano Lives",
+   "description": "Get all 3 of Corona Mountain's 1-Ups in one visit.",
+   "stage": "Corona Mountain"
+  },
+  {
+   "id": 139,
+   "title": "Stu Stack",
+   "description": "Stomp 3 flipped Strollin' Stus at once and collect the 1-Up.",
+   "stage": "Anywhere"
+  },
+  {
+   "id": 140,
+   "title": "Stu Smash",
+   "description": "Ground pound 3 flipped Strollin' Stus at once and collect the 1-Up.",
+   "stage": "Anywhere"
+  },
+  {
+   "id": 141,
+   "title": "Stu Stampede",
+   "description": "Ground pound a crowd of flipped Strollin' Stus in Sirena Beach and collect the 1-Up.",
+   "stage": "Sirena Beach"
+  },
+  {
+   "id": 142,
+   "title": "Hot Stuff",
+   "description": "Stomp 3 flipped Smolderin' Stus at once in Pinna Park and collect the 1-Up.",
+   "stage": "Pinna Park"
+  },
+  {
+   "id": 143,
+   "title": "Cloud Wash",
+   "description": "Spray a Coo Coo and collect the 1-Up it gives.",
+   "stage": "Anywhere"
+  },
+  {
+   "id": 144,
+   "title": "Bill Stomper",
+   "description": "Stomp a Guided Bullet Bill in Corona Mountain and collect the 1-Up.",
+   "stage": "Corona Mountain"
+  },
+  {
+   "id": 145,
+   "title": "Belly Flop",
+   "description": "Reach top sliding speed on perfectly flat ground.",
+   "stage": "Anywhere"
+  },
+  {
+   "id": 146,
+   "title": "Refill on the Go",
+   "description": "Refill an empty F.L.U.D.D. while sliding.",
+   "stage": "Anywhere"
+  },
+  {
+   "id": 147,
+   "title": "Special Delivery",
+   "description": "Get thrown by a Chuckster while riding Yoshi.",
+   "stage": "Anywhere"
+  },
+  {
+   "id": 148,
+   "title": "Sprinkler Spin",
+   "description": "Spin jump while spraying with the Turbo Nozzle.",
+   "stage": "Anywhere"
+  }
+ ]
+}

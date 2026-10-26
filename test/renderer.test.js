@@ -906,16 +906,30 @@ test('a failed icon download says why in the popup, keeps the page closed, and T
   assert.equal(pageShown(ui, 'page-achievements'), true);
 });
 
-test('the Achievements tab is always there: without achievements in the game its popup says so instead of downloading', async () => {
-  const ui = await renderer(state(), null, undefined, {}, { list: achievementList({ supported: false, achievements: [], total: 0, seen: false }),
-    error: 'Your game version has no achievements yet. Update the game on Play, then try again' });
-  assert.equal(ui.elements.get('nav-achievements').hidden, false);
+test('a game from before achievements still shows them after the icons download, with a note to update the game', async () => {
+  const achievements = { list: achievementList({ counted: false, iconsNeeded: true, seen: false }),
+    update(name) { if (name === 'downloadAchievementIcons') this.list.iconsNeeded = false; } };
+  const ui = await renderer(state(), null, undefined, {}, achievements);
   assert.equal(ui.elements.get('nav-achievements').classList.contains('spotlight'), true);
   await ui.click('nav-achievements');
   assert.equal(ui.elements.get('achievements-get').open, true);
   await ui.click('achievements-get-go');
-  assert.match(ui.elements.get('achievements-get-error').textContent, /^Your game version has no achievements yet\. Update the game on Play, then try again\.$/);
-  assert.equal(pageShown(ui, 'page-achievements'), false);
+  assert.deepEqual(ui.calls, ['markAchievementsSeen', 'downloadAchievementIcons']);
+  assert.equal(pageShown(ui, 'page-achievements'), true);
+  assert.equal(ui.elements.get('achievements-update').hidden, false);
+  assert.match(ui.elements.get('achievements-update-text').textContent, /came out before achievements: update the game on Play/);
+  await ui.click('achievements-update-go');
+  assert.equal(pageShown(ui, 'page-home'), true);
+});
+
+test('the update note is only for a game that can\'t unlock achievements, and says to set up the game before there is one', async () => {
+  const current = await renderer(state(), null, undefined, {}, { list: achievementList({ counted: true }) });
+  await current.click('nav-achievements');
+  assert.equal(current.elements.get('achievements-update').hidden, true);
+  const fresh = await renderer({ ...state(), repoReady: false }, null, undefined, {}, { list: achievementList({ counted: false }) });
+  await fresh.click('nav-achievements');
+  assert.equal(fresh.elements.get('achievements-update').hidden, false);
+  assert.equal(fresh.elements.get('achievements-update-text').textContent, 'Set up the game on Play to start unlocking these.');
 });
 
 test('setup says where the build tools download, which is not the install location', async () => {

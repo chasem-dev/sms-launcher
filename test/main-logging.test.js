@@ -178,3 +178,15 @@ test('Back up automatically off skips the launcher\'s own backups, with a log li
   assert.equal(runtime.makeSaveBackup('before-play').count, 1);
   assert.equal(made(), 2);
 });
+
+test('a task that runs out of disk space says the drive is full, in the alert and the log', async t => {
+  const runtime = main(t);
+  runtime.registerHandlers();
+  const full = () => { throw Object.assign(new Error('ENOSPC: no space left on device, write'), { code: 'ENOSPC' }); };
+  await assert.rejects(runtime.exclusive('Download port source', full),
+    error => error.buildHint === 'disk-full' && error.message.includes(`launcher's data folder (${runtime.root})`));
+  runtime.handlers['copy-activity-log']();
+  assert.match(runtime.copied.at(-1), /\[launcher\] ✕ Download port source: The drive holding the launcher's data folder .+ is full \(ENOSPC/);
+  // Anything else is shown as it was.
+  await assert.rejects(runtime.exclusive('Download port source', () => { throw new Error('fatal: early EOF'); }), /^Error: fatal: early EOF$/);
+});

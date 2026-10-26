@@ -154,6 +154,84 @@ function blockedToolError(userData, lines = [], platform = process.platform) {
   return null;
 }
 
+// Out of disk space, as Node (ENOSPC), Windows, MSYS2's pacman, Git, tar and
+// the compilers say it.
+const DISK_FULL = /\bENOSPC\b|No space left on device|There is not enough space on the disk|not enough free disk space|too full: \d+ blocks needed|\bdisk (?:is )?full\b|ERROR_DISK_FULL/i;
+
+// MSYS2 starts programs with its own fork(), which copies the parent's DLL data
+// into the child at the same addresses. Windows Security's "Force randomization
+// for images (Mandatory ASLR)" loads the DLLs elsewhere, so every fork fails
+// (git clone, bash, make), and trying again fails the same way:
+//   0 [main] git-remote-https 1234 child_copy: dll data read copy failed, 0x…..0x…, done 0, windows pid 5678, Win32 error 299
+//   error: cannot fork() for remote-https: Resource temporarily unavailable
+const FORK_FAILED = /child_copy: .*copy failed|\bWin32 error 299\b|cannot fork\(\)|\bfork: (?:retry: )?Resource temporarily unavailable|died waiting for dll loading|address space needed by .+ is already occupied/i;
+
+// The error's message and the output of the step that failed (launch()'s
+// error.output), or the output lines themselves.
+function errorLines(error) {
+  if (!error) return [];
+  if (Array.isArray(error)) return error.map(String);
+  return [error.message, ...(Array.isArray(error.output) ? error.output : [])].filter(Boolean).map(String);
+}
+
+// The last line that matches, trimmed for the message.
+function saidLine(pattern, error) {
+  const line = errorLines(error).reverse().find(text => pattern.test(text));
+  return line && line.trim().replace(/\s+/g, ' ').slice(0, 200).replace(/[.\s]+$/, '');
+}
+
+function outOfSpace(error) {
+  return Boolean(error?.code === 'ENOSPC' || saidLine(DISK_FULL, error));
+}
+
+function forkFailed(error, platform = process.platform) {
+  return platform === 'win32' && Boolean(saidLine(FORK_FAILED, error));
+}
+
+// The error to show for a Windows step whose MSYS2 programs couldn't fork(), or null.
+function forkFailedError(error, platform = process.platform) {
+  if (error?.buildHint || !forkFailed(error, platform)) return null;
+  return Object.assign(new Error('Windows stopped the build tools from starting their own programs ' +
+    `(${saidLine(FORK_FAILED, error)}). Windows Security's Mandatory ASLR setting usually causes this: open Windows Security, ` +
+    'App & browser control, Exploit protection settings, and set "Force randomization for images (Mandatory ASLR)" ' +
+    'back to "Use default (Off)". Then restart the computer and try again.'), { buildHint: 'mandatory-aslr' });
+}
+
+// Whether two folders are on one drive: by device when both exist, otherwise
+// by drive letter (Windows) or root.
+function sameDrive(a, b, platform) {
+  try { return fs.statSync(a).dev === fs.statSync(b).dev; } catch (_) { /* not there yet */ }
+  const paths = platform === 'win32' ? path.win32 : path.posix;
+  return paths.parse(paths.resolve(a)).root.toLowerCase() === paths.parse(paths.resolve(b)).root.toLowerCase();
+}
+
+function driveName(folder, platform) {
+  return platform === 'win32' ? path.win32.parse(path.win32.resolve(folder)).root.replace(/[\\/]+$/, '') : '';
+}
+
+// The error to show for a step that ran out of disk space, or null. It names the
+// launcher's data folder (where the build tools, compiler cache and, by default,
+// the game go) and the game folder when that is on another drive.
+function outOfSpaceError(error, { dataFolder, gameFolder, platform = process.platform } = {}) {
+  if (error?.buildHint || !outOfSpace(error)) return null;
+  const why = saidLine(DISK_FULL, error) || 'ENOSPC';
+  const where = (folder, what) => {
+    const drive = driveName(folder, platform);
+    return drive ? `your ${drive} drive (${what}, ${folder})` : `the drive holding ${what} (${folder})`;
+  };
+  const folders = [where(dataFolder, "the launcher's data folder")];
+  if (gameFolder && !sameDrive(dataFolder, gameFolder, platform)) folders.push(where(gameFolder, 'the game folder'));
+  const full = folders.join(' or ');
+  return Object.assign(new Error(`${full[0].toUpperCase()}${full.slice(1)} is full (${why}). Free up space on it, ` +
+    'then try again: the build tools take a few GB, and HD textures need about 3 GB more. Settings, Manage game, ' +
+    'Free up space removes old game versions the launcher no longer uses.'), { buildHint: 'disk-full' });
+}
+
+// A clearer error for a failed step whose cause the player can fix, or null.
+function hintedError(error, { dataFolder, gameFolder, platform = process.platform } = {}) {
+  return outOfSpaceError(error, { dataFolder, gameFolder, platform }) || forkFailedError(error, platform);
+}
+
 function commandWorks(command, args = [], env = process.env) {
   const result = spawnSync(command, args, { env, windowsHide: true, timeout: 15000, stdio: 'ignore' });
   return result.status === 0;
@@ -392,7 +470,7 @@ async function renameRetrying(from, to, { platform = process.platform, attempts 
 function unpackAdvice(problems, folder) {
   const said = problems.join('\n');
   const where = folder || 'the build tools folder';
-  if (/no space|ENOSPC|disk (is )?full/i.test(said)) return `The drive holding ${where} is full: free up space on it, then try again.`;
+  if (/no space/i.test(said) || DISK_FULL.test(said)) return `The drive holding ${where} is full: free up space on it, then try again.`;
   if (/denied|EPERM|EACCES|virus|unwanted software|used by another process|locked/i.test(said))
     return `Antivirus, or Windows Security's Controlled folder access, blocked writing them: allow ${where} there ` +
       '(or move the launcher to a folder such as C:\\Games), then try again.';
@@ -562,5 +640,6 @@ async function pruneToolsets(userData, keep = [], { platform = process.platform,
   return removed;
 }
 
-module.exports = { TOOLSET, toolsetFor, platformId, rootFor, legacyRootFor, privateReady, missingTools, deletedToolsError, blockedToolError, systemReady, status, environment, environmentAtRoot, check,
+module.exports = { TOOLSET, toolsetFor, platformId, rootFor, legacyRootFor, privateReady, missingTools, deletedToolsError, blockedToolError,
+  outOfSpace, forkFailed, outOfSpaceError, forkFailedError, hintedError, systemReady, status, environment, environmentAtRoot, check,
   fetchVerified, hashFile, assetFor, prepare, pruneToolsets, unpackNative, renameRetrying };

@@ -319,7 +319,10 @@ async function exclusive(label, callback, newLog = false) {
     }
     return await callback();
   }
-  catch (error) {
+  catch (caught) {
+    // A full drive, or Windows' Mandatory ASLR breaking MSYS2's fork(), says
+    // what to do about it instead of the raw ENOSPC or Git's fork error.
+    const error = hintedError(caught) || caught;
     if (!error.activityLogged) {
       log(`✕ ${label}: ${error.message}`);
       error.activityLogged = true;
@@ -629,6 +632,13 @@ async function capture(command, args, cwd, env = process.env) {
     error.activityLogged = true;
     throw error;
   }
+}
+
+// The clearer error for a failed step that ran out of disk space or couldn't
+// fork() on Windows, or null (build-tools.js hintedError). exclusive() logs it.
+function hintedError(error) {
+  try { return buildTools.hintedError(error, { dataFolder: app.getPath('userData'), gameFolder: config?.repo }); }
+  catch (_) { return null; }
 }
 
 function toolEnv(base = process.env) {
@@ -1052,7 +1062,7 @@ async function build(forceFresh = false) {
       () => launch(cmd.command, cmd.args, { cwd: cmd.cwd, env: cmd.env }, settings.eclipse ? 'Build Eclipse port' : 'Build Sunshine port')
         .catch(error => {
           const userData = app.getPath('userData');
-          throw buildTools.deletedToolsError(userData) || buildTools.blockedToolError(userData, error.output) || error;
+          throw hintedError(error) || buildTools.deletedToolsError(userData) || buildTools.blockedToolError(userData, error.output) || error;
         }),
       undefined, source);
   };
@@ -1061,8 +1071,9 @@ async function build(forceFresh = false) {
   try { result = await compile(env); }
   catch (error) {
     // A failed build through the compiler cache is tried once more without it,
-    // unless the player stopped it or the build tools lost files.
-    if (!usesCompilerCache(env) || stoppedAt >= startedAt || error.blockedTool || buildTools.missingTools(app.getPath('userData'))?.length) throw error;
+    // unless the player stopped it, the build tools lost files, or the drive is
+    // full or Windows won't let them fork (which fail the same way again).
+    if (!usesCompilerCache(env) || stoppedAt >= startedAt || error.blockedTool || error.buildHint || buildTools.missingTools(app.getPath('userData'))?.length) throw error;
     log('The build failed with the compiler cache. Building again without it…');
     result = await compile(Object.fromEntries(Object.entries(env).filter(([key]) => key !== 'SMS_COMPILER_CACHE' && !/^CCACHE_/i.test(key))));
   }

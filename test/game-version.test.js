@@ -450,7 +450,16 @@ test('a download GitHub drops partway is tried again over HTTP/1.1, unless the p
   const always = async (command, args, options, label) => { throw new Error(`${label} exited with code 128: fatal: early EOF`); };
   const broken = path.join(root, 'broken');
   await assert.rejects(game.checkout(broken, { source, env, run: always, capture, wait }), /\(try 3 of 3\) exited with code 128: fatal: early EOF/);
-  assert.deepEqual(fs.readdirSync(root).filter(name => name.startsWith('stopped') || name.startsWith('broken')), []);
+  // A full drive fails the same way on every try, so it isn't tried again.
+  const fullCalls = [];
+  const full = async (command, args, options, label) => {
+    fullCalls.push(label);
+    throw Object.assign(new Error(`${label} exited with code 128: fatal: write error: No space left on device. See the activity log.`),
+      { output: ['fatal: write error: No space left on device'] });
+  };
+  await assert.rejects(game.checkout(path.join(root, 'full'), { source, env, run: full, capture, wait }), /No space left on device/);
+  assert.deepEqual(fullCalls, ['Download port source']);
+  assert.deepEqual(fs.readdirSync(root).filter(name => name.startsWith('stopped') || name.startsWith('broken') || name.startsWith('full')), []);
 });
 
 test('a decomp from another fork and commit survives the port\'s own submodule update', async t => {

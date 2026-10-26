@@ -397,6 +397,7 @@ exit 1
   assert.match(denied, /Antivirus, or Windows Security's Controlled folder access, blocked writing them: allow C:\\Users\\me\\Downloads\\SMS-Launcher-Portable\\build-tools there/);
   assert.match(await failure('Filename too long'), /Windows can't create a path of 260 characters or more, and C:\\Users\\me\\Downloads\\SMS-Launcher-Portable\\build-tools is too deep for the build tools: move the launcher to a short folder such as C:\\Games/);
   assert.match(await failure('No space left on device'), /The drive holding C:\\Users\\me\\Downloads\\SMS-Launcher-Portable\\build-tools is full/);
+  assert.match(await failure('There is not enough space on the disk.'), /The drive holding C:\\Users\\me\\Downloads\\SMS-Launcher-Portable\\build-tools is full/);
 });
 
 test('Windows retries a rename that antivirus blocks for a moment', async () => {
@@ -469,4 +470,63 @@ test('pruning keeps every toolset when a kept game\'s tools are not known', asyn
   const removed = await tools.pruneToolsets(dir, [], { platform: 'linux', leftoversOnly: true });
   assert.deepEqual(removed.map(item => path.basename(item)), ['.unpack-abc']);
   assert.ok(fs.existsSync(path.join(dir, 'build-tools', `${id}-aaaaaaaaaaaa`)));
+});
+
+test('a Windows step whose MSYS2 programs cannot fork() points to Mandatory ASLR', () => {
+  // wariie's clone, which failed the same way on every try.
+  const clone = [
+    "Cloning into 'C:/Users/me/AppData/Roaming/sms-launcher/sms-pc-port.download-1'...",
+    '      0 [main] git-remote-https 1234 child_copy: dll data read copy failed, 0x7FFE0000..0x7FFE1000, done 0, windows pid 5678, Win32 error 299',
+    'error: cannot fork() for remote-https: Resource temporarily unavailable'
+  ];
+  const failed = Object.assign(new Error('Download port source exited with code 128: error: cannot fork() for remote-https: Resource temporarily unavailable. See the activity log.'), { output: clone });
+  const hint = tools.forkFailedError(failed, 'win32');
+  assert.match(hint.message, /^Windows stopped the build tools from starting their own programs \(error: cannot fork\(\) for remote-https: Resource temporarily unavailable\)\. /);
+  assert.match(hint.message, /Exploit protection settings, and set "Force randomization for images \(Mandatory ASLR\)" back to "Use default \(Off\)"\. Then restart the computer and try again\.$/);
+  assert.equal(hint.buildHint, 'mandatory-aslr');
+  assert.equal(tools.hintedError(failed, { dataFolder: 'C:\\Users\\me\\AppData\\Roaming\\sms-launcher', platform: 'win32' }).buildHint, 'mandatory-aslr');
+  for (const line of [clone[1], 'bash: fork: retry: Resource temporarily unavailable', 'make: fork: Resource temporarily unavailable',
+    '      1 [main] bash 99 child_copy: cygheap read copy failed, 0x0..0x0, done 0, windows pid 1, Win32 error 299',
+    '      0 [main] sh 3 dofork: child -1 - died waiting for dll loading, errno 11'])
+    assert.ok(tools.forkFailed([line], 'win32'), line);
+  // Other errors, other systems, and an error that already says this, are left as they are.
+  assert.equal(tools.forkFailedError(new Error('fatal: early EOF'), 'win32'), null);
+  assert.equal(tools.forkFailedError({ message: 'x', output: ["gx_fifo.cpp:12:3: error: expected ';' before '}' token"] }, 'win32'), null);
+  assert.equal(tools.forkFailedError(failed, 'linux'), null);
+  assert.equal(tools.forkFailedError(hint, 'win32'), null);
+  assert.equal(tools.forkFailedError(undefined, 'win32'), null);
+});
+
+test('a step that runs out of disk space says which drive is full instead of blaming antivirus', () => {
+  const dataFolder = 'C:\\Users\\me\\AppData\\Roaming\\sms-launcher';
+  // dewarq's and gustavo_07288's: the port source download, as Node reports it.
+  const node = Object.assign(new Error('ENOSPC: no space left on device, write'), { code: 'ENOSPC' });
+  const hint = tools.outOfSpaceError(node, { dataFolder, gameFolder: `${dataFolder}\\sms-pc-port`, platform: 'win32' });
+  assert.equal(hint.message, `Your C: drive (the launcher's data folder, ${dataFolder}) is full (ENOSPC: no space left on device, write). ` +
+    'Free up space on it, then try again: the build tools take a few GB, and HD textures need about 3 GB more. ' +
+    'Settings, Manage game, Free up space removes old game versions the launcher no longer uses.');
+  assert.doesNotMatch(hint.message, /antivirus/i);
+  assert.equal(hint.buildHint, 'disk-full');
+  assert.match(tools.outOfSpaceError(Object.assign(new Error('ENOSPC'), { code: 'ENOSPC' }), { dataFolder, platform: 'win32' }).message, /\(ENOSPC\)\./);
+  // A game folder on another drive is named too.
+  assert.match(tools.outOfSpaceError(node, { dataFolder, gameFolder: 'D:\\Games\\sms-pc-port', platform: 'win32' }).message,
+    /^Your C: drive \(the launcher's data folder, .+\) or your D: drive \(the game folder, D:\\Games\\sms-pc-port\) is full/);
+  // Elsewhere, the folder alone.
+  assert.match(tools.outOfSpaceError(node, { dataFolder: '/home/me/.config/sms-launcher', platform: 'linux' }).message,
+    /^The drive holding the launcher's data folder \(\/home\/me\/\.config\/sms-launcher\) is full/);
+  // Git, Windows, MSYS2's pacman and the compilers, in a failed step's output.
+  for (const line of ['fatal: write error: No space left on device', 'There is not enough space on the disk.',
+    'error: Partition C:/Users/me/msys64 too full: 63379 blocks needed, 1024 blocks free', 'error: not enough free disk space',
+    'cc1plus.exe: fatal error: error writing to C:\\Users\\me\\AppData\\Local\\Temp\\ccA1.s: No space left on device']) {
+    const failed = Object.assign(new Error('Build Sunshine port exited with code 1. See the activity log.'), { output: ['[1/9] Building', line] });
+    assert.ok(tools.outOfSpace(failed), line);
+    assert.equal(tools.hintedError(failed, { dataFolder, platform: 'win32' }).buildHint, 'disk-full', line);
+  }
+  // A full drive wins over a fork failure, which it can cause.
+  assert.equal(tools.hintedError({ message: 'x', output: ['bash: fork: Resource temporarily unavailable', 'No space left on device'] },
+    { dataFolder, platform: 'win32' }).buildHint, 'disk-full');
+  // Other errors, and one that already says this, are left as they are.
+  assert.equal(tools.outOfSpaceError(new Error('fatal: early EOF'), { dataFolder, platform: 'win32' }), null);
+  assert.equal(tools.outOfSpaceError(hint, { dataFolder, platform: 'win32' }), null);
+  assert.equal(tools.hintedError(new Error('Access is denied.'), { dataFolder, platform: 'win32' }), null);
 });

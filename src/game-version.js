@@ -165,6 +165,8 @@ function eclipseSourcesPath(userData, base, paths = path) {
 // again over HTTP/1.1, which those stream resets don't happen on, unless the
 // player stopped it or what it asked for isn't there. `clear` removes what a
 // failed clone left, since Git won't clone into a folder that isn't empty.
+// A full drive, or Git unable to fork() its HTTPS helper on Windows (Mandatory
+// ASLR), fails the same way every time, so it isn't tried again.
 const DOWNLOAD_TRIES = 3;
 
 async function download(git, args, options, label, { run, stopped = () => false, wait, clear } = {}) {
@@ -174,7 +176,8 @@ async function download(git, args, options, label, { run, stopped = () => false,
       return await run(git, attempt === 1 ? args : ['-c', 'http.version=HTTP/1.1', ...args], options,
         attempt === 1 ? label : `${label} (try ${attempt} of ${DOWNLOAD_TRIES})`);
     } catch (error) {
-      if (attempt >= DOWNLOAD_TRIES || stopped(startedAt) || GIT_PERMANENT.test(error.message)) throw error;
+      if (attempt >= DOWNLOAD_TRIES || stopped(startedAt) || GIT_PERMANENT.test(error.message) ||
+        tools.outOfSpace(error) || tools.forkFailed(error)) throw error;
       await wait(attempt * 3000);
       if (clear) await fs.promises.rm(clear, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
     }

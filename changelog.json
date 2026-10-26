@@ -115,7 +115,8 @@
       "Fixed a hitch every few seconds at 60 and 120 fps, when a frame came almost a whole frame late, and with the Vulkan renderer one every 1024 frames: Vulkan now saves its shader cache while you pause or a stage loads, never during play.",
       "Mod API 1.5 beta 4 for mod makers: a new event as a stage is about to load, once its episode is chosen, lets a mod load another stage or episode instead; in multiplayer, the players follow the host there.",
       "Mod API 1.5 beta 8 for mod makers, for first-person camera mods: mods can turn Mario, aim FLUDD where they look, and hide his head or FLUDD. Also fixed FLUDD still showing in Super Mario Eclipse while the rest of Mario was hidden.",
-      "Fixed a save state from one save file being saved over another. After an update, older states load by position only, and their progress went over whichever file was open, or over file A when loaded at the title screen, auto save included. A state now goes back to its own file. An older state loaded at the title saves over no file until you pick one at the file select."
+      "Fixed a save state from one save file being saved over another. After an update, older states load by position only, and their progress went over whichever file was open, or over file A when loaded at the title screen, auto save included. A state now goes back to its own file. An older state loaded at the title saves over no file until you pick one at the file select.",
+      "Windows laptops: the game asks Windows not to slow it down to save power, which could make it stutter and drop to 30-40 fps on battery or in a balanced power mode, in any version."
     ]
   },
   "releases": [

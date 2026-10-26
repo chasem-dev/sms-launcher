@@ -185,7 +185,7 @@ async function download(git, args, options, label, { run, stopped = () => false,
 }
 
 async function checkout(root, { git = 'git', run, capture, env, source = release, reference,
-  stopped, wait = ms => new Promise(resolve => setTimeout(resolve, ms)) } = {}) {
+  stopped, wait = ms => new Promise(resolve => setTimeout(resolve, ms)), promote = tools.renameRetrying } = {}) {
   const fetch = (args, options, label, clear) => download(git, args, options, label, { run, stopped, wait, clear });
   const parent = path.dirname(root);
   if (!fs.existsSync(parent)) fs.mkdirSync(parent, { recursive: true });
@@ -205,7 +205,9 @@ async function checkout(root, { git = 'git', run, capture, env, source = release
       throw new Error('The downloaded game files did not match this release. Please retry.');
     // MSYS submodules may use absolute gitdir/worktree paths. Initialize them
     // after promotion so none of their paths refer to the temporary checkout.
-    fs.renameSync(temporary, root);
+    // Antivirus still scanning the files Git just wrote makes Windows refuse
+    // the rename (EPERM) for a moment, so keep trying as the tools unpack does.
+    await promote(temporary, root);
     promoted = true;
     // Clone decomp as plain commands rather than `git submodule update`, which
     // older Git for Windows runs as a shell script whose forks can fail (e.g.

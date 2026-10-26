@@ -94,3 +94,16 @@ test('a disc left on the old computer is found in the portable folder or beside 
   fs.writeFileSync(path.join(base, 'sms.ciso'), 'GMSE01');
   assert.equal(portable.findDisc(base, validate), path.join(base, 'sms.ciso'));
 });
+
+test('a portable launcher says when a newer Stable release is out', () => {
+  const newer = portable.updateNotice('0.1.64', 'v0.1.65');
+  assert.equal(newer.state, 'available');
+  assert.equal(newer.latest, '0.1.65');
+  assert.match(newer.message, /Launcher 0\.1\.65 is out\. Portable launchers don't update themselves/);
+  assert.equal(portable.updateNotice('0.1.64', 'v0.1.64').state, 'unconfigured');
+  assert.equal(portable.updateNotice('0.1.65-beta.12', 'v0.1.64').state, 'unconfigured');
+  assert.equal(portable.updateNotice('0.1.63', 'v0.1.64').state, 'available');
+  assert.equal(portable.updateNotice('0.1.64', null).state, 'unconfigured');
+  assert.equal(portable.updateNotice('0.1.64', 'beta').state, 'unconfigured');
+  assert.match(portable.updateNotice('0.1.64', undefined).message, /download new versions from the releases page/);
+});

@@ -2031,8 +2031,22 @@ function setupAppUpdater() {
   const bundledFeed = fs.existsSync(path.join(process.resourcesPath, 'app-update.yml'));
   // The updater would replace a portable launcher with the installer build.
   if (portableRoot) {
-    appUpdate = { state: 'unconfigured', message: 'Portable launcher: download new versions from the releases page.' };
-    ipcMain.handle('check-app-update', () => appUpdate);
+    appUpdate = portable.updateNotice(app.getVersion(), null);
+    const check = async () => {
+      try {
+        const response = await net.fetch(`https://api.github.com/repos/${updateChannel.REPOSITORY}/releases/latest`,
+          { headers: { Accept: 'application/vnd.github+json' }, signal: AbortSignal.timeout(8000) });
+        if (response.ok) {
+          const before = appUpdate.state;
+          appUpdate = portable.updateNotice(app.getVersion(), (await response.json())?.tag_name);
+          broadcast('app-update', appUpdate);
+          if (appUpdate.state === 'available' && before !== 'available') log(appUpdate.message);
+        }
+      } catch (_) { /* offline, or GitHub's hourly limit: keep the last notice */ }
+      return appUpdate;
+    };
+    if (app.isPackaged) setTimeout(() => { if (config.settings.autoUpdate) check(); }, 10000);
+    ipcMain.handle('check-app-update', check);
     return;
   }
   if (!app.isPackaged || (!url && !bundledFeed) || (process.platform === 'linux' && !process.env.APPIMAGE)) {

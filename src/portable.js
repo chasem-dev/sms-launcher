@@ -2,6 +2,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
+const { baseVersion, compareVersions } = require('./changelog');
 
 // The Windows portable build keeps everything in this folder beside its .exe.
 const FOLDER = 'SMS-Launcher-Portable';
@@ -74,4 +75,15 @@ function shaderCache(base, arch) {
 // The same for the mip levels the game makes for HD textures (texture-mips beside the shaders).
 function textureCache(base) { return path.join(base, 'cache', 'texture-mips'); }
 
-module.exports = { FOLDER, root, inside, storedPaths, resolvedPaths, relocated, findDisc, shaderCache, textureCache };
+// A portable launcher never updates itself (the updater would swap it for the
+// installer build), so the status bar says when a newer Stable release is out.
+// latestTag is GitHub's latest release tag ("v0.1.65"), or null when unknown.
+function updateNotice(current, latestTag) {
+  const latest = baseVersion(String(latestTag || '').replace(/^v/, '')), installed = baseVersion(current);
+  if (latest && installed && compareVersions(latest, installed) > 0)
+    return { state: 'available', latest,
+      message: `Launcher ${latest} is out. Portable launchers don't update themselves: download it from the releases page.` };
+  return { state: 'unconfigured', message: 'Portable launcher: download new versions from the releases page.' };
+}
+
+module.exports = { FOLDER, root, inside, storedPaths, resolvedPaths, relocated, findDisc, shaderCache, textureCache, updateNotice };

@@ -43,7 +43,8 @@
       "Language: Polski has the translator's revised text, written to fit the English lines' lengths, so far fewer lines run past their boxes. If you play in Polish, the launcher downloads it by itself the next time you play.",
       "Fixed a full drive showing as a bare ENOSPC, or being blamed on antivirus, when setting up or building the game: the launcher now names the full drive and its data folder, and roughly how much space setup needs.",
       "Fixed setup on Windows failing again and again with \"cannot fork()\" or \"child_copy … Win32 error 299\" and no explanation: the launcher now says that Windows Security's Mandatory ASLR setting causes it and how to turn it back off, and no longer tries the download again.",
-      "Choosing your game disc takes an NKit .iso again, as it did before version 0.1.64, as long as it holds every file the game reads."
+      "Choosing your game disc takes an NKit .iso again, as it did before version 0.1.64, as long as it holds every file the game reads.",
+      "The portable launcher, which never updates itself, now says at the bottom of the window when a newer launcher is out, so you know to download it from the releases page."
     ],
     "game": [
       "Co-op: a second player who tries their controller's stick before pressing Start now joins with that Start instead of opening the pause menu, and a controller seen twice (by DS4Windows, BetterJoy or Steam Input) no longer joins as player 2 when player 1 pauses.",

@@ -369,26 +369,29 @@ function withCertificates(base, msys, target) {
 }
 
 // A download that drops, stalls or arrives cut short is tried again from the
-// start (twice more); one the server refuses (a 404) is not.
-function fetchVerified(url, destination, expected, onProgress = () => {}, { wait } = {}) {
-  return retrying(() => fetchOnce(url, destination, expected, onProgress), { wait });
+// start (twice more); one the server refuses (a 404) is not. `algorithm` is
+// the hash `expected` is (other downloads pin an MD5), `name` what it is.
+const HASH_NAMES = { sha256: 'SHA-256', md5: 'MD5' };
+function fetchVerified(url, destination, expected, onProgress = () => {}, { wait, onRetry, algorithm = 'sha256', name = 'build tool' } = {}) {
+  return retrying(() => fetchOnce(url, destination, expected, onProgress, { algorithm, name }), { wait, onRetry });
 }
 
-function fetchOnce(url, destination, expected, onProgress, redirects = 0) {
+function fetchOnce(url, destination, expected, onProgress, options, redirects = 0) {
+  const { algorithm, name } = options;
   if (redirects > 8) return Promise.reject(Object.assign(new Error('Too many download redirects.'), { permanent: true }));
   return new Promise((resolve, reject) => {
     const req = https.get(url, { headers: { 'User-Agent': 'sms-launcher-build-tools' } }, response => {
       if ([301, 302, 303, 307, 308].includes(response.statusCode)) {
         response.resume();
-        return resolve(fetchOnce(new URL(response.headers.location, url).href, destination, expected, onProgress, redirects + 1));
+        return resolve(fetchOnce(new URL(response.headers.location, url).href, destination, expected, onProgress, options, redirects + 1));
       }
       if (response.statusCode !== 200) {
         response.resume();
-        return reject(httpError(`Build tool download returned HTTP ${response.statusCode}.`, response.statusCode));
+        return reject(httpError(`${name[0].toUpperCase()}${name.slice(1)} download returned HTTP ${response.statusCode}.`, response.statusCode));
       }
       const part = `${destination}.part`;
       const output = fs.createWriteStream(part, { mode: 0o600 });
-      const hash = crypto.createHash('sha256');
+      const hash = crypto.createHash(algorithm);
       const total = Number(response.headers['content-length']) || 0;
       let received = 0;
       let reported;
@@ -404,18 +407,19 @@ function fetchOnce(url, destination, expected, onProgress, redirects = 0) {
       output.on('finish', () => {
         if (total && received !== total) {
           fs.rmSync(part, { force: true });
-          return reject(new Error(`The build tool download stopped at ${received} of ${total} bytes.`));
+          return reject(new Error(`The ${name} download stopped at ${received} of ${total} bytes.`));
         }
         const actual = hash.digest('hex');
         if (actual !== expected) {
           fs.rmSync(part, { force: true });
-          return reject(new Error('Downloaded build tools failed their SHA-256 check.'));
+          return reject(new Error(name === 'build tool' ? 'Downloaded build tools failed their SHA-256 check.'
+            : `The ${name} download failed its ${HASH_NAMES[algorithm]} check.`));
         }
         renameRetrying(part, destination).then(() => resolve(destination), reject);
       });
       response.pipe(output);
     });
-    req.setTimeout(30000, () => req.destroy(new Error('Build tool download timed out.')));
+    req.setTimeout(30000, () => req.destroy(new Error(`${name[0].toUpperCase()}${name.slice(1)} download timed out.`)));
     req.on('error', reject);
   });
 }

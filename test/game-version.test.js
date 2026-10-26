@@ -176,7 +176,7 @@ test('new source snapshots share optional downloads and keep user settings in th
   assert.equal(fs.readFileSync(path.join(root, 'settings.txt'), 'utf8'), 'save_dir=./custom-saves');
 });
 
-test('a new version copies the radar maps, achievement icons and language packs it pins the same release of', t => {
+test('a new version copies the radar maps and language packs it pins the same release of', t => {
   const { root } = fixture(t);
   const next = path.join(root, 'next');
   const md5 = digit => digit.repeat(32);
@@ -192,12 +192,10 @@ test('a new version copies the radar maps, achievement icons and language packs 
   fs.mkdirSync(path.join(next, 'mods'), { recursive: true });
   pin(root, 'eclipse-maps.json', md5('a'));
   pin(next, 'eclipse-maps.json', md5('a'));
-  pin(root, 'achievement-icons.json', md5('b'));
-  pin(next, 'achievement-icons.json', md5('c'));
-  const [code] = Object.keys(port.LANGUAGE_PACKS);
+  const [code, other] = Object.keys(port.LANGUAGE_PACKS);
   install(port.eclipseMapsDirectory(root), md5('a'), 'bianco.jpg');
-  install(port.achievementIconsDirectory(root), md5('b'), '1.png');
   install(port.languagePackDirectory(root, code), port.LANGUAGE_PACKS[code].md5, 'text.bmg');
+  install(port.languagePackDirectory(root, other), md5('b'), 'text.bmg');   // an older release of the catalog's
   game.carryUserFiles(root, next);
   // The same pin: a copy of its own, not a link into the last version.
   assert.ok(port.eclipseMapsInstalled(next));
@@ -205,8 +203,8 @@ test('a new version copies the radar maps, achievement icons and language packs 
   assert.equal(fs.readFileSync(path.join(port.eclipseMapsDirectory(next), 'bianco.jpg'), 'utf8'), 'downloaded');
   assert.ok(port.languagePackInstalled(next, code));
   // A new pin: left for the update to download, the last version's untouched.
-  assert.ok(!fs.existsSync(port.achievementIconsDirectory(next)));
-  assert.ok(port.achievementIconsInstalled(root));
+  assert.ok(!fs.existsSync(port.languagePackDirectory(next, other)));
+  assert.ok(fs.existsSync(path.join(port.languagePackDirectory(root, other), 'text.bmg')));
   assert.ok(!fs.readdirSync(path.join(next, 'mods', 'maps')).some(name => name.endsWith('.carry-part')));
 });
 

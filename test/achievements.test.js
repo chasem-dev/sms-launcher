@@ -45,10 +45,17 @@ test('the page lists the game\'s achievements with the player\'s unlocks', () =>
   assert.equal(state.total, 2);
   assert.equal(state.unlocked, 1);
   assert.deepEqual(state.achievements.map(item => [item.id, item.unlockedAt]), [[1, null], [2, 1761170000]]);
-  // Eclipse's list is its own (none in this folder); an older game has no list.
-  assert.equal(achievements.state(root, { eclipse: true }, userData).supported, false);
+  assert.equal(state.counted, true);
+  // Eclipse's list is its own; a game without one (here, or older) shows the launcher's, but can't unlock them.
+  const eclipse = achievements.state(root, { eclipse: true }, userData);
+  assert.deepEqual([eclipse.supported, eclipse.counted, eclipse.total], [true, false, 128]);
   const old = gameFolder(null);
   assert.equal(achievements.supported(old, { eclipse: false }), false);
+  const shown = achievements.state(old, { eclipse: false }, userData);
+  assert.deepEqual([shown.supported, shown.counted, shown.total, shown.unlocked], [true, false, 148, 1]);
+  assert.equal(shown.achievements[0].title, 'Paint Job');
+  // No game set up yet: the same.
+  assert.equal(achievements.state(null, { eclipse: false }, userData).total, 148);
   for (const folder of [root, userData, old]) fs.rmSync(folder, { recursive: true });
 });
 

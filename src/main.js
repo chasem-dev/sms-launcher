@@ -31,6 +31,7 @@ const multiplayer = require('./multiplayer');
 const nat = require('./nat');
 const rooms = require('./rooms');
 const nativeMods = require('./native-mods');
+const iconStore = require('./achievement-icons');
 const eclipseDisc = require('./eclipse-disc');
 const { cleanOutputLine, createActivityReader } = require('./progress');
 const { createActivityLog } = require('./activity-log');
@@ -93,6 +94,8 @@ let launchedByDiscord = process.argv.some(arg => discord.isLaunchUrl(arg));
 const playOnStart = process.argv.includes('--play');
 const ownsInstance = app.requestSingleInstanceLock();
 if (!ownsInstance) app.quit();
+else if (portableRoot && app.isPackaged)
+  port.useLauncherScripts(portable.copyScripts(path.join(process.resourcesPath, 'scripts'), portableRoot));
 app.on('second-instance', (_event, argv) => {
   if (argv.some(arg => discord.isLaunchUrl(arg))) startedByDiscord();
   showWindow();
@@ -926,48 +929,41 @@ async function updateEclipseMaps(root, settings) {
 
 // The achievements' icons, when they are missing or not the pinned release: before the game plays, for every
 // player. A failed download does not stop the game: it plays without them, and setup tries again next time.
-async function updateAchievementIcons(root, settings) {
-  if (!port.achievementIconsWanted(root, settings) || toolsRemoved('The achievement icons')) return;
-  try { await installAchievementIcons(root, { tries: 2 }); }
+async function updateAchievementIcons(root) {
+  if (!iconStore.wanted(app.getPath('userData'), root)) return;
+  try { await installAchievementIcons(root); }
   catch (error) {
     log(`The achievement icons were not installed (${error.message}); achievements still unlock, and setup tries again next time.`);
   }
 }
-// The installer resumes a dropped connection itself; a run that still fails is tried again
-// a few times (not after Stop), each retry shown as the task's detail.
-const ACHIEVEMENT_ICON_TRIES = 3;
-async function installAchievementIcons(root, { tries = ACHIEVEMENT_ICON_TRIES } = {}) {
-  const startedAt = Date.now();
-  let attempts = 0;
-  await retrying(async () => {
-    attempts++;
-    await ensureBuildTools();
-    const cmd = port.commandFor(root, 'achievement-icons', [], process.platform, toolEnv());
-    await launch(cmd.command, cmd.args, { cwd: cmd.cwd, env: cmd.env }, 'Install achievement icons');
-    if (!port.achievementIconsInstalled(root)) throw new Error('the installer finished without them');
-  }, { tries, permanent: () => wasStopped(startedAt), onRetry(error, n) {
-    const seconds = n * 2;
-    log(`The achievement icons didn't download (${error.message}); trying again in ${seconds} s (try ${n + 1} of ${tries}).`);
-    if (operation) {
-      Object.assign(operation, { detail: `Download failed, trying again in ${seconds} s (try ${n + 1} of ${tries})…`, percent: null });
-      broadcast('activity', activityState());
-    }
-  } }).catch(error => {
-    if (attempts > 1) error.message += ` (tried ${attempts} times)`;
-    throw error;
-  });
+// The icons go in the launcher's folder, for every game version: the copy an older launcher put in the game
+// folder when it is the pinned release, or else the download, a dropped one tried again (shown as the task's detail).
+async function installAchievementIcons(root) {
+  const userData = app.getPath('userData');
+  if (iconStore.adopt(userData, root)) log('Copied the achievement icons from the game folder into the launcher\'s, for every game version.');
+  else {
+    const required = [false, true].flatMap(eclipse => (achievements.readList(root, eclipse) || [])
+      .map(({ id }) => `achievements/${eclipse ? 'eclipse/' : ''}${id}.png`));
+    const show = fields => { if (operation) { Object.assign(operation, fields); broadcast('activity', activityState()); } };
+    log(`Downloading ${iconStore.pinned(root).name}.`);
+    await iconStore.install(userData, root, { required,
+      onProgress: percent => show({ detail: 'Downloading the icons…', percent }),
+      onRetry(error, n) {
+        const seconds = n * 2;
+        log(`The achievement icons didn't download (${error.message}); trying again in ${seconds} s (try ${n + 1} of 3).`);
+        show({ detail: `Download failed, trying again in ${seconds} s (try ${n + 1} of 3)…`, percent: null });
+      } });
+    log(`Installed the achievement icons in ${iconStore.directory(userData)}.`);
+  }
   achievementIconCache.clear();
   broadcast('achievement', null);
 }
 // The Achievements tab's Download icons, when its page opens without them: only the icons, then the page.
+// Any game version, or none set up yet: the icons are the launcher's, not the game's.
 async function downloadAchievementIcons() {
-  requireRepo();
-  // Nothing to download them for: said in the popup, before any download.
-  if (!achievements.supported(config.repo, config.settings)) throw new Error(config.settings.eclipse
-    ? "Your game version has no Super Mario Eclipse achievements yet. Update the game on Play, then try again"
-    : 'Your game version has no achievements yet. Update the game on Play, then try again');
-  if (!port.achievementIconsWanted(config.repo, config.settings)) return achievementsState();
-  try { await installAchievementIcons(config.repo); }
+  const root = achievementsRoot();
+  if (!iconStore.wanted(app.getPath('userData'), root)) return achievementsState();
+  try { await installAchievementIcons(root); }
   catch (error) {
     if (!operation || wasStopped(operation.startedAt)) throw error;
     throw new Error(`The icons didn't download: ${error.message.replace(/\.$/, '')}. Check your internet connection and try again; the activity log has the details`);
@@ -1173,7 +1169,7 @@ async function setupGame() {
   else await updateTextureExtras(config.repo, config.settings);
   await updateLanguagePack(config.repo, config.settings);
   await updateEclipseMaps(config.repo, config.settings);
-  await updateAchievementIcons(config.repo, config.settings);
+  await updateAchievementIcons(config.repo);
   return state();
 }
 
@@ -1316,7 +1312,8 @@ async function play(installation = null, session = null) {
   // Eclipse's are its own (achievements-eclipse.txt), as are its icons.
   if (achievements.supported(root, settings)) env.SMS_ACHIEVEMENTS = achievements.file(app.getPath('userData'), settings.eclipse);
   // The achievements' icons (updateAchievementIcons), for the game's banner.
-  if (port.achievementIconsInstalled(root)) env.SMS_ACHIEVEMENT_ICONS = port.achievementIconsDirectory(root, settings.eclipse);
+  const icons = iconStore.folder(app.getPath('userData'), root, settings.eclipse);
+  if (icons) env.SMS_ACHIEVEMENT_ICONS = icons;
   if (config.settings.discordPresence) env.SMS_PRESENCE = '1';
   const look = marioLookPack(rom, disc, root, settings);
   if (look) env.SMS_MARIO_LOOK = look;
@@ -1426,12 +1423,13 @@ function playtime() {
 
 // The Achievements page: every achievement of the game folder's list, and the player's unlocks;
 // without the icons, the tab offers to download them first.
+// The game folder the page reads, or null before one is set up: the launcher's lists and icons serve then.
+function achievementsRoot() { return config.repo && fs.existsSync(config.repo) ? config.repo : null; }
+
 function achievementsState() {
-  const root = config.repo && fs.existsSync(config.repo) ? config.repo : null;
-  const seen = config.achievementsSeen;
-  if (!root) return { supported: false, achievements: [], unlocked: 0, total: 0, iconsNeeded: false, seen };
+  const root = achievementsRoot();
   return { ...achievements.state(root, config.settings, app.getPath('userData')),
-    iconsNeeded: port.achievementIconsWanted(root, config.settings), seen };
+    iconsNeeded: iconStore.wanted(app.getPath('userData'), root), seen: config.achievementsSeen };
 }
 // The Achievements tab stands out until it is first opened.
 function markAchievementsSeen() {
@@ -1443,10 +1441,10 @@ function markAchievementsSeen() {
 // Small copies of the icons for the page (the files are 512 px), made once each.
 const achievementIconCache = new Map();
 function achievementIcons() {
-  const root = config.repo && fs.existsSync(config.repo) ? config.repo : null;
-  if (!root || !port.achievementIconsInstalled(root)) return {};
+  const root = achievementsRoot();
   const eclipse = Boolean(config.settings.eclipse);
-  const directory = port.achievementIconsDirectory(root, eclipse), icons = {};
+  const directory = iconStore.folder(app.getPath('userData'), root, eclipse), icons = {};
+  if (!directory) return {};
   for (const { id } of achievements.readList(root, eclipse) || []) {
     const fileName = achievements.iconFile(directory, id);
     if (!achievementIconCache.has(fileName)) {
@@ -1509,7 +1507,7 @@ async function launchGame(session = null, update = config.settings.autoUpdate) {
   else await updateTextureExtras(config.repo, config.settings);
   await updateLanguagePack(config.repo, config.settings);
   await updateEclipseMaps(config.repo, config.settings);
-  await updateAchievementIcons(config.repo, config.settings);
+  await updateAchievementIcons(config.repo);
   // last checks, with the game as it will run (multiplayer: the network check is done, the host's version matches)
   if (session?.beforePlay) await session.beforePlay();
   return play(null, session);

@@ -86,4 +86,22 @@ function updateNotice(current, latestTag) {
   return { state: 'unconfigured', message: 'Portable launcher: download new versions from the releases page.' };
 }
 
-module.exports = { FOLDER, root, inside, storedPaths, resolvedPaths, relocated, findDisc, shaderCache, textureCache, updateNotice };
+// The launcher's scripts, copied out of its resources. The portable stub
+// unpacks the launcher to the same temporary folder at every start and deletes
+// it when that start ends, so a second start (opening the .exe again, a Discord
+// invite), which hands over to the running launcher and quits, deletes the
+// scripts out from under it. Returns the copy's folder, or null without one.
+function copyScripts(from, base) {
+  const directory = path.join(base, 'launcher-scripts');
+  try {
+    fs.mkdirSync(directory, { recursive: true });
+    for (const name of fs.readdirSync(from)) {
+      const temporary = path.join(directory, `${name}.${process.pid}.tmp`);
+      fs.copyFileSync(path.join(from, name), temporary);
+      fs.renameSync(temporary, path.join(directory, name));
+    }
+  } catch (_) { /* a copy from an earlier start still serves */ }
+  return fs.existsSync(directory) ? directory : null;
+}
+
+module.exports = { FOLDER, root, inside, storedPaths, resolvedPaths, relocated, findDisc, shaderCache, textureCache, updateNotice, copyScripts };

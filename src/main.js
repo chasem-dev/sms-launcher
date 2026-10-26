@@ -1681,17 +1681,20 @@ async function publicGames() {
 }
 
 // Players in public games right now, shown on the Multiplayer tab (hidden at 0) as a sign someone is playing. The
-// list is checked every minute while the window shows, and whenever the Multiplayer page loads it.
-const PUBLIC_ONLINE_EVERY = 60 * 1000;
-let publicOnline = null, publicOnlineTimer = null;
+// list is checked every two minutes while the window shows, and whenever the Multiplayer page loads it; a check
+// is skipped when the page's own refresh has just loaded the list.
+const PUBLIC_ONLINE_EVERY = 2 * 60 * 1000;
+let publicOnline = null, publicOnlineTimer = null, publicOnlineAt = 0;
 function setPublicOnline(list) {
+  if (list) publicOnlineAt = Date.now();
   const value = list && rooms.publicPlayers(list, rooms.parseRoomCode(hostedRoom));
   if (JSON.stringify(value) === JSON.stringify(publicOnline)) return;
   publicOnline = value;
   broadcast('public-online', publicOnline);
 }
-async function checkPublicOnline() {
+async function checkPublicOnline({ fresh = PUBLIC_ONLINE_EVERY / 2 } = {}) {
   if (!window || window.isDestroyed() || !window.isVisible() || window.isMinimized()) return;
+  if (Date.now() - publicOnlineAt < fresh) return;
   // Offline, or the server can't answer: no count rather than an old one.
   try { setPublicOnline(await rooms.listPublic()); } catch (_) { setPublicOnline(null); }
 }
@@ -2408,7 +2411,7 @@ function createWindow() {
   window.on('enter-full-screen', sendWindowState);
   window.on('leave-full-screen', sendWindowState);
   // Back from the taskbar: the online count catches up at once rather than at the next minute.
-  window.on('restore', checkPublicOnline);
+  window.on('restore', () => checkPublicOnline({ fresh: 30 * 1000 }));
   window.loadFile(path.join(__dirname, 'index.html'));
   window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   window.webContents.on('console-message', details => {

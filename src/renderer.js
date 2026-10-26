@@ -1496,7 +1496,7 @@ let publicGames = null, publicTicket = 0, publicTimer = null;
 let pingingTyped = false;
 const publicPings = new Map(); // code -> { pending } or { ping, mode } or { failed }
 const pingHow = mode => ({ relay: ' through the relay', lan: ' over your local network', direct: ' direct' })[mode] || '';
-const PUBLIC_REFRESH = 15000;
+const PUBLIC_REFRESH = 30000;
 function renderMultiplayer() {
   const busy = Boolean(current?.active) || setupPending;
   $('mp-host').disabled = busy;
@@ -1645,9 +1645,11 @@ function showMultiplayer() {
   checkNat();
   loadPublicGames();
   clearInterval(publicTimer);
-  publicTimer = setInterval(() => { if (page === 'multiplayer') loadPublicGames(); }, PUBLIC_REFRESH);
+  publicTimer = setInterval(() => { if (page === 'multiplayer' && !document.hidden) loadPublicGames(); }, PUBLIC_REFRESH);
 }
 onPage('multiplayer', { show: showMultiplayer, hide() { clearInterval(publicTimer); publicTimer = null; } });
+// Back from minimized or hidden: the list catches up at once rather than at the next refresh.
+window.addEventListener('visibilitychange', () => { if (publicTimer && !document.hidden) loadPublicGames(); });
 for (const id of ['mp-name', 'mp-host-port', 'mp-max-players', 'mp-address', 'mp-join-port', 'mp-list-public', 'mp-collision']) {
   $(id).addEventListener('input', renderMultiplayer);
   // An unfinished port is kept as it was until it is a number.

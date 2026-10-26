@@ -43,6 +43,7 @@
     "game": [
       "Co-op: a second player who tries their controller's stick before pressing Start now joins with that Start instead of opening the pause menu, and a controller seen twice (by DS4Windows, BetterJoy or Steam Input) no longer joins as player 2 when player 1 pauses.",
       "Co-op: as a level starts, the game now says how to join even when the second controller hasn't been pressed yet, and tells you to connect a second controller when there's only one.",
+      "Fixed the game failing to build at the very last step when its folder's path has a comma in it (such as \"Nintendo, SEGA\").",
       "Super Mario Eclipse: playing as Luigi or Il Piantissimo, they keep their own mouth instead of wearing your Customize Mario skin colour, so Mario's mouth and chin can now take your colours too.",
       "Multiplayer: the other players no longer show up in your own Customize Mario colours when theirs can't be shown, they wear their sunglasses when they have them on, and in Super Mario Eclipse each player shows as the character they chose (Luigi, Il Piantissimo or Shadow Mario) instead of yours.",
       "Fixed the music playing much quieter than the sound effects: it now plays at the GameCube's level, so if you turned Sound effects volume down to hear the music, you can turn it back up.",

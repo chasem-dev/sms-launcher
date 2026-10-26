@@ -294,12 +294,22 @@ function eclipseMapsSupported(root) {
   return fs.existsSync(path.join(root, 'tools', 'mods', 'eclipse-maps.json'));
 }
 
-function eclipseMapsInstalled(root) {
+// The release a game version pins in tools/mods/<file>, or null.
+function pinnedRelease(root, file) {
+  try { return JSON.parse(fs.readFileSync(path.join(root, 'tools', 'mods', file), 'utf8')); }
+  catch (_) { return null; }
+}
+
+// Whether `directory` holds the `pinned` release, by the MD5 its .release records.
+function holdsRelease(directory, pinned) {
   try {
-    const pinned = JSON.parse(fs.readFileSync(path.join(root, 'tools', 'mods', 'eclipse-maps.json'), 'utf8'));
-    const installed = JSON.parse(fs.readFileSync(path.join(eclipseMapsDirectory(root), '.release'), 'utf8'));
-    return typeof pinned.md5 === 'string' && /^[0-9a-f]{32}$/.test(pinned.md5) && installed.md5 === pinned.md5;
+    const installed = JSON.parse(fs.readFileSync(path.join(directory, '.release'), 'utf8'));
+    return typeof pinned?.md5 === 'string' && /^[0-9a-f]{32}$/.test(pinned.md5) && installed.md5 === pinned.md5;
   } catch (_) { return false; }
+}
+
+function eclipseMapsInstalled(root) {
+  return holdsRelease(eclipseMapsDirectory(root), pinnedRelease(root, 'eclipse-maps.json'));
 }
 
 // Maps to download for these settings: Eclipse with the radar on, a port that
@@ -323,11 +333,7 @@ function achievementIconsSupported(root) {
 }
 
 function achievementIconsInstalled(root) {
-  try {
-    const pinned = JSON.parse(fs.readFileSync(path.join(root, 'tools', 'mods', 'achievement-icons.json'), 'utf8'));
-    const installed = JSON.parse(fs.readFileSync(path.join(root, 'assets', 'achievements', '.release'), 'utf8'));
-    return typeof pinned.md5 === 'string' && /^[0-9a-f]{32}$/.test(pinned.md5) && installed.md5 === pinned.md5;
-  } catch (_) { return false; }
+  return holdsRelease(achievementIconsDirectory(root), pinnedRelease(root, 'achievement-icons.json'));
 }
 
 function achievementIconsWanted(root, _settings) {
@@ -362,11 +368,7 @@ function languageAvailable(root, code) {
 }
 
 function languagePackInstalled(root, code) {
-  try {
-    const pinned = LANGUAGE_PACKS[code];
-    const installed = JSON.parse(fs.readFileSync(path.join(languagePackDirectory(root, code), '.release'), 'utf8'));
-    return typeof pinned.md5 === 'string' && /^[0-9a-f]{32}$/.test(pinned.md5) && installed.md5 === pinned.md5;
-  } catch (_) { return false; }
+  return holdsRelease(languagePackDirectory(root, code), LANGUAGE_PACKS[code]);
 }
 
 // The languages for the Settings list: code, name in its own language, and
@@ -390,6 +392,18 @@ function gameLanguage(settings) {
 function languagePackWanted(root, settings) {
   const code = gameLanguage(settings);
   return code !== 'en' && languageAvailable(root, code) && !languagePackInstalled(root, code);
+}
+
+// The pinned downloads each game version keeps in its own folder: Eclipse's
+// radar maps, the achievement icons and the language packs. A new version
+// that pins the same release as the last one can take that one's copy
+// (game.carryUserFiles) instead of downloading it again.
+function pinnedDownloads(root) {
+  return [
+    { directory: eclipseMapsDirectory(root), pinned: pinnedRelease(root, 'eclipse-maps.json') },
+    { directory: achievementIconsDirectory(root), pinned: pinnedRelease(root, 'achievement-icons.json') },
+    ...Object.keys(LANGUAGE_PACKS).map(code => ({ directory: languagePackDirectory(root, code), pinned: LANGUAGE_PACKS[code] })),
+  ];
 }
 
 function cutscenePackSupported(root) {
@@ -770,6 +784,6 @@ module.exports = { PORT_URL, ECLIPSE_ISO, platformInfo, isPort, validateRom, nor
   eclipseMapsDirectory, eclipseMapsSupported, eclipseMapsInstalled, eclipseMapsWanted,
   achievementIconsDirectory, achievementIconsSupported, achievementIconsInstalled, achievementIconsWanted,
   LANGUAGES, LANGUAGE_PACKS, gameLanguage, languagePackDirectory, languagePacksSupported, languageAvailable, languageChoices,
-  languagePackInstalled, languagePackWanted,
+  languagePackInstalled, languagePackWanted, holdsRelease, pinnedDownloads,
   cutscenePackDirectory, cutscenePackInstalled, cutscenePackSupported, cutscenePackRequirements, wantsCutscenes, hdVisualsInstalled, buildEnvironment, eclipseMovieEnvironment, gameDisc, binaryPath,
   commandFor, eclipseBuildCommand, eclipseRunCommand, gameRuntimeFolders, playableInstall, windowsPathLimit, longPathProblem };

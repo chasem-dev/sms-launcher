@@ -263,6 +263,26 @@ function carryUserFiles(previous, next) {
     // A Windows directory junction requires no administrator/developer mode.
     fs.symlinkSync(fs.realpathSync(origin), target, process.platform === 'win32' ? 'junction' : 'dir');
   }
+  carryPinnedDownloads(previous, next);
+}
+
+// Copy the radar maps, achievement icons and language packs the last version
+// downloaded when the new one pins the same release, so changing channel or
+// updating doesn't download them again. Each version keeps its own copy, so
+// one that pins a different release replaces only its own. A copy that fails
+// is dropped and the update downloads it as before.
+function carryPinnedDownloads(previous, next) {
+  for (const { directory, pinned } of port.pinnedDownloads(next)) {
+    const origin = path.join(previous, path.relative(next, directory));
+    if (fs.existsSync(directory) || !port.holdsRelease(origin, pinned)) continue;
+    const part = `${directory}.carry-part`;
+    try {
+      fs.rmSync(part, { recursive: true, force: true });
+      fs.mkdirSync(path.dirname(directory), { recursive: true });
+      fs.cpSync(origin, part, { recursive: true });
+      fs.renameSync(part, directory);
+    } catch (_) { fs.rmSync(part, { recursive: true, force: true }); }
+  }
 }
 
 // Links to an earlier version's packs keep its absolute path (Windows junctions

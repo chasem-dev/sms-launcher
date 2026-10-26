@@ -6,6 +6,25 @@
   },
   "releases": [
     {
+      "version": "0.1.67",
+      "title": "Achievement banner hotfix",
+      "date": "2026-10-26",
+      "launcher": [
+        "Portable launcher: downloading HD textures, language packs and cutscenes, and building Super Mario Eclipse, no longer fail with \"can't open file ... texture-progress.py\" after the launcher's .exe was opened a second time (or a Discord invite opened it) while it was already running.",
+        "Achievements: the icons are now the launcher's own download, kept once for every game version, so Download icons on the Achievements tab works whatever game version you have, without updating or building it, and opens the page straight after. On a game version from before achievements the page shows them all, with a note to update the game to start unlocking them."
+      ],
+      "game": {
+        "version": "2026.10.26.3",
+        "commit": "5d38c5a8d89c27872e6ea8e63cad869a0db90828",
+        "changes": [
+          "Achievements: on Windows, the BADGE GET! banner now shows in the game when you unlock an achievement, and the ten for enemy combos and Mario's tricks (Stu Stack to Sprinkler Spin) can now be unlocked; on Linux and Mac, Customize Mario's Always shirt and Always sunglasses now work. The game had room for 16 of its add-ons and quietly left out the rest.",
+          "Co-op: each player now has their own health meter and FLUDD gauge in their half of the screen, and player 2 is heard wherever they are: their spray, and the enemies and things around them, no longer go quiet when they are away from Mario.",
+          "Multiplayer: fixed every player showing flushed red, as if just splashed, from the start of a game until their first hit, on computers that had been on for 25 to 50 days.",
+          "Multiplayer: items a server mod places, like the Splash Battle's water capsules, now stay until someone takes them instead of flashing and vanishing after a few seconds, and the second player in a game gets them too."
+        ]
+      }
+    },
+    {
       "version": "0.1.66",
       "date": "2026-10-26",
       "launcher": [

@@ -334,8 +334,16 @@ test('download selects exact port and decomp commits even when the branch has ne
     if (directory === root) throw Object.assign(new Error('EPERM'), { code: 'EPERM' });
     return mkdirSync(directory, options);
   };
-  try { await game.checkout(destination, { source, env, run, capture }); }
+  // Windows refuses to rename the fresh clone while antivirus scans it.
+  let refused = 0;
+  const rename = (from, to) => {
+    if (refused++ < 2) throw Object.assign(new Error(`EPERM: operation not permitted, rename '${from}' -> '${to}'`), { code: 'EPERM' });
+    return fs.renameSync(from, to);
+  };
+  const promote = (from, to) => tools.renameRetrying(from, to, { platform: 'win32', rename, sleep: async () => {} });
+  try { await game.checkout(destination, { source, env, run, capture, promote }); }
   finally { fs.mkdirSync = mkdirSync; }
+  assert.equal(refused, 3);
   assert.equal(game.gitRevision(destination), source.commit);
   assert.equal(game.gitRevision(path.join(destination,'decomp')), source.decomp);
   assert.equal(git(destination, ['submodule', 'status']).trim().slice(0, 40), source.decomp);

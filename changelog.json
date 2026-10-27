@@ -14,7 +14,9 @@
       "HD textures in French, German, Spanish and Italian: the pause menu's Quit option is now as sharp as the words above it, instead of the game's original low-resolution word.",
       "Co-op with keyboard and mouse: moving the mouse or turning its wheel no longer tilts or zooms the other player's camera.",
       "Nintendo Switch button prompts in the game's settings menu (pause, then Y), under Button Prompts and Prompt Controller, and Switch controllers show them when prompts match the controller. Nintendo button layout swaps A and B, and X and Y, on controllers printed like Nintendo's that the game read as an Xbox pad.",
-      "Mods: the game has mod API 1.6 beta 1. Mods can open their own screen over a save file's menu at file select (Start, Copy, Erase, Score), such as a new game's options, and you can still back out with B."
+      "Mods: the game has mod API 1.6 beta 1. Mods can open their own screen over a save file's menu at file select (Start, Copy, Erase, Score), such as a new game's options, and you can still back out with B.",
+      "Mouse look: with Invert camera X on (the launcher's default) the mouse turned the camera the opposite way to the C-stick; now the mouse always turns the view the way it moves, and Invert camera X flips only the C-stick.",
+      "Mouse aim in Mario Cam now also aims FLUDD when you spray in place (R all the way down, or L to walk sideways): the mouse turns Mario and tilts FLUDD up and down, and the camera follows behind him."
     ]
   },
   "releases": [

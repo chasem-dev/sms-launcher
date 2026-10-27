@@ -6,6 +6,9 @@
 // its own, which the game is told about (SMS_NATIVE_MODS_DIR), and switches it
 // on and off in the game's own list (native-mods.ini, which the game's Mods
 // menu, F1, also changes), so the launcher and the game always agree.
+// The list itself is read again from mods.json on the launcher repository's
+// main branch, so a mod added there is offered without a launcher update.
+// native-mods.json is the copy built in, for when GitHub cannot be reached.
 
 const fs = require('fs');
 const path = require('path');
@@ -15,9 +18,57 @@ const crypto = require('crypto');
 const CATALOG = require('./native-mods.json');
 const { retrying, httpError } = require('./retry');
 const MAX_SIZE = 64 << 20; // far beyond a mod's zip: a larger one is not a mod
-const ID = /^[A-Za-z0-9._-]+$/;
+const ID = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/; // a folder name, never . or ..
+const REPOSITORY = /^[A-Za-z0-9-]+\/[A-Za-z0-9._-]+$/;
+const VERSION = /^\d+\.\d+\.\d+$/;
+const MAX_MODS = 100;
 
-function catalog() { return CATALOG.map(entry => ({ ...entry })); }
+function catalogUrl(env = process.env) {
+  return env.SMS_NATIVE_MODS_CATALOG_URL || 'https://raw.githubusercontent.com/chasem-dev/sms-launcher/main/mods.json';
+}
+
+function text(value, max) { return typeof value === 'string' ? value.trim().slice(0, max) : ''; }
+
+// Untrusted JSON -> the mods a launcher of version `launcher` ("0.1.68") can
+// offer: a mod with a newer minLauncher needs something only newer launchers do.
+// Without a version (the bundled list, which this launcher was built with) all stay.
+function normalizeCatalog(data, launcher) {
+  const check = launcher !== undefined;
+  launcher = String(launcher || '').split(/[-+]/)[0];
+  const seen = new Set();
+  const entries = [];
+  for (const entry of Array.isArray(data) ? data : []) {
+    if (!entry || typeof entry !== 'object' || !ID.test(entry.id) || seen.has(entry.id) || !REPOSITORY.test(entry.repository)) continue;
+    if (entry.api !== undefined && !parseApi(entry.api)) continue;
+    if (entry.minLauncher !== undefined && (!VERSION.test(entry.minLauncher) || (check && (!VERSION.test(launcher) || newer(entry.minLauncher, launcher))))) continue;
+    seen.add(entry.id);
+    entries.push({ id: entry.id, name: text(entry.name, 80) || entry.id, author: text(entry.author, 60), description: text(entry.description, 600),
+      repository: entry.repository, api: entry.api === undefined ? '' : String(entry.api) });
+    if (entries.length >= MAX_MODS) break;
+  }
+  return entries;
+}
+
+const BUNDLED = normalizeCatalog(CATALOG);
+let current = BUNDLED;
+
+// The published list wins for each mod it has, so a mod's text or repository
+// can change; mods only this launcher has (a preview's new one) stay.
+function mergeCatalog(published, bundled = BUNDLED) {
+  const ids = new Set(published.map(entry => entry.id));
+  return published.concat(bundled.filter(entry => !ids.has(entry.id)));
+}
+
+function catalog() { return current.map(entry => ({ ...entry })); }
+
+// Reads the published list (mods.json on main) and offers it from
+// then on; when GitHub cannot be reached the last list read stays.
+async function refreshCatalog(fetch, { launcher, url = catalogUrl() } = {}) {
+  const response = await fetch(url, { cache: 'no-cache', signal: AbortSignal.timeout(8000) });
+  if (!response.ok) throw new Error(`GitHub did not send the mod list (${response.status}).`);
+  current = mergeCatalog(normalizeCatalog(await response.json(), launcher));
+  return catalog();
+}
 
 function directory(userData) { return path.join(userData, 'native-mods'); }
 
@@ -108,7 +159,7 @@ function installed(userData) {
     if (!Object.keys(ini).length) continue;
     let release = null;
     try { release = JSON.parse(fs.readFileSync(path.join(dir, '.release.json'), 'utf8')); } catch (_) {}
-    mods.push({ id: ini.id || name, name: ini.name || ini.id || name, version: ini.version || '', description: ini.description || '', dir, release });
+    mods.push({ id: ini.id || name, name: ini.name || ini.id || name, version: ini.version || '', author: ini.author || '', description: ini.description || '', dir, release });
   }
   return mods;
 }
@@ -218,6 +269,12 @@ async function download(userData, entry, fetch, { wait } = {}) {
   return installZip(userData, entry, data, release);
 }
 
+// A mod's page on GitHub, for its credit link: only the repositories the list names.
+function pageUrl(id) {
+  const entry = current.find(item => item.id === id);
+  return entry ? `https://github.com/${entry.repository}` : null;
+}
+
 function remove(userData, id) {
   if (!ID.test(id)) throw new Error('That is not a mod.');
   fs.rmSync(path.join(directory(userData), id), { recursive: true, force: true });
@@ -230,12 +287,13 @@ function list(userData, root, env = process.env, platform = process.platform) {
   const off = offList(env, platform);
   const present = installed(userData);
   const rows = catalog().map(entry => ({ ...entry, installed: present.find(mod => mod.id === entry.id) || null }));
-  for (const mod of present) if (!rows.some(row => row.id === mod.id)) rows.push({ id: mod.id, name: mod.name, description: mod.description, repository: '', api: '', installed: mod });
+  for (const mod of present) if (!rows.some(row => row.id === mod.id)) rows.push({ id: mod.id, name: mod.name, author: '', description: mod.description, repository: '', api: '', installed: mod });
   return {
     folder: directory(userData),
     gameApi: have ? `${have.major}.${have.minor}` : null,
-    mods: rows.map(row => ({ ...row, enabled: !off.includes(row.id), supported: supports(have, row.api) }))
+    // Who made each mod: the list's credit, else its own mod.ini's author.
+    mods: rows.map(row => ({ ...row, author: row.author || row.installed?.author || '', enabled: !off.includes(row.id), supported: supports(have, row.api) }))
   };
 }
 
-module.exports = { MAX_SIZE, catalog, directory, dataRoot, parseIni, offList, isEnabled, setEnabled, gameApi, supports, installed, environment, newer, latestRelease, unzip, installZip, download, remove, list };
+module.exports = { MAX_SIZE, catalogUrl, normalizeCatalog, mergeCatalog, refreshCatalog, catalog, directory, dataRoot, parseIni, offList, isEnabled, setEnabled, gameApi, supports, installed, environment, newer, latestRelease, unzip, installZip, download, pageUrl, remove, list };

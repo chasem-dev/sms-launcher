@@ -1236,8 +1236,13 @@ function nativeModsState() {
 }
 
 // Each mod's newest release, for the page's Update buttons; a mod GitHub
-// cannot answer about just shows none.
+// cannot answer about just shows none. The list of mods is read again first,
+// from GitHub (development runs keep their own native-mods.json).
 async function nativeModsLatest() {
+  if (app.isPackaged || process.env.SMS_NATIVE_MODS_CATALOG_URL) {
+    try { await nativeMods.refreshCatalog((url, options) => net.fetch(url, options), { launcher: app.getVersion() }); }
+    catch (error) { log(`Offering the mods already known: ${error.message}`); }
+  }
   const latest = {};
   await Promise.all(nativeMods.catalog().map(async entry => {
     try { latest[entry.id] = await nativeMods.latestRelease(entry, (url, options) => net.fetch(url, options)); }
@@ -2321,6 +2326,10 @@ function registerHandlers() {
   ipcMain.handle('native-mod-install', (_event, id) => exclusive('Download mod', () => installNativeMod(id)));
   ipcMain.handle('native-mod-remove', (_event, id) => { nativeMods.remove(app.getPath('userData'), String(id)); return nativeModsState(); });
   ipcMain.handle('native-mod-enable', (_event, id, on) => { nativeMods.setEnabled(String(id), Boolean(on)); return nativeModsState(); });
+  ipcMain.handle('open-native-mod-page', (_event, id) => {
+    const url = nativeMods.pageUrl(String(id));
+    if (url) return shell.openExternal(url);
+  });
   ipcMain.handle('open-native-mods', () => {
     fs.mkdirSync(nativeMods.directory(app.getPath('userData')), { recursive: true });
     return shell.openPath(nativeMods.directory(app.getPath('userData')));

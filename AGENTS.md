@@ -54,3 +54,7 @@ The release entry format:
 - `npm test` must pass. `test/changelog.test.js` fails if `changelog.json` has no entry for the `package.json` version, or that entry's game pin doesn't match `src/game-release.json`.
 
 The README's "Versions and releases" section has the full release process.
+
+## Offering a mod
+
+The Mods page (Settings, Mods) offers the mods in `mods.json` at the top of the repository. Packaged launchers read that file from `main` on GitHub each time they check mods, so a mod added there reaches every launcher without a release. `src/native-mods.json` is the copy built into the launcher, for when GitHub cannot be reached: a mod only needs to be added there too when it should work offline, and its entry must then match `mods.json` (a test checks). Each entry needs `id` (the mod's folder and its `mod.ini` id), `name`, `author` (credited on the page with a link to the repository), `description`, `repository` (`owner/repo`, whose newest GitHub release has an `<id>-*.zip` containing `<id>/mod.ini`) and `api` (the mod API it needs, such as `"1.4"`). Add `minLauncher` (`"0.1.70"`) only when the mod needs something older launchers lack: they then leave it out. Like every commit, adding a mod gets a `beta.launcher` changelog line.

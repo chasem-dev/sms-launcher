@@ -1,0 +1,18 @@
+[
+  {
+    "id": "seamless-episodes",
+    "name": "Seamless Episodes",
+    "author": "chasem-dev",
+    "description": "After a Shine Sprite is saved, the world's next episode starts right away, with its opening cutscene: no trip back to Delfino Plaza and no episode select. Works in singleplayer and when you host multiplayer; the players who join follow you.",
+    "repository": "chasem-dev/sms-seamless-episodes",
+    "api": "1.4"
+  },
+  {
+    "id": "first-person",
+    "name": "First Person",
+    "author": "Allebale",
+    "description": "See the game through Mario's eyes: V or D-pad Down switches it on and off, and the C-stick looks around. Its options are in the game's Mods menu (F1).",
+    "repository": "Allebale/sms-first-person-mod",
+    "api": "1.4"
+  }
+]

@@ -162,3 +162,77 @@ test('the Mods page lists the catalog with what is installed, on, and runnable',
   assert.equal(mods.newer('1.10.0', '1.9.2'), true);
   assert.equal(mods.newer('v1.0.0', '1.0.0'), false);
 });
+
+test('the published mod list is checked before it is offered', () => {
+  const entries = mods.normalizeCatalog([
+    { id: 'new-mod', name: ' New Mod ', description: 'Does things.', repository: 'someone/new-mod', api: '1.6' },
+    { id: 'new-mod', name: 'Twice', repository: 'someone/twice' },
+    { id: '..', name: 'Up', repository: 'someone/up' },
+    { id: '.hidden', name: 'Hidden', repository: 'someone/hidden' },
+    { id: 'no-repo', name: 'No repository' },
+    { id: 'bad-repo', name: 'Bad', repository: 'https://example.com/x' },
+    { id: 'bad-api', name: 'Bad API', repository: 'someone/bad-api', api: 'latest' },
+    { id: 'later', name: 'Later', repository: 'someone/later', minLauncher: '0.1.70' },
+    { id: 'now', name: 'Now', author: ' Someone ', repository: 'someone/now', minLauncher: '0.1.68' },
+    null, 'text'
+  ], '0.1.68-beta.12');
+  assert.deepEqual(entries, [
+    { id: 'new-mod', name: 'New Mod', author: '', description: 'Does things.', repository: 'someone/new-mod', api: '1.6' },
+    { id: 'now', name: 'Now', author: 'Someone', description: '', repository: 'someone/now', api: '' }
+  ]);
+  assert.deepEqual(mods.normalizeCatalog({ id: 'x' }), []);
+  assert.deepEqual(mods.normalizeCatalog([{ id: 'later', repository: 'a/b', minLauncher: '0.1.0' }], 'dev'), []);
+  assert.deepEqual(mods.normalizeCatalog([{ id: 'later', repository: 'a/b', minLauncher: '9.0.0' }]).map(entry => entry.id), ['later'], 'the bundled list keeps its own');
+});
+
+test('the published list wins for its mods and keeps the ones only this launcher has', () => {
+  const merged = mods.mergeCatalog(
+    [{ id: 'seamless-episodes', name: 'Renamed', description: '', repository: 'someone/moved', api: '1.4' },
+      { id: 'new-mod', name: 'New Mod', description: '', repository: 'someone/new-mod', api: '' }],
+    [ENTRY, { id: 'preview-only', name: 'Preview', description: '', repository: 'someone/preview', api: '' }]);
+  assert.deepEqual(merged.map(entry => [entry.id, entry.repository]),
+    [['seamless-episodes', 'someone/moved'], ['new-mod', 'someone/new-mod'], ['preview-only', 'someone/preview']]);
+});
+
+test('a mod added to the published list is offered, downloaded and listed without a launcher update', async t => {
+  const userData = temporary(t);
+  const env = { SMS_NATIVE_MODS_DATA: temporary(t) };
+  t.after(() => mods.refreshCatalog(async () => ({ ok: true, json: async () => [] }), { url: 'test://reset' }));
+  const asked = [];
+  const ini = 'id = new-mod\nname = New Mod\nversion = 2.0.0\nauthor = Ann\nlibrary = new_mod\n';
+  const files = zip([{ name: 'new-mod/mod.ini', data: Buffer.from(ini) }, { name: 'new-mod/bin/linux-x86_64/new_mod.so', data: Buffer.from('ELF') }]);
+  const fetch = async (url) => {
+    asked.push(url);
+    if (url === 'test://catalog') return { ok: true, json: async () => [{ id: 'new-mod', name: 'New Mod', repository: 'someone/new-mod', api: '1.4' }] };
+    if (url.endsWith('/repos/someone/new-mod/releases/latest'))
+      return { ok: true, status: 200, json: async () => ({ tag_name: 'v2.0.0', assets: [{ name: 'new-mod-2.0.0.zip', browser_download_url: 'test://zip', size: files.length }] }) };
+    if (url === 'test://zip') return { ok: true, status: 200, arrayBuffer: async () => files };
+    throw new Error(`unexpected ${url}`);
+  };
+  const offered = await mods.refreshCatalog(fetch, { url: 'test://catalog', launcher: '0.1.68' });
+  assert.deepEqual(offered.map(entry => entry.id), ['new-mod', 'seamless-episodes']);
+  const entry = mods.catalog().find(item => item.id === 'new-mod');
+  assert.equal((await mods.download(userData, entry, fetch)).version, '2.0.0');
+  const row = mods.list(userData, gameRoot(t, 4), env).mods.find(mod => mod.id === 'new-mod');
+  assert.equal(row.repository, 'someone/new-mod');
+  assert.equal(row.author, 'Ann', 'credited from its mod.ini when the list names no author');
+  assert.equal(mods.pageUrl('new-mod'), 'https://github.com/someone/new-mod');
+  assert.equal(mods.pageUrl('not-listed'), null);
+  assert.equal(row.installed.version, '2.0.0');
+  assert.equal(row.supported, true);
+
+  await assert.rejects(mods.refreshCatalog(async () => ({ ok: false, status: 503 }), { url: 'test://down' }), /503/);
+  assert.ok(mods.catalog().some(item => item.id === 'new-mod'), 'a failed check keeps the last list');
+  assert.equal(mods.catalogUrl({}), 'https://raw.githubusercontent.com/chasem-dev/sms-launcher/main/mods.json');
+});
+
+test('the published list (mods.json) is valid, credits every mod and has every mod the launcher builds in', () => {
+  const root = path.join(__dirname, '..');
+  const raw = JSON.parse(fs.readFileSync(path.join(root, 'mods.json'), 'utf8'));
+  const published = mods.normalizeCatalog(raw, require('../package.json').version);
+  assert.equal(published.length, raw.length, 'every entry passes the launcher\'s checks');
+  for (const entry of published) assert.ok(entry.author, `${entry.id} names its author`);
+  const bundled = JSON.parse(fs.readFileSync(path.join(root, 'src', 'native-mods.json'), 'utf8'));
+  for (const entry of mods.normalizeCatalog(bundled))
+    assert.deepEqual(published.find(item => item.id === entry.id), entry, `${entry.id} is the same in both lists`);
+});

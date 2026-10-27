@@ -63,6 +63,7 @@ contextBridge.exposeInMainWorld('sms', {
   removeNativeMod: id => ipcRenderer.invoke('native-mod-remove', id),
   enableNativeMod: (id, on) => ipcRenderer.invoke('native-mod-enable', id, on),
   openNativeMods: () => ipcRenderer.invoke('open-native-mods'),
+  openNativeModPage: id => ipcRenderer.invoke('open-native-mod-page', id),
   saveStates: () => ipcRenderer.invoke('save-states'),
   achievements: () => ipcRenderer.invoke('achievements'),
   achievementIcons: () => ipcRenderer.invoke('achievement-icons'),

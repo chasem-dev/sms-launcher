@@ -136,6 +136,13 @@ function exitDescription(label, code, signal, platform = process.platform) {
   return `${label} exited with code ${code}${detail}`;
 }
 
+// The signals Linux and macOS number alike, for naming another platform's than
+// this computer's (whose own table, os.constants.signals, Windows numbers its own way).
+const POSIX_SIGNALS = {
+  SIGHUP: 1, SIGINT: 2, SIGQUIT: 3, SIGILL: 4, SIGTRAP: 5, SIGABRT: 6, SIGFPE: 8, SIGKILL: 9, SIGSEGV: 11,
+  SIGPIPE: 13, SIGALRM: 14, SIGTERM: 15,
+};
+
 // What a game exit code means when it isn't the game's own: on Windows, 3 is
 // abort() (the C runtime's exit code for it, after the game's crash report);
 // elsewhere a shell that ran the game reports a signal as 128 + its number.
@@ -143,7 +150,8 @@ function gameExitCause(code, platform = process.platform) {
   if (!Number.isInteger(code)) return '';
   if (platform === 'win32') return code === 3 ? 'abort: the game stopped itself after an error' : '';
   if (code <= 128 || code >= 160) return '';
-  const name = Object.keys(os.constants.signals).find(key => os.constants.signals[key] === code - 128);
+  const signals = platform === process.platform ? os.constants.signals : POSIX_SIGNALS;
+  const name = Object.keys(signals).find(key => signals[key] === code - 128);
   return name ? `${name}: the game crashed` : '';
 }
 

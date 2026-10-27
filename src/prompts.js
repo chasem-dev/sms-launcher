@@ -21,23 +21,26 @@
     { id: 'gamecube', label: 'Original (GameCube)' },
     { id: 'auto', label: 'Automatic' },
     { id: 'xbox', label: 'Xbox' }, { id: 'playstation', label: 'PlayStation 5' },
-    { id: 'steamdeck', label: 'Steam Deck' }, { id: 'keyboard', label: 'PC keyboard and mouse' }
+    { id: 'steamdeck', label: 'Steam Deck' }, { id: 'nintendo', label: 'Nintendo Switch' },
+    { id: 'keyboard', label: 'PC keyboard and mouse' }
   ];
   // With auto, how a controller's prompts look: like that controller (match) or
   // always one style, such as PlayStation prompts on an Xbox controller.
   const PAD_STYLES = [
     { id: 'match', label: 'Match my controller' }, { id: 'xbox', label: 'Xbox' },
     { id: 'playstation', label: 'PlayStation 5' }, { id: 'steamdeck', label: 'Steam Deck' },
-    { id: 'gamecube', label: 'Original (GameCube)' }
+    { id: 'nintendo', label: 'Nintendo Switch' }, { id: 'gamecube', label: 'Original (GameCube)' }
   ];
   // The styles that have images (auto picks among them while playing).
-  const DRAWN = ['xbox', 'playstation', 'steamdeck', 'keyboard'];
+  const DRAWN = ['xbox', 'playstation', 'steamdeck', 'nintendo', 'keyboard'];
 
   function normalizeStyle(value) { return STYLES.some(style => style.id === value) ? value : 'gamecube'; }
   function normalizePad(value) { return PAD_STYLES.some(style => style.id === value) ? value : 'match'; }
 
   // How each controller button looks in each style. Face buttons are circles
   // with a letter or a PlayStation symbol, shoulders and triggers are tabs.
+  // Controller buttons go by their letters (the game reads Switch controllers,
+  // and others with Nintendo button layout, that way), so Nintendo's A is PAD_A.
   const FACE = {
     xbox: {
       PAD_A: { text: 'A', fill: '#107c10' }, PAD_B: { text: 'B', fill: '#d0271d' },
@@ -50,12 +53,17 @@
     steamdeck: {
       PAD_A: { text: 'A', fill: '#2b3138' }, PAD_B: { text: 'B', fill: '#2b3138' },
       PAD_X: { text: 'X', fill: '#2b3138' }, PAD_Y: { text: 'Y', fill: '#2b3138' }
+    },
+    nintendo: {
+      PAD_A: { text: 'A', fill: '#1d1f23' }, PAD_B: { text: 'B', fill: '#1d1f23' },
+      PAD_X: { text: 'X', fill: '#1d1f23' }, PAD_Y: { text: 'Y', fill: '#1d1f23' }
     }
   };
   const OTHER = {
     xbox: { PAD_LB: 'LB', PAD_RB: 'RB', PAD_LT: 'LT', PAD_RT: 'RT', PAD_BACK: 'View', PAD_START: 'Menu', PAD_LSTICK: 'LS', PAD_RSTICK: 'RS', PAD_GUIDE: 'Xbox' },
     playstation: { PAD_LB: 'L1', PAD_RB: 'R1', PAD_LT: 'L2', PAD_RT: 'R2', PAD_BACK: 'Create', PAD_START: 'Options', PAD_LSTICK: 'L3', PAD_RSTICK: 'R3', PAD_GUIDE: 'PS' },
-    steamdeck: { PAD_LB: 'L1', PAD_RB: 'R1', PAD_LT: 'L2', PAD_RT: 'R2', PAD_BACK: 'View', PAD_START: 'Menu', PAD_LSTICK: 'L3', PAD_RSTICK: 'R3', PAD_GUIDE: 'Steam' }
+    steamdeck: { PAD_LB: 'L1', PAD_RB: 'R1', PAD_LT: 'L2', PAD_RT: 'R2', PAD_BACK: 'View', PAD_START: 'Menu', PAD_LSTICK: 'L3', PAD_RSTICK: 'R3', PAD_GUIDE: 'Steam' },
+    nintendo: { PAD_LB: 'L', PAD_RB: 'R', PAD_LT: 'ZL', PAD_RT: 'ZR', PAD_BACK: '−', PAD_START: '+', PAD_LSTICK: 'LS', PAD_RSTICK: 'RS', PAD_GUIDE: 'Home' }
   };
   const DPAD = { PAD_DPUP: 'up', PAD_DPDOWN: 'down', PAD_DPLEFT: 'left', PAD_DPRIGHT: 'right' };
 
@@ -76,8 +84,8 @@
     if (FACE[style][pad]) return { kind: 'face', ...FACE[style][pad] };
     if (DPAD[pad]) return { kind: 'dpad', direction: DPAD[pad] };
     const text = OTHER[style][pad] || bindings.padLabel(pad);
-    if (/^(LB|RB|L1|R1)$/.test(text)) return { kind: 'shoulder', text };
-    if (/^(LT|RT|L2|R2)$/.test(text)) return { kind: 'trigger', text };
+    if (/^(LB|RB|L1|R1|L|R)$/.test(text)) return { kind: 'shoulder', text };
+    if (/^(LT|RT|L2|R2|ZL|ZR)$/.test(text)) return { kind: 'trigger', text };
     return { kind: 'pill', text };
   }
 

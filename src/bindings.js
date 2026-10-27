@@ -95,6 +95,16 @@
 
   // The controller button for a standard-mapping Gamepad API button index, or null.
   function padFromIndex(index) { return PAD_BUTTONS[index]?.id || null; }
+  // The game reads controller buttons by the letters printed on them (A is a Switch controller's right-hand
+  // button), but the browser reads them by place (button 0 is the bottom one). True for a controller printed
+  // like Nintendo's, by its Gamepad API id: a Switch controller, or any with Nintendo button layout on (the
+  // game's SMS_NINTENDO_LAYOUT) but a Steam Deck's own controls.
+  function nintendoLetters(id = '', nintendoLayout = false) {
+    if (/steam deck/i.test(id)) return false;
+    return Boolean(nintendoLayout) || /Vendor: 057e|Nintendo|Joy-Con/i.test(id);
+  }
+  // A standard-mapping button index by letter: with Nintendo letters, A and B, and X and Y, change places.
+  function letterIndex(index, letters) { return letters && index >= 0 && index < 4 ? index ^ 1 : index; }
   // One button ("LB"), or two held together ("LB + LT").
   function padLabel(id) {
     return id.split('+').map(part => PAD_BUTTONS.find(button => button.id === part)?.label || part).join(' + ');
@@ -159,5 +169,5 @@
 
   return { CONTROLS, DEFAULTS, CLASSIC, fromClassic, PAD_BUTTONS, PAD_DEFAULTS, MOUSE_BUTTONS, keyFromCode, keyFromMouse, isMouse, keyLabel,
     normalize, keysFor, fileText,
-    padFromIndex, padLabel, padCombo, normalizePads, padsFor };
+    padFromIndex, nintendoLetters, letterIndex, padLabel, padCombo, normalizePads, padsFor };
 });

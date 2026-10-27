@@ -15,11 +15,13 @@
     return Boolean(button && (button.pressed || button.value > 0.5));
   }
 
-  function heldInputs(gamepads, deadzone = 0.5) {
+  // letters(gamepad): its A, B, X and Y are printed like Nintendo's (A on the right), so A confirms there.
+  function heldInputs(gamepads, deadzone = 0.5, letters = () => false) {
     const held = new Set();
     for (const gamepad of gamepads) {
       if (!gamepad?.connected) continue;
-      for (const [name, index] of Object.entries(BUTTONS)) if (pressed(gamepad, index)) held.add(name);
+      const swap = letters(gamepad);
+      for (const [name, index] of Object.entries(BUTTONS)) if (pressed(gamepad, swap && index < 4 ? index ^ 1 : index)) held.add(name);
       // Only the stronger axis counts, so a slightly diagonal stick still moves in one direction.
       const [x = 0, y = 0] = gamepad.axes;
       if (Math.max(Math.abs(x), Math.abs(y)) < deadzone) continue;
@@ -79,7 +81,7 @@
     return best;
   }
 
-  function start({ document, window, regions = '', defaultFocus = () => [], paused = () => false, actions = {} }) {
+  function start({ document, window, regions = '', defaultFocus = () => [], paused = () => false, letters = () => false, actions = {} }) {
     const repeat = createRepeater();
     let frame = 0, lastFrame = 0;
 
@@ -166,7 +168,7 @@
       const gamepads = [...(window.navigator.getGamepads?.() || [])];
       if (!gamepads.some(gamepad => gamepad?.connected)) return;
       const quiet = !document.hasFocus() || paused();
-      for (const name of repeat(heldInputs(gamepads), now, quiet)) handle(name);
+      for (const name of repeat(heldInputs(gamepads, 0.5, letters), now, quiet)) handle(name);
       const axis = quiet ? 0 : scrollAxis(gamepads);
       if (axis) scroll(axis * Math.min(50, now - lastFrame) * 0.9);
       lastFrame = now;

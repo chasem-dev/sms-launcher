@@ -53,6 +53,19 @@ function activityFromLine(line) {
     return { detail: 'Downloading HD texture extras', percent: null };
   if (/^Downloading Super Mario Sunshine language packs/.test(value))
     return { detail: 'Downloading the language pack', percent: null };
+  if (/^Downloading Super Mario Eclipse HiRes Texture Pack/.test(value))
+    return { detail: "Downloading Super Mario Eclipse's HD textures (about 9 GB)", percent: null };
+  // get.py eclipse-textures unpacks the textures as they arrive (16 GB of them).
+  const eclipseTextures = value.match(/^Eclipse texture download: (\d+)\/(\d+) bytes \((\d+)\/(\d+) textures\)$/);
+  if (eclipseTextures) {
+    const [received, total, done, count] = eclipseTextures.slice(1).map(Number);
+    if (![received, total, done, count].every(Number.isSafeInteger) || !total || received > total || done > count) return null;
+    const gb = bytes => `${(bytes / 1e9).toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} GB`;
+    return { detail: `Downloading Super Mario Eclipse's HD textures · ${gb(received)} of ${gb(total)}`,
+      percent: Math.floor(received / total * 100) };
+  }
+  if (/^Installed \d+ textures in mods\/eclipse-textures/.test(value))
+    return { detail: "Super Mario Eclipse's HD textures installed", percent: 100 };
   const textureDownload = value.match(/^Texture download: (\d+)\/(\d+) bytes$/);
   if (textureDownload) {
     const received = Number(textureDownload[1]), total = Number(textureDownload[2]);

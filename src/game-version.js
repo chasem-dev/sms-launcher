@@ -245,7 +245,7 @@ async function checkout(root, { git = 'git', run, capture, env, source = release
   } finally { await fs.promises.rm(temporary, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 }).catch(() => {}); }
 }
 
-const USER_FOLDERS = ['textures', 'hd-cutscenes', 'eclipse'];
+const USER_FOLDERS = ['textures', 'hd-cutscenes', 'eclipse', 'eclipse-textures'];
 
 function carryUserFiles(previous, next) {
   if (previous === next) return;

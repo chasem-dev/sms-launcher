@@ -929,6 +929,21 @@ async function updateEclipseMaps(root, settings) {
   }
 }
 
+// Eclipse's own HD textures, when Eclipse is played with HD textures and they are missing or another release is
+// pinned: a 9 GB download, unpacked as it arrives. A failed or stopped one is logged and never stops play (the
+// game shows Sunshine's HD textures in Eclipse meanwhile); what it installed is kept, and the next try carries on.
+async function updateEclipseTextures(root, settings) {
+  if (!port.eclipseTexturesWanted(root, settings) || toolsRemoved("Eclipse's HD textures")) return;
+  try {
+    await ensureBuildTools();
+    const cmd = port.commandFor(root, 'eclipse-textures', [], process.platform, toolEnv());
+    await launch(cmd.command, cmd.args, { cwd: cmd.cwd, env: cmd.env }, 'Install Eclipse HD textures');
+    if (!port.eclipseTexturesInstalled(root)) throw new Error('the installer finished without them');
+  } catch (error) {
+    log(`Super Mario Eclipse's HD textures were not installed (${error.message}); Eclipse plays with Sunshine's HD textures and setup carries on next time.`);
+  }
+}
+
 // The achievements' icons, when they are missing or not the pinned release: before the game plays, for every
 // player. A failed download does not stop the game: it plays without them, and setup tries again next time.
 async function updateAchievementIcons(root) {
@@ -1048,6 +1063,7 @@ async function build(forceFresh = false) {
   await updateLanguagePack(root, settings);
   if (settings.eclipse && !fs.existsSync(path.join(root, port.ECLIPSE_ISO))) await installEclipse(root);
   await updateEclipseMaps(root, settings);
+  await updateEclipseTextures(root, settings);
   const disc = port.gameDisc(root, rom, settings.eclipse);
   const env = await withBuildCaches(toolEnv(port.buildEnvironment(settings, disc, root)), root);
   env.NINJA_STATUS = '[%f/%t] ';
@@ -1171,6 +1187,7 @@ async function setupGame() {
   else await updateTextureExtras(config.repo, config.settings);
   await updateLanguagePack(config.repo, config.settings);
   await updateEclipseMaps(config.repo, config.settings);
+  await updateEclipseTextures(config.repo, config.settings);
   await updateAchievementIcons(config.repo);
   return state();
 }
@@ -1534,6 +1551,7 @@ async function launchGame(session = null, update = config.settings.autoUpdate) {
   else await updateTextureExtras(config.repo, config.settings);
   await updateLanguagePack(config.repo, config.settings);
   await updateEclipseMaps(config.repo, config.settings);
+  await updateEclipseTextures(config.repo, config.settings);
   await updateAchievementIcons(config.repo);
   // last checks, with the game as it will run (multiplayer: the network check is done, the host's version matches)
   if (session?.beforePlay) await session.beforePlay();
@@ -1928,6 +1946,12 @@ function state() {
     eclipseInstalled: repoReady && fs.existsSync(path.join(config.repo, port.ECLIPSE_ISO)),
     hdVisualsReady: repoReady && port.hdVisualsInstalled(config.repo, config.settings),
     texturesInstalled: repoReady && port.texturePackInstalled(config.repo),
+    // Eclipse's own HD textures: the game's pin (download and installed sizes) and whether they are installed.
+    eclipseTextures: repoReady && port.eclipseTexturesSupported(config.repo) ? {
+      installed: port.eclipseTexturesInstalled(config.repo),
+      size: port.pinnedRelease(config.repo, 'eclipse-textures.json')?.size || 0,
+      unpacked: port.pinnedRelease(config.repo, 'eclipse-textures.json')?.unpacked || 0,
+    } : null,
     cutscenesInstalled: repoReady && port.cutscenePackInstalled(config.repo),
     cutscenesSupported: repoReady && port.cutscenePackSupported(config.repo),
     languagesSupported: repoReady && port.languagePacksSupported(config.repo),

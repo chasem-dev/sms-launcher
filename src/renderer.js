@@ -720,6 +720,10 @@ function refresh(data) {
   $('texture-info').textContent = data.texturesInstalled
     ? config.settings.textures ? 'HD textures are ready.' : 'Already downloaded. Turn on to use them.'
     : `${config.settings.textures ? `${finish || 'HD textures will download during setup.'} ` : ''}About 1 GB to download; allow 3 GB of free space for setup.`;
+  // Playing Super Mario Eclipse, HD textures bring its own pack too, downloaded before the game plays.
+  const eclipsePack = data.eclipseTextures;
+  if (config.settings.eclipse && eclipsePack && !eclipsePack.installed)
+    $('texture-info').textContent += ` With Super Mario Eclipse, its own HD textures download too: about ${gb(eclipsePack.size)} GB, ${gb(eclipsePack.unpacked)} GB of space.`;
   // The movie pack's size comes from the game's own list of movies.
   const movies = data.cutsceneRequirements;
   $('cutscenes-description').textContent =
@@ -1206,7 +1210,7 @@ function renderDependents(busy = false) {
   $('textureLoading').disabled = busy || !$('textures').checked;
   $('texture-loading-hint').textContent = {
     stage: 'Before each level: a level\'s HD textures load with it, so they don\'t pop in while you play.',
-    all: 'Whole pack: every HD texture loads during the first few loading screens and stays, so after that none load at all. Needs a graphics card with 6 GB of memory or more.',
+    all: `Whole pack: every HD texture loads during the first few loading screens and stays, so after that none load at all. Needs a graphics card with 6 GB of memory or more.${$('eclipse')?.checked ? " Super Mario Eclipse's own HD textures are too large for that, so with Eclipse they load before each level." : ''}`,
     play: 'While playing: each HD texture loads when it first appears, using the least memory. The original shows until it is ready.'
   }[$('textureLoading').value];
 }

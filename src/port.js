@@ -328,6 +328,28 @@ function eclipseMapsWanted(root, settings) {
   return Boolean(settings.eclipse && settings.radar) && eclipseMapsSupported(root) && !eclipseMapsInstalled(root);
 }
 
+// Super Mario Eclipse's own HD textures (iZePlayzYT's pack, 16 GB of textures
+// for Eclipse's disc), when Eclipse is played with HD textures. The port pins
+// the release in tools/mods/eclipse-textures.json, installs it with get.py
+// eclipse-textures into mods/eclipse-textures, outside mods/textures so
+// Sunshine never loads it, and records it in .release as for the maps. Every
+// game version shares one copy (game.carryUserFiles), so it is downloaded once.
+function eclipseTexturesDirectory(root) { return path.join(root, 'mods', 'eclipse-textures'); }
+
+function eclipseTexturesSupported(root) {
+  return fs.existsSync(path.join(root, 'tools', 'mods', 'eclipse-textures.json'));
+}
+
+function eclipseTexturesInstalled(root) {
+  return holdsRelease(eclipseTexturesDirectory(root), pinnedRelease(root, 'eclipse-textures.json'));
+}
+
+// The pack to download for these settings: Eclipse with HD textures, a port that
+// knows it, and not the pinned release installed.
+function eclipseTexturesWanted(root, settings) {
+  return Boolean(settings.eclipse && settings.textures) && eclipseTexturesSupported(root) && !eclipseTexturesInstalled(root);
+}
+
 // Languages other than the disc's English come from language packs (the
 // European release's four and community translations, published with the
 // texture extras). The launcher's own catalog, language-packs.json, says
@@ -518,12 +540,23 @@ function modList(settings, customCutscenes) {
   return customCutscenes;
 }
 
-// The texture folders the game reads, first match wins: the player's custom textures, then the HD textures.
+// The texture folders the game reads, first match wins: the player's custom textures, then, playing
+// Eclipse, Eclipse's own HD textures (any release installed, until a new one replaces it), then the HD textures.
 function texturePackFolders(settings, root, customTextures) {
   const folders = [];
   if (customTextures && customTexturesPresent(customTextures)) folders.push(customTextures);
+  if (settings.textures && settings.eclipse && fs.existsSync(path.join(eclipseTexturesDirectory(root), '.release')))
+    folders.push(eclipseTexturesDirectory(root));
   if (settings.textures) folders.push(texturePackDirectory(root));
   return folders;
+}
+
+// When HD textures load. Whole pack keeps every texture in video memory (about 4 GB for Sunshine's); Eclipse's
+// own pack is 16 GB, more than graphics cards have, so with it Whole pack loads before each level instead.
+function texturePreload(settings, root) {
+  const eclipsePack = texturePackFolders(settings, root, null).includes(eclipseTexturesDirectory(root));
+  if (settings.textureLoading === 'all' && eclipsePack) return '1';
+  return { all: 'all', play: '0' }[settings.textureLoading] || '1';
 }
 
 // `customTextures` is the custom textures folder, for playing (texturePackFolders), and `customCutscenes`
@@ -603,7 +636,7 @@ function buildEnvironment(settings, disc, root, { customTextures = null, customC
     SMS_GX_SCALE: String(settings.resolution),
     // The game splits the list at ';' (and at ':' outside a drive letter) on every system.
     SMS_TEXTURE_PACKS: texturePackFolders(settings, root, customTextures).join(';') || '0',
-    SMS_TEXTURE_PACK_PRELOAD: { all: 'all', play: '0' }[settings.textureLoading] || '1',
+    SMS_TEXTURE_PACK_PRELOAD: texturePreload(settings, root),
     SMS_GX_SHADER_WARMUP: settings.shaderWarmup === false ? '0' : '1',
     SMS_MOD: modList(settings, customCutscenes),
     SMS_HD_CUTSCENES: wantsCutscenes(settings) ? cutscenePackDirectory(root) : '0'
@@ -717,11 +750,12 @@ function commandFor(root, action, args = [], platform = process.platform, enviro
   if (action === 'language' && !pack) throw new Error(`There is no language pack "${args[0]}".`);
   const packArgs = pack ? [args[0], pack.name, pack.url, pack.md5, String(pack.size)] : [];
   if (platform !== 'win32') {
-    const file = ['python', 'textures', 'texture-extras', 'eclipse-maps', 'language', 'cutscenes'].includes(action) ? 'python3' : path.join(root, `${action}.sh`);
+    const file = ['python', 'textures', 'texture-extras', 'eclipse-maps', 'eclipse-textures', 'language', 'cutscenes'].includes(action) ? 'python3' : path.join(root, `${action}.sh`);
     const commandArgs = action === 'python' ? [textureProgress, path.join(root, 'tools', 'mods', 'get.py'), 'eclipse', '--iso', ...args]
       : action === 'textures' ? [textureProgress, path.join(root, 'tools', 'mods', 'get.py')]
         : action === 'texture-extras' ? [textureProgress, path.join(root, 'tools', 'mods', 'get.py'), 'extras', '--if-outdated']
         : action === 'eclipse-maps' ? [textureProgress, path.join(root, 'tools', 'mods', 'get.py'), 'eclipse-maps', '--if-outdated']
+        : action === 'eclipse-textures' ? [textureProgress, path.join(root, 'tools', 'mods', 'get.py'), 'eclipse-textures', '--if-outdated']
         : action === 'language' ? [textureProgress, installLanguage, ...packArgs]
         : action === 'cutscenes' ? [resumeDownloads, 'tools/media/install_cutscenes.py', '--iso', ...args] : args;
     return { command: file, args: commandArgs, cwd: root, env: environment };
@@ -742,6 +776,8 @@ function commandFor(root, action, args = [], platform = process.platform, enviro
       ? 'cd "$(cygpath -u "$1")" && python "$2" tools/mods/get.py extras --if-outdated'
     : action === 'eclipse-maps'
       ? 'cd "$(cygpath -u "$1")" && python "$2" tools/mods/get.py eclipse-maps --if-outdated'
+    : action === 'eclipse-textures'
+      ? 'cd "$(cygpath -u "$1")" && python "$2" tools/mods/get.py eclipse-textures --if-outdated'
     : action === 'language'
       ? 'cd "$(cygpath -u "$1")" && python "$2" "$3" "${@:4}"'
     : action === 'clean'
@@ -749,7 +785,7 @@ function commandFor(root, action, args = [], platform = process.platform, enviro
       : `cd "$(cygpath -u "$1")" && ./${action}.sh "$(cygpath -u "$2")"`;
   return {
     command: bash,
-    args: ['-c', script, 'sms-launcher', root, ...(action === 'textures' || action === 'texture-extras' || action === 'eclipse-maps' ? [textureProgress]
+    args: ['-c', script, 'sms-launcher', root, ...(['textures', 'texture-extras', 'eclipse-maps', 'eclipse-textures'].includes(action) ? [textureProgress]
       : action === 'language' ? [textureProgress, installLanguage, ...packArgs]
       : action === 'python' ? [textureProgress, args[0]]
       : action === 'cutscenes' ? [resumeDownloads, args[0]] : args)], cwd: root,
@@ -801,6 +837,7 @@ module.exports = { PORT_URL, ECLIPSE_ISO, platformInfo, isPort, validateRom, nor
   texturePackDirectory, texturePackInstalled, customTextureDirectory, customTexturesPresent, texturePackFolders,
   customCutsceneDirectory, customCutsceneMovies, customCutscenesPresent, textureExtrasDirectory, textureExtrasSupported, textureExtrasInstalled, textureExtrasWanted,
   eclipseMapsDirectory, eclipseMapsSupported, eclipseMapsInstalled, eclipseMapsWanted,
+  eclipseTexturesDirectory, eclipseTexturesSupported, eclipseTexturesInstalled, eclipseTexturesWanted, pinnedRelease,
   LANGUAGES, LANGUAGE_PACKS, gameLanguage, languagePackDirectory, languagePacksSupported, languageAvailable, languageChoices,
   languagePackInstalled, languagePackWanted, holdsRelease, pinnedDownloads,
   cutscenePackDirectory, cutscenePackInstalled, cutscenePackSupported, cutscenePackRequirements, wantsCutscenes, hdVisualsInstalled, buildEnvironment, eclipseMovieEnvironment, gameDisc, binaryPath,

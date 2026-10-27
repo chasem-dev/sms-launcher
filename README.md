@@ -4,6 +4,12 @@
   <a href="https://discord.gg/97sVPsbxsY"><img src="https://img.shields.io/badge/Discord-Join%20the%20server-5865F2?style=for-the-badge&logo=discord&logoColor=white" alt="Join our Discord"></a>
 </p>
 
+<p align="center">
+  <a href="https://github.com/chasem-dev/sms-android"><img src="docs/ports/android.svg" width="32%" alt="Also on Android: ARM64 phones and handhelds. Download the APK."></a>
+  <a href="https://github.com/chasem-dev/sms-switch"><img src="docs/ports/switch.svg" width="32%" alt="Also on Switch: homebrew, up to 60 fps. Download the NRO."></a>
+  <a href="https://github.com/chasem-dev/sms-iphone-ipad"><img src="docs/ports/ios.svg" width="32%" alt="Also on iPhone and iPad: native port in progress, coming soon."></a>
+</p>
+
 # SMS Launcher
 
 ![SMS Launcher ready to play](docs/launcher-ready.png)

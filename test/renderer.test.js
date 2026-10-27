@@ -512,7 +512,7 @@ test('Beta builds see new Beta notes first, and only Beta notes when no release 
 test('controller buttons open settings, step through its tabs, go back and pause while the game runs', async () => {
   const view = await renderer(state());
   const { elements, gamepad } = view;
-  const tabs = ['gameplay', 'display', 'graphics', 'controls', 'manage', 'mods', 'launcher'];
+  const tabs = ['gameplay', 'display', 'graphics', 'controls', 'manage', 'mods', 'launcher', 'credits'];
   const shown = () => tabs.filter(name => !elements.get(`pane-${name}`).hidden);
   assert.equal(gamepad.paused(), false);
   gamepad.actions.menu();
@@ -524,9 +524,11 @@ test('controller buttons open settings, step through its tabs, go back and pause
   gamepad.actions.next();
   assert.deepEqual(shown(), ['display']);
   for (let i = 0; i < 10; i++) gamepad.actions.next();
-  assert.deepEqual(shown(), ['launcher']);
-  assert.equal(elements.get('tab-launcher')['aria-selected'], 'true');
+  assert.deepEqual(shown(), ['credits']);
+  assert.equal(elements.get('tab-credits')['aria-selected'], 'true');
   assert.equal(elements.get('tab-gameplay')['aria-selected'], 'false');
+  gamepad.actions.previous();
+  assert.deepEqual(shown(), ['launcher']);
   gamepad.actions.previous();
   assert.deepEqual(shown(), ['mods']);
   gamepad.actions.previous();

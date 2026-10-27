@@ -50,7 +50,7 @@ function showPage(name) {
 for (const [name, item] of Object.entries(pages)) $(item.nav).addEventListener('click', () => showPage(name));
 
 // Settings is one page with a tab per section; it reopens on the last one shown.
-const settingsTabs = ['gameplay', 'display', 'graphics', 'controls', 'manage', 'mods', 'launcher'];
+const settingsTabs = ['gameplay', 'display', 'graphics', 'controls', 'manage', 'mods', 'launcher', 'credits'];
 let settingsTab = 'gameplay';
 function showSettingsTab(name) {
   if (settingsTab === 'controls' && name !== 'controls') stopCapture();
@@ -66,6 +66,9 @@ function showSettingsTab(name) {
   if (name === 'mods') { markModsSeen(); loadNativeMods().then(markModsSeen); }
 }
 for (const tab of settingsTabs) $(`tab-${tab}`).addEventListener('click', () => showSettingsTab(tab));
+// Credits' links open in the browser; the main process opens only the pages it knows (credits.js).
+for (const link of document.querySelectorAll('[data-credit]'))
+  link.addEventListener('click', event => { event.preventDefault(); window.sms.openCredit(link.dataset.credit).catch(showError); });
 onPage('settings', {
   show() {
     showSettingsTab(settingsTab);

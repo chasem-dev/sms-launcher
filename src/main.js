@@ -49,6 +49,7 @@ const DISCORD_INVITE = 'https://discord.gg/NvUXmm8dB9';
 // Microsoft's free Windows HDR Calibration app (Microsoft Store product 9N7F2SM5D1LR).
 const HDR_CALIBRATION_APP = 'https://apps.microsoft.com/detail/9n7f2sm5d1lr';
 const ECLIPSE_GITHUB = 'https://github.com/JoshuaMKW/Super-Mario-Eclipse';
+const CREDITS = require('./credits');
 
 let window;
 let config;
@@ -2452,6 +2453,7 @@ function registerHandlers() {
   ipcMain.handle('open-changelog-page', () => shell.openExternal(changelog.PAGE_URL));
   ipcMain.handle('open-hdr-calibration', () => shell.openExternal(HDR_CALIBRATION_APP));
   ipcMain.handle('open-eclipse-github', () => shell.openExternal(ECLIPSE_GITHUB));
+  ipcMain.handle('open-credit', (_event, name) => Object.hasOwn(CREDITS, name) ? shell.openExternal(CREDITS[name]) : undefined);
   ipcMain.handle('display-info', () => displayInfo());
 }
 

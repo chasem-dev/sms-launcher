@@ -63,7 +63,7 @@ function showSettingsTab(name) {
   $('settings-panes').scrollTop = 0;
   if (name === 'controls') { renderBindings(); loadGcAdapter(); }
   if (name === 'launcher') loadUpdateChannels();
-  if (name === 'mods') loadNativeMods();
+  if (name === 'mods') { markModsSeen(); loadNativeMods().then(markModsSeen); }
 }
 for (const tab of settingsTabs) $(`tab-${tab}`).addEventListener('click', () => showSettingsTab(tab));
 onPage('settings', {
@@ -2097,6 +2097,21 @@ async function loadNativeMods(check = false) {
     }
   } catch (error) { showError(error); }
 }
+// A dot on the Mods tab, and on Settings which holds it, while the published list of mods differs
+// from the one the player last saw there (main.js: modsNews): opening the tab clears it.
+function renderModsNews(news) {
+  const viewing = page === 'settings' && settingsTab === 'mods';
+  const unseen = Boolean(news?.unseen) && !viewing;
+  $('mods-new').hidden = $('settings-mods-new').hidden = !unseen;
+  $('settings-cog').setAttribute('aria-label', unseen ? 'Settings, new mods' : 'Settings');
+  if (news?.unseen && viewing) markModsSeen();
+}
+function markModsSeen() {
+  renderModsNews({ unseen: false });
+  window.sms.markNativeModsSeen().catch(showError);
+}
+window.sms.onNativeModsNews(renderModsNews);
+window.sms.nativeModsNews().then(renderModsNews).catch(showError);
 $('native-mods-check').addEventListener('click', async () => {
   $('native-mod-result').textContent = 'Checking…';
   await loadNativeMods(true);

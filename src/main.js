@@ -266,6 +266,8 @@ function loadConfig() {
     eclipseAppleSiliconSwitched: Boolean(saved.eclipseAppleSiliconSwitched),
     // Whether the player has opened the Achievements tab, which is highlighted until then.
     achievementsSeen: Boolean(saved.achievementsSeen),
+    // Which version of the published mod list the player last saw on the Mods tab (nativeMods.listKey).
+    modsListSeen: /^[a-f0-9]{16}$/.test(saved.modsListSeen) ? saved.modsListSeen : null,
     // Why Vulkan couldn't start the last time the game was played with it (noteRenderer), or null.
     vulkanFailed: typeof saved.vulkanFailed === 'string' ? saved.vulkanFailed.slice(0, 300) : null,
     // Customize Mario: the colours the player chose and the Shine shirt.
@@ -1235,14 +1237,31 @@ function nativeModsState() {
   return nativeMods.list(app.getPath('userData'), root);
 }
 
+// The published list of mods, read from GitHub at launch and whenever the
+// Mods page checks; development runs keep their own native-mods.json.
+function remoteModList() { return app.isPackaged || Boolean(process.env.SMS_NATIVE_MODS_CATALOG_URL); }
+async function refreshModList() {
+  if (!remoteModList()) return;
+  try { await nativeMods.refreshCatalog((url, options) => net.fetch(url, options), { launcher: app.getVersion(), userData: app.getPath('userData') }); }
+  catch (error) { log(`Offering the mods already known: ${error.message}`); }
+}
+
+// The Mods tab shows a dot while the published list differs from the one the
+// player last saw there, as when a mod is added.
+function modsNews() {
+  const key = nativeMods.listKey();
+  return { unseen: Boolean(key) && key !== config.modsListSeen };
+}
+function markModsSeen() {
+  const key = nativeMods.listKey();
+  if (key && key !== config.modsListSeen) { config.modsListSeen = key; saveConfig(); }
+  return modsNews();
+}
+
 // Each mod's newest release, for the page's Update buttons; a mod GitHub
-// cannot answer about just shows none. The list of mods is read again first,
-// from GitHub (development runs keep their own native-mods.json).
+// cannot answer about just shows none. The list of mods is read again first.
 async function nativeModsLatest() {
-  if (app.isPackaged || process.env.SMS_NATIVE_MODS_CATALOG_URL) {
-    try { await nativeMods.refreshCatalog((url, options) => net.fetch(url, options), { launcher: app.getVersion() }); }
-    catch (error) { log(`Offering the mods already known: ${error.message}`); }
-  }
+  await refreshModList();
   const latest = {};
   await Promise.all(nativeMods.catalog().map(async entry => {
     try { latest[entry.id] = await nativeMods.latestRelease(entry, (url, options) => net.fetch(url, options)); }
@@ -2323,6 +2342,8 @@ function registerHandlers() {
   const stateDirectory = () => savestates.stateDirectory(currentSaveDirectory());
   ipcMain.handle('native-mods', () => nativeModsState());
   ipcMain.handle('native-mods-latest', () => nativeModsLatest());
+  ipcMain.handle('native-mods-news', () => modsNews());
+  ipcMain.handle('native-mods-seen', () => markModsSeen());
   ipcMain.handle('native-mod-install', (_event, id) => exclusive('Download mod', () => installNativeMod(id)));
   ipcMain.handle('native-mod-remove', (_event, id) => { nativeMods.remove(app.getPath('userData'), String(id)); return nativeModsState(); });
   ipcMain.handle('native-mod-enable', (_event, id, on) => { nativeMods.setEnabled(String(id), Boolean(on)); return nativeModsState(); });
@@ -2439,10 +2460,12 @@ function createWindow() {
 if (ownsInstance) app.whenReady().then(async () => {
   loadConfig();
   tidySaveDirectory();
+  if (remoteModList()) nativeMods.loadSavedCatalog(app.getPath('userData'), app.getVersion());
   registerHandlers();
   setupTelemetry();
   if (playOnStart && await playDirectly()) return app.quit();
   createWindow();
+  refreshModList().then(() => broadcast('native-mods-news', modsNews()));
   watchPublicOnline();
   syncDiscord();
   // Only with the window: a launcher update installs on quit, which `--play` does as the game closes.

@@ -151,6 +151,9 @@ function normalizeSettings(input = {}, platform = process.platform, hostArch = p
     // The C-stick's up and down tilts the camera around Mario, as the mouse does, instead of the GameCube's
     // nearer-or-further; holding the right stick in gives that back. Off unless chosen.
     cstickOrbit: Boolean(input.cstickOrbit),
+    // Every controller is printed like Nintendo's (A on the right, B at the bottom): the game swaps A and B, and
+    // X and Y, on the ones it doesn't read by their letters already. Off unless chosen.
+    nintendoLayout: Boolean(input.nintendoLayout),
     cameraSpeed: numberSetting(input.cameraSpeed, 100, 10, 400),
     // Split-screen co-op's two views: side by side, or one above the other.
     coopSplit: input.coopSplit === 'stacked' ? 'stacked' : 'sides',
@@ -545,6 +548,7 @@ function buildEnvironment(settings, disc, root, { customTextures = null } = {}) 
     SMS_FREE_CAMERA: settings.freeCamera ? '1' : '0',
     SMS_CLOSE_CAMERA_CSTICK: settings.cstickAim ? '1' : '0',
     SMS_CSTICK_ORBIT: settings.cstickOrbit ? '1' : '0',
+    SMS_NINTENDO_LAYOUT: settings.nintendoLayout ? '1' : '0',
     SMS_COOP_SPLIT: settings.coopSplit === 'stacked' ? 'stacked' : 'sides',
     SMS_CAMERA_SPEED: String(settings.cameraSpeed ?? 100),
     SMS_MOUSE_CAMERA: settings.mouseCamera === false ? '0' : '1',

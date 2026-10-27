@@ -786,6 +786,14 @@ test('soft L / R presses go as deep as a trigger goes without the click, and rea
   assert.deepEqual(port.normalizeSettings({ keyBindings: { R_SOFT: [] } }).keyBindings, { R_SOFT: [] });
 });
 
+test('Nintendo button layout is off unless chosen, and reaches the game as SMS_NINTENDO_LAYOUT', () => {
+  assert.equal(port.normalizeSettings({}).nintendoLayout, false);
+  const env = settings => port.buildEnvironment(port.normalizeSettings(settings), '/my/disc.iso', '/port');
+  assert.equal(env({}).SMS_NINTENDO_LAYOUT, '0');
+  assert.equal(env({ nintendoLayout: true }).SMS_NINTENDO_LAYOUT, '1');
+  assert.equal(env({ buttonPrompts: 'nintendo', promptPad: 'nintendo' }).SMS_BUTTON_PROMPTS, 'nintendo');
+});
+
 test('the stick dead zone is the console\'s 15% by default and reaches the game as SMS_STICK_DEADZONE', () => {
   assert.equal(port.normalizeSettings({}).stickDeadzone, 15);
   assert.equal(port.normalizeSettings({ stickDeadzone: 0 }).stickDeadzone, 0);

@@ -69,3 +69,13 @@ test('keyboard prompts draw a bound mouse button as the mouse with that button',
   assert.deepEqual(prompts.icon('keyboard', 'CSTICK', { CSTICK_UP: ['MOUSE_MIDDLE'] }, {}), { kind: 'mouse', button: 'middle' });
   assert.deepEqual(prompts.icon('keyboard', 'SAVE_STATE_1', { SAVE_STATE: ['MOUSE_RIGHT'] }, {}), { kind: 'mouse', button: 'right' });
 });
+
+test('Nintendo Switch prompts show the letters, with L, R, ZL and ZR', () => {
+  assert.equal(prompts.normalizeStyle('nintendo'), 'nintendo');
+  assert.equal(prompts.normalizePad('nintendo'), 'nintendo');
+  assert.ok(prompts.DRAWN.includes('nintendo'));
+  assert.deepEqual(prompts.icon('nintendo', 'A', {}, {}), { kind: 'face', text: 'A', fill: '#1d1f23' });
+  assert.deepEqual(prompts.icon('nintendo', 'Z', {}, {}), { kind: 'shoulder', text: 'R' });
+  assert.deepEqual(prompts.icon('nintendo', 'L', {}, {}), { kind: 'trigger', text: 'ZL' });
+  assert.deepEqual(prompts.icon('nintendo', 'SAVE_STATE_1', {}, {}), { kind: 'shoulder', text: 'L' });
+});

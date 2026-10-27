@@ -137,3 +137,14 @@ test('the classic keys are the keyboard-only layout from before, as changes from
   const text = bindings.fileText(classic);
   assert.ok(text.includes('\nR_SOFT =\n') && text.includes('\nA = SPACE X\n'));
 });
+
+test('Switch controllers, and any with Nintendo button layout, read A and B, X and Y by their letters', () => {
+  const pro = 'Pro Controller (STANDARD GAMEPAD Vendor: 057e Product: 2009)';
+  const xbox = 'Xbox Wireless Controller (STANDARD GAMEPAD Vendor: 045e Product: 0b13)';
+  assert.equal(bindings.nintendoLetters(pro), true);
+  assert.equal(bindings.nintendoLetters(xbox), false);
+  assert.equal(bindings.nintendoLetters(xbox, true), true);
+  assert.equal(bindings.nintendoLetters('Steam Deck (Vendor: 28de Product: 1205)', true), false);
+  assert.deepEqual([0, 1, 2, 3, 4, 9].map(index => bindings.letterIndex(index, true)), [1, 0, 3, 2, 4, 9]);
+  assert.deepEqual([0, 1, 2, 3].map(index => bindings.letterIndex(index, false)), [0, 1, 2, 3]);
+});

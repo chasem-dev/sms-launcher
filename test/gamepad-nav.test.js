@@ -19,6 +19,13 @@ test('standard mapping buttons and the left stick become navigation inputs', () 
   assert.deepEqual([...heldInputs([pad({ buttons: [0], connected: false })])], []);
 });
 
+test('a controller printed like Nintendo\'s confirms with its A, the right-hand button', () => {
+  const nintendo = () => true;
+  assert.deepEqual([...heldInputs([pad({ buttons: [1] })], 0.5, nintendo)], ['confirm']);
+  assert.deepEqual([...heldInputs([pad({ buttons: [0] })], 0.5, nintendo)], ['back']);
+  assert.deepEqual([...heldInputs([pad({ buttons: [3, 9] })], 0.5, nintendo)].sort(), ['alternate', 'menu']);
+});
+
 test('right stick scrolls with a deadzone', () => {
   assert.equal(scrollAxis([pad({ axes: [0, 0, 0, 0.1] })]), 0);
   assert.equal(scrollAxis([pad({ axes: [0, 0, 0, -0.8] }), pad({ axes: [0, 0, 0, 0.4] })]), -0.8);

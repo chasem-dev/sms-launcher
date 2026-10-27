@@ -51,6 +51,7 @@ function normalizeCatalog(data, launcher) {
 
 const BUNDLED = normalizeCatalog(CATALOG);
 let current = BUNDLED;
+let published = null; // the list last read from GitHub (or the copy saved from it), or null
 
 // The published list wins for each mod it has, so a mod's text or repository
 // can change; mods only this launcher has (a preview's new one) stay.
@@ -61,12 +62,40 @@ function mergeCatalog(published, bundled = BUNDLED) {
 
 function catalog() { return current.map(entry => ({ ...entry })); }
 
-// Reads the published list (mods.json on main) and offers it from
-// then on; when GitHub cannot be reached the last list read stays.
-async function refreshCatalog(fetch, { launcher, url = catalogUrl() } = {}) {
+function usePublished(entries) {
+  published = entries;
+  current = mergeCatalog(entries);
+}
+
+// Identifies one version of the published list, as this launcher offers it:
+// the Mods tab shows a dot until the player has seen the list with this key.
+function listKey(entries = published) {
+  return entries ? crypto.createHash('sha256').update(JSON.stringify(entries)).digest('hex').slice(0, 16) : null;
+}
+
+// The published list as last downloaded, kept so the launcher offers it, and
+// knows whether it changed, without GitHub.
+function listFile(userData) { return path.join(userData, 'native-mods-list.json'); }
+
+function loadSavedCatalog(userData, launcher) {
+  try { usePublished(normalizeCatalog(JSON.parse(fs.readFileSync(listFile(userData), 'utf8')), launcher)); return true; }
+  catch (_) { return false; }
+}
+
+// Reads the published list (mods.json on main) and offers it from then on,
+// saving a copy in `userData`; when GitHub cannot be reached the last list read stays.
+async function refreshCatalog(fetch, { launcher, url = catalogUrl(), userData } = {}) {
   const response = await fetch(url, { cache: 'no-cache', signal: AbortSignal.timeout(8000) });
   if (!response.ok) throw new Error(`GitHub did not send the mod list (${response.status}).`);
-  current = mergeCatalog(normalizeCatalog(await response.json(), launcher));
+  const data = await response.json();
+  if (!Array.isArray(data)) throw new Error('GitHub sent a mod list the launcher cannot read.');
+  usePublished(normalizeCatalog(data, launcher));
+  if (userData) {
+    const file = listFile(userData), temporary = `${file}.tmp`;
+    fs.mkdirSync(userData, { recursive: true });
+    fs.writeFileSync(temporary, JSON.stringify(data.slice(0, MAX_MODS)));
+    fs.renameSync(temporary, file);
+  }
   return catalog();
 }
 
@@ -296,4 +325,4 @@ function list(userData, root, env = process.env, platform = process.platform) {
   };
 }
 
-module.exports = { MAX_SIZE, catalogUrl, normalizeCatalog, mergeCatalog, refreshCatalog, catalog, directory, dataRoot, parseIni, offList, isEnabled, setEnabled, gameApi, supports, installed, environment, newer, latestRelease, unzip, installZip, download, pageUrl, remove, list };
+module.exports = { MAX_SIZE, catalogUrl, normalizeCatalog, mergeCatalog, refreshCatalog, loadSavedCatalog, listKey, listFile, catalog, directory, dataRoot, parseIni, offList, isEnabled, setEnabled, gameApi, supports, installed, environment, newer, latestRelease, unzip, installZip, download, pageUrl, remove, list };

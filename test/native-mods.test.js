@@ -236,3 +236,34 @@ test('the published list (mods.json) is valid, credits every mod and has every m
   for (const entry of mods.normalizeCatalog(bundled))
     assert.deepEqual(published.find(item => item.id === entry.id), entry, `${entry.id} is the same in both lists`);
 });
+
+test('the published list is saved, offered again without GitHub, and keyed so the Mods tab knows when it changed', async t => {
+  const userData = temporary(t);
+  t.after(() => mods.refreshCatalog(async () => ({ ok: true, json: async () => [] }), { url: 'test://reset' }));
+  const list = [{ id: 'new-mod', name: 'New Mod', author: 'Ann', repository: 'someone/new-mod', api: '1.4' }];
+  const serve = data => async () => ({ ok: true, json: async () => data });
+
+  await mods.refreshCatalog(serve(list), { url: 'test://one', launcher: '0.1.68', userData });
+  const first = mods.listKey();
+  assert.match(first, /^[a-f0-9]{16}$/);
+  assert.deepEqual(JSON.parse(fs.readFileSync(mods.listFile(userData), 'utf8')), list);
+
+  await mods.refreshCatalog(serve(list), { url: 'test://same', launcher: '0.1.68', userData });
+  assert.equal(mods.listKey(), first, 'the same list keeps its key');
+  const added = [...list, { id: 'other', name: 'Other', repository: 'someone/other', api: '1.4' }];
+  await mods.refreshCatalog(serve(added), { url: 'test://two', launcher: '0.1.68', userData });
+  const second = mods.listKey();
+  assert.notEqual(second, first, 'a mod added changes the key');
+  await mods.refreshCatalog(serve([...added, { id: 'later', repository: 'someone/later', minLauncher: '9.0.0' }]), { url: 'test://three', launcher: '0.1.68' });
+  assert.equal(mods.listKey(), second, 'a mod this launcher cannot offer does not');
+
+  await mods.refreshCatalog(serve([]), { url: 'test://empty' });
+  assert.equal(mods.loadSavedCatalog(userData, '0.1.68'), true);
+  assert.equal(mods.listKey(), second);
+  assert.deepEqual(mods.catalog().map(entry => entry.id), ['new-mod', 'other', 'seamless-episodes']);
+
+  await assert.rejects(mods.refreshCatalog(serve({ not: 'a list' }), { url: 'test://bad', userData }), /cannot read/);
+  assert.equal(mods.listKey(), second, 'a list it cannot read changes nothing');
+  assert.equal(mods.loadSavedCatalog(temporary(t), '0.1.68'), false);
+  assert.equal(mods.listKey(null), null);
+});

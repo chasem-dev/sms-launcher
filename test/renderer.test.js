@@ -24,12 +24,13 @@ function host(platform) {
 
 // `achievements`, when given, also loads the Achievements page over that state: { list, update } where
 // update(name) changes the list as the main process would after `name` (downloadAchievementIcons, updatePort).
-async function renderer(data = state(), copyError = null, notes = { releases: [], unseen: [], current: '0.1.39' }, steam = {}, achievements = null) {
+// `modsNews`: whether the published mod list changed since the Mods tab was last opened (main.js: modsNews).
+async function renderer(data = state(), copyError = null, notes = { releases: [], unseen: [], current: '0.1.39' }, steam = {}, achievements = null, modsNews = { unseen: false }) {
   const importResult = { imported: [{ name: 'GMSE04_super_mario_sunshine', game: 'eclipse', title: 'Super Mario Eclipse',
     shines: [3, null, 1], file: '04-GMSE-super_mario_sunshine.gci' }],
   skipped: [{ file: '01-GMSE-super_mario_sunshine.gci', reason: 'Super Mario Sunshine save with no saved progress' },
     { file: '04-GMSE-super_mario_eclipse.gci', reason: 'Eclipse settings, not a game save' }] };
-  const changelogSeen = [], calls = [], elements = new Map(), droppedFiles = [], listeners = {}, gamepad = {};
+  const changelogSeen = [], modsSeen = [], calls = [], elements = new Map(), droppedFiles = [], listeners = {}, gamepad = {};
   let logCallback, resetCallback, activityCallback;
   const text = node => node.textContent + node.children.map(text).join(' ');
   function element(classes = '') {
@@ -78,6 +79,8 @@ async function renderer(data = state(), copyError = null, notes = { releases: []
     },
     checkNat: async () => ({ label: 'Open', type: 'open', text: 'You can host and join.' }), publicGames: async () => [],
     nativeMods: async () => ({ folder: '/mods', gameApi: '1.4', mods: [] }), nativeModsLatest: async () => ({}),
+    nativeModsNews: async () => ({ ...modsNews }), onNativeModsNews(callback) { listeners.modsNews = callback; },
+    markNativeModsSeen: async () => { modsSeen.push(true); modsNews = { unseen: false }; return { ...modsNews }; },
     copyText: async text => { calls.push(['copyText', text]); },
     steamStatus: async () => ({ ...steam }), steamOffered: async prompt => { calls.push(`steamOffered:${prompt}`); },
     appleSiliconSwitched: async keptRosetta => { calls.push(['appleSiliconSwitched', keptRosetta]); },
@@ -115,7 +118,7 @@ async function renderer(data = state(), copyError = null, notes = { releases: []
     vm.runInContext('window.smsAchievementsRefresh(current)', context);
     await new Promise(setImmediate);
   }
-  return { elements, calls, droppedFiles, listeners, changelogSeen, gamepad,
+  return { elements, calls, droppedFiles, listeners, changelogSeen, modsSeen, gamepad,
     async emitLog(entry) { logCallback(entry); await new Promise(setImmediate); },
     async resetLog(sequence) { resetCallback(sequence); await new Promise(setImmediate); },
     async emitActivity(active) { activityCallback(active); await new Promise(setImmediate); },
@@ -983,4 +986,33 @@ test('Play shows Drawing with OpenGL while Vulkan is picked but missing from the
   assert.equal(ui.elements.get('play-renderer').hidden, true);
   assert.equal(ui.elements.get('renderer-note').classList.contains('renderer-warning'), false);
   assert.match(ui.elements.get('renderer-note').textContent, /Vulkan is often faster/);
+});
+
+test('a dot on Settings and its Mods tab shows a changed mod list until the Mods tab is opened', async () => {
+  const ui = await renderer(state(), null, undefined, {}, null, { unseen: true });
+  const dots = () => [ui.elements.get('mods-new').hidden, ui.elements.get('settings-mods-new').hidden];
+  assert.deepEqual(dots(), [false, false]);
+  assert.equal(ui.elements.get('settings-cog')['aria-label'], 'Settings, new mods');
+  await ui.click('settings-cog');
+  await ui.click('tab-gameplay');
+  assert.deepEqual(dots(), [false, false], 'opening Settings on another tab keeps it');
+  assert.equal(ui.modsSeen.length, 0);
+  await ui.click('tab-mods');
+  assert.deepEqual(dots(), [true, true]);
+  assert.ok(ui.modsSeen.length >= 1);
+  assert.equal(ui.elements.get('settings-cog')['aria-label'], 'Settings');
+  const seen = ui.modsSeen.length;
+  ui.listeners.modsNews({ unseen: true });
+  await new Promise(setImmediate);
+  assert.deepEqual(dots(), [true, true], 'a list that changes while the tab is open is seen at once');
+  assert.equal(ui.modsSeen.length, seen + 1);
+  await ui.click('tab-launcher');
+  ui.listeners.modsNews({ unseen: true });
+  assert.deepEqual(dots(), [false, false]);
+});
+
+test('no dot when the mod list is the one last seen', async () => {
+  const ui = await renderer();
+  assert.equal(ui.elements.get('mods-new').hidden, true);
+  assert.equal(ui.elements.get('settings-mods-new').hidden, true);
 });

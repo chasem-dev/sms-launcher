@@ -131,3 +131,23 @@ test('game failure messages never blame normal resource warnings or stage contex
   }
   assert.match(failureMessage('Build', { code: 1, signal: null }, ['fatal error: missing header']), /missing header/);
 });
+
+test('game exit codes that stand for an abort or a signal say so', () => {
+  const report = 'The activity log has its crash report: Copy log there to add it to a bug report.';
+  assert.equal(failureMessage('Game', { code: 3, signal: null }, [], { game: true, platform: 'win32' }),
+    `Game exited with code 3 (abort: the game stopped itself after an error). ${report}`);
+  assert.equal(failureMessage('Game', { code: 139, signal: null }, [], { game: true, platform: 'darwin' }),
+    `Game exited with code 139 (SIGSEGV: the game crashed). ${report}`);
+  assert.equal(failureMessage('Game', { code: 134, signal: null }, [], { game: true, platform: 'linux' }),
+    `Game exited with code 134 (SIGABRT: the game crashed). ${report}`);
+  // only the game's: a build tool's 3 or 139 is its own exit code
+  assert.equal(failureMessage('Build', { code: 3, signal: null }, [], { platform: 'win32' }),
+    'Build exited with code 3. See the activity log.');
+  assert.equal(failureMessage('Build', { code: 139, signal: null }, [], { platform: 'linux' }),
+    'Build exited with code 139. See the activity log.');
+  // and the game's own codes, and 3 outside Windows, are left as they are
+  assert.equal(failureMessage('Game', { code: 1, signal: null }, [], { game: true, platform: 'win32' }),
+    'Game exited with code 1. See the activity log.');
+  assert.equal(failureMessage('Game', { code: 3, signal: null }, [], { game: true, platform: 'linux' }),
+    'Game exited with code 3. See the activity log.');
+});

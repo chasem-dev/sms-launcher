@@ -20,7 +20,7 @@ function closeModal() {
 // returning false keeps the page closed (Achievements asks for its icons first).
 const pages = {
   play: { section: 'page-home', nav: 'nav-play' }, multiplayer: { section: 'multiplayer', nav: 'open-multiplayer' },
-  mario: { section: 'mario-look', nav: 'customize-mario' },
+  mario: { section: 'mario-look', nav: 'customize-mario' }, world: { section: 'world-editor', nav: 'nav-world' },
   achievements: { section: 'page-achievements', nav: 'nav-achievements' }, saves: { section: 'page-saves', nav: 'nav-saves' },
   changelog: { section: 'changelog', nav: 'open-changelog' }, settings: { section: 'page-settings', nav: 'settings-cog' }
 };
@@ -684,6 +684,8 @@ for (const id of ['play-room-copy', 'mp-room-copy']) $(id).addEventListener('cli
 function showCustomizeMario() {
   $('customize-mario').hidden = !current?.romReady;
   if ($('customize-mario').hidden && page === 'mario') showPage('play');
+  $('nav-world').hidden = !current?.romReady;
+  if ($('nav-world').hidden && page === 'world') showPage('play');
 }
 
 function refresh(data) {
@@ -2270,7 +2272,8 @@ window.smsGamepadNav.start({
   regions: '.switch, .field',
   defaultFocus: () => [page === 'settings' ? $(`tab-${settingsTab}`) : page === 'play' ? $('play') : $(pages[page].nav), $('play'), $('settings-cog')],
   // The game reads the same controller, and Controls waits for a button to bind.
-  paused: () => current?.active?.label === 'Play Super Mario Sunshine' || Boolean(capture),
+  // The world editor's walk mode steers Mario with it.
+  paused: () => current?.active?.label === 'Play Super Mario Sunshine' || Boolean(capture) || Boolean(window.smsWorldWalking?.()),
   // A confirms and B goes back by their letters, as in the game: Nintendo's A is on the right.
   letters: gamepad => SmsBindings.nintendoLetters(gamepad.id, $('nintendoLayout').checked),
   actions: {

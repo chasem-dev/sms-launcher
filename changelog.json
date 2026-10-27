@@ -29,7 +29,8 @@
       "Mouse look on Mecha-Bowser's roller coaster in Pinna Park: from the car the mouse tilts the view and FLUDD's aim, and in the view from behind (Y switches) it moves the camera. Mouse movement made while no camera follows it, such as in a cutscene or the pause menu, no longer swings the camera all at once afterwards.",
       "Multiplayer: people in the background no longer slide along standing still while you talk to someone; they stand and wait, as they do when you play alone.",
       "Multiplayer in Super Mario Eclipse: the Shines you get for putting out Bollente Crypt's fires now fly out of the lava to their platform, instead of staying in the lava where you couldn't get them.",
-      "Multiplayer: joining a game goes straight to the host's level, without the Nintendo and Dolby logos, the opening movie or the title screen. The screen stays black while it connects, then fades into the level."
+      "Multiplayer: joining a game goes straight to the host's level, without the Nintendo and Dolby logos, the opening movie or the title screen. The screen stays black while it connects, then fades into the level.",
+      "Multiplayer: coins from defeated enemies, boxes and flowers now stay on the coin counter. Once coins in a level had been collected, these coins could count for a second and then disappear from the counter, which could make the 100-coin Shine impossible."
     ]
   },
   "releases": [

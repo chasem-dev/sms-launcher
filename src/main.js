@@ -1289,7 +1289,8 @@ async function play(installation = null, session = null) {
   const saveDir = saves.prepareSaveDirectory(session?.mode === 'join'
     ? saves.guestSaveDirectory(currentSaveDirectory()) : currentSaveDirectory());
   const recordedTools = game.toolRoot(root, settings);
-  const playEnv = port.buildEnvironment(settings, disc, root, { customTextures: customTextureDirectory() });
+  const playEnv = port.buildEnvironment(settings, disc, root,
+    { customTextures: customTextureDirectory(), customCutscenes: customCutsceneDirectory() });
   const env = recordedTools
     ? buildTools.environmentAtRoot(recordedTools, { ...playEnv, SMS_SAVE_DIR: saveDir })
     : toolEnv({ ...playEnv, SMS_SAVE_DIR: saveDir });
@@ -1410,6 +1411,8 @@ function marioPaintEnvironment(rom, disc, root, settings) {
 // Custom textures (port.customTextureDirectory): the player's own texture packs, in the launcher's folder
 // (the portable folder for the portable launcher).
 function customTextureDirectory() { return port.customTextureDirectory(app.getPath('userData')); }
+// Custom cutscenes (port.customCutsceneDirectory): the player's own movies, kept the same way.
+function customCutsceneDirectory() { return port.customCutsceneDirectory(app.getPath('userData')); }
 
 // Time spent in the game, in milliseconds, for Discord; kept apart from preferences.
 function playtimeFile() { return path.join(app.getPath('userData'), 'playtime.json'); }
@@ -2325,6 +2328,12 @@ function registerHandlers() {
   ipcMain.handle('open-custom-textures', () => {
     fs.mkdirSync(customTextureDirectory(), { recursive: true });
     return shell.openPath(customTextureDirectory());
+  });
+  // Opens files/data/ itself, where the movies go.
+  ipcMain.handle('open-custom-cutscenes', () => {
+    const movies = port.customCutsceneMovies(customCutsceneDirectory());
+    fs.mkdirSync(movies, { recursive: true });
+    return shell.openPath(movies);
   });
   ipcMain.handle('achievements', () => achievementsState());
   ipcMain.handle('achievement-icons', () => achievementIcons());

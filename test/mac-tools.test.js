@@ -117,7 +117,8 @@ test('the Apple Silicon build does not need Rosetta', async () => {
   assert.equal(mac.report(inspection).ready, false);
 });
 
-test('a tool that fails to start says why: its exit code and error, a signal, or a timeout', async () => {
+test('a tool that fails to start says why: its exit code and error, a signal, or a timeout',
+  { skip: process.platform === 'win32' && 'Uses a POSIX shell.' }, async () => {
   const sh = (script, timeout) => mac.probe('/bin/sh', ['-c', script], process.env, timeout);
   assert.deepEqual(await sh('echo cmake version 3.31.6'), { ok: true, stdout: 'cmake version 3.31.6' });
   assert.equal((await sh('echo "dyld: Library not loaded" >&2; exit 6')).problem, 'sh exited with code 6: dyld: Library not loaded');

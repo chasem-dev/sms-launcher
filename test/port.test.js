@@ -1019,3 +1019,28 @@ test('every helper script the installers run is packaged with the launcher', () 
   for (const script of ['texture-progress.py', 'install-language.py', 'resume_downloads.py'])
     assert.ok(packaged.includes(script), `${script} is not in package.json's extraResources`);
 });
+
+test('custom cutscenes are given to Sunshine as a mod once the folder has a movie', t => {
+  const userData = temporary();
+  t.after(() => fs.rmSync(userData, { recursive: true, force: true }));
+  const custom = port.customCutsceneDirectory(userData);
+  const env = (settings = {}) => port.buildEnvironment(port.normalizeSettings(settings, 'linux'), '/my/disc.iso', '/port',
+    { customCutscenes: custom }).SMS_MOD;
+  assert.equal(env(), 'none', 'no folder yet');
+  const movies = port.customCutsceneMovies(custom);
+  assert.equal(movies, path.join(custom, 'files', 'data'));
+  fs.mkdirSync(movies, { recursive: true });
+  fs.writeFileSync(path.join(movies, 'notes.txt'), 'not a movie');
+  assert.equal(env(), 'none', 'nothing the game would play');
+  fs.writeFileSync(path.join(movies, 'openingA.THP'), 'movie');
+  assert.equal(env(), custom);
+  assert.equal(env({ cutscenes: true }), custom, 'with HD cutscenes on too: the mod wins over them in the game');
+  assert.equal(env({ eclipse: true }), 'none', 'Eclipse plays its own movies');
+
+  // the game splits SMS_MOD at commas and semicolons
+  const odd = path.join(userData, 'Smith, John');
+  fs.mkdirSync(port.customCutsceneMovies(odd), { recursive: true });
+  fs.writeFileSync(path.join(port.customCutsceneMovies(odd), 'openingA.thp'), 'movie');
+  assert.equal(port.buildEnvironment(port.normalizeSettings({}, 'linux'), '/my/disc.iso', '/port',
+    { customCutscenes: odd }).SMS_MOD, 'none');
+});

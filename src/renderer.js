@@ -2130,6 +2130,7 @@ $('import-save-state').addEventListener('click', async () => {
 });
 $('open-save-states').addEventListener('click', () => window.sms.openSaveStates().catch(showError));
 $('open-custom-textures').addEventListener('click', () => window.sms.openCustomTextures().catch(showError));
+$('open-custom-cutscenes').addEventListener('click', () => window.sms.openCustomCutscenes().catch(showError));
 for (const key of ['arch', 'widescreen', 'resolution', 'volume', 'musicVolume', 'sfxVolume', 'frameRate', 'language', 'vsync', 'skipMovies', 'skipIntro', 'pauseTracker', 'radar', 'autoSave', 'heatHaze', 'overlay', 'fullscreen', 'fullscreenMode', 'exclusiveResolution', 'display', 'invertCameraX', 'invertCameraY', 'invertFluddAimY', 'freeCamera', 'cstickAim', 'cstickOrbit', 'backgroundInput', 'nintendoLayout', 'cameraSpeed', 'mouseCamera', 'closeCameraMouse', 'mouseSensitivity', 'rawMouse', 'msaa', 'fxaa', 'anisotropic', 'sharpen', 'brightness', 'colorSpace', 'gameGamma', 'displayGamma', 'aspect', 'presentFilter', 'hudEdges', 'textures', 'textureLoading', 'shaderWarmup', 'cutscenes', 'eclipse', 'eclipseSunshineMovies', 'autoUpdate', 'shareUsage', 'discordPresence', 'autoBackups', 'darkMode', 'updateChannel', 'buttonPrompts', 'promptPad', 'hdr', 'hdrCalibration', 'hdrPaperWhite', 'hdrPeak', 'hdrContrast', 'hdrSaturation', 'hdrHighlights', 'fsrMode', 'renderer', 'appleSilicon', 'coopSplit'])
   $(key).addEventListener('change', saveSettings);
 for (const key of ['volume', 'musicVolume', 'sfxVolume']) $(key).addEventListener('input', renderVolume);

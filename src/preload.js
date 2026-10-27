@@ -73,6 +73,7 @@ contextBridge.exposeInMainWorld('sms', {
   deleteSaveState: name => ipcRenderer.invoke('delete-save-state', name),
   openSaveStates: () => ipcRenderer.invoke('open-save-states'),
   openCustomTextures: () => ipcRenderer.invoke('open-custom-textures'),
+  openCustomCutscenes: () => ipcRenderer.invoke('open-custom-cutscenes'),
   stop: () => ipcRenderer.invoke('stop'),
   openDocs: () => ipcRenderer.invoke('open-docs'),
   openDiscord: () => ipcRenderer.invoke('open-discord'),

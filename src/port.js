@@ -495,6 +495,26 @@ function customTexturesPresent(directory) {
   return false;
 }
 
+// Custom cutscenes: the player's own movies (Switch ones, say), as THP files named as on the disc
+// (openingA.thp), in files/data/ of a folder of the launcher's own. The game reads the folder as a mod
+// (SMS_MOD), and a mod's files win over the disc's and the HD cutscenes'.
+function customCutsceneDirectory(userData) { return path.join(userData, 'custom-cutscenes'); }
+function customCutsceneMovies(directory) { return path.join(directory, 'files', 'data'); }
+
+function customCutscenesPresent(directory) {
+  try {
+    return fs.readdirSync(customCutsceneMovies(directory), { withFileTypes: true }).some(entry =>
+      /\.thp$/i.test(entry.name) && fs.statSync(path.join(customCutsceneMovies(directory), entry.name)).isFile());
+  } catch (_) { return false; }
+}
+
+// SMS_MOD: the custom cutscenes for Sunshine (Eclipse plays its own movies), when there are any. The game
+// splits the list at ',' and ';', so a folder named with one can't be given.
+function modList(settings, customCutscenes) {
+  if (settings.eclipse || !customCutscenes || /[,;]/.test(customCutscenes) || !customCutscenesPresent(customCutscenes)) return 'none';
+  return customCutscenes;
+}
+
 // The texture folders the game reads, first match wins: the player's custom textures, then the HD textures.
 function texturePackFolders(settings, root, customTextures) {
   const folders = [];
@@ -503,8 +523,9 @@ function texturePackFolders(settings, root, customTextures) {
   return folders;
 }
 
-// `customTextures` is the custom textures folder, for playing (texturePackFolders).
-function buildEnvironment(settings, disc, root, { customTextures = null } = {}) {
+// `customTextures` is the custom textures folder, for playing (texturePackFolders), and `customCutscenes`
+// the custom cutscenes folder (modList).
+function buildEnvironment(settings, disc, root, { customTextures = null, customCutscenes = null } = {}) {
   if (!root) throw new Error('The port folder is required to configure texture packs.');
   const env = {
     ...process.env,
@@ -579,7 +600,7 @@ function buildEnvironment(settings, disc, root, { customTextures = null } = {}) 
     SMS_TEXTURE_PACKS: texturePackFolders(settings, root, customTextures).join(';') || '0',
     SMS_TEXTURE_PACK_PRELOAD: { all: 'all', play: '0' }[settings.textureLoading] || '1',
     SMS_GX_SHADER_WARMUP: settings.shaderWarmup === false ? '0' : '1',
-    SMS_MOD: 'none',
+    SMS_MOD: modList(settings, customCutscenes),
     SMS_HD_CUTSCENES: wantsCutscenes(settings) ? cutscenePackDirectory(root) : '0'
   };
   // The fullscreen type and size also when the game starts in a window: F11 and the game's settings menu use them.
@@ -772,7 +793,8 @@ function gameRuntimeFolders(settings, environment = process.env) {
 function eclipseRunCommand(...args) { return gameRunCommand(...args); }
 
 module.exports = { PORT_URL, ECLIPSE_ISO, platformInfo, isPort, validateRom, normalizeSettings, savedSettings, gameFeatures,
-  texturePackDirectory, texturePackInstalled, customTextureDirectory, customTexturesPresent, texturePackFolders, textureExtrasDirectory, textureExtrasSupported, textureExtrasInstalled, textureExtrasWanted,
+  texturePackDirectory, texturePackInstalled, customTextureDirectory, customTexturesPresent, texturePackFolders,
+  customCutsceneDirectory, customCutsceneMovies, customCutscenesPresent, textureExtrasDirectory, textureExtrasSupported, textureExtrasInstalled, textureExtrasWanted,
   eclipseMapsDirectory, eclipseMapsSupported, eclipseMapsInstalled, eclipseMapsWanted,
   LANGUAGES, LANGUAGE_PACKS, gameLanguage, languagePackDirectory, languagePacksSupported, languageAvailable, languageChoices,
   languagePackInstalled, languagePackWanted, holdsRelease, pinnedDownloads,

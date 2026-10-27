@@ -267,7 +267,6 @@ function renderPrompts() {
   const options = { mouseCamera: $('mouseCamera').checked };
   const strips = Object.fromEntries(SmsPrompts.DRAWN.map(id => [id, SmsPrompts.drawStrip(document, id, keyBindings, padBindings, options)]));
   const pad = $('promptPad').value;
-  $('promptPad-field').hidden = style !== 'auto';
   // Automatic shows the keyboard and every controller style it can switch to.
   const label = id => SmsPrompts.STYLES.find(item => item.id === id).label;
   const padRows = pad === 'match' ? ['xbox', 'playstation', 'steamdeck', 'nintendo'] : [pad];
@@ -739,7 +738,7 @@ function refresh(data) {
   $('cutscene-info').hidden = !$('cutscene-info').textContent;
   badge('eclipse-badge', data.eclipseInstalled ? 'Installed' : platform.id === 'linux' ? 'Optional' : 'Experimental', data.eclipseInstalled, platform.id !== 'linux');
   $('eclipse-platform-note').textContent = platform.id === 'linux' ? '' : 'Eclipse is still experimental on this computer.';
-  $('eclipse-movies-row').hidden = !config.settings.eclipse || (data.repoReady && !data.features?.eclipseSunshineMovies);
+  $('eclipse-movies-row').hidden = data.repoReady && !data.features?.eclipseSunshineMovies;
   $('install-eclipse').textContent = data.eclipseInstalled ? 'Reinstall Eclipse' : 'Install Eclipse';
   $('eclipse-note').hidden = !config.settings.eclipse;
   $('install-eclipse').disabled = !data.repoReady || !data.romReady || Boolean(data.active);
@@ -1192,11 +1191,16 @@ function renderDependents(busy = false) {
   $('mouseSensitivity').disabled = busy || !$('mouseCamera').checked;
   $('closeCameraMouse').disabled = busy || !$('mouseCamera').checked;
   $('rawMouse').disabled = busy || !$('mouseCamera').checked;
+  $('eclipseSunshineMovies').disabled = busy || !$('eclipse').checked;
+  // the game keeps the HUD centred in 4:3
+  $('hudEdges').disabled = busy || $('widescreen').value === 'off';
+  // which controller's prompts Automatic switches to
+  $('promptPad').disabled = busy || $('buttonPrompts').value !== 'auto';
   // the display's gamma encodes what the TV gamma decoded
   $('displayGamma').disabled = busy || $('gameGamma').value === 'off';
   // FSR 1's quality sets the internal resolution, in place of Picture sharpness
   const fsr = ['fsr', 'nis'].includes($('presentFilter').value);
-  $('fsrMode-field').hidden = !fsr;
+  $('fsrMode').disabled = busy || !fsr;
   $('fsr-hint').hidden = !fsr;
   $('resolution').disabled = busy || fsr;
   $('textureLoading').disabled = busy || !$('textures').checked;
@@ -2138,7 +2142,7 @@ for (const key of ['arch', 'widescreen', 'resolution', 'volume', 'musicVolume', 
   $(key).addEventListener('change', saveSettings);
 for (const key of ['volume', 'musicVolume', 'sfxVolume']) $(key).addEventListener('input', renderVolume);
 for (const key of ['cameraSpeed', 'mouseSensitivity', 'sharpen', 'brightness']) $(key).addEventListener('input', renderRanges);
-for (const key of ['fullscreen', 'fullscreenMode', 'mouseCamera', 'presentFilter', 'textures', 'textureLoading', 'gameGamma']) $(key).addEventListener('input', () => renderDependents());
+for (const key of ['fullscreen', 'fullscreenMode', 'mouseCamera', 'eclipse', 'widescreen', 'buttonPrompts', 'presentFilter', 'textures', 'textureLoading', 'gameGamma']) $(key).addEventListener('input', () => renderDependents());
 window.sms.onLog(appendLog);
 window.sms.onLogReset(resetLog);
 window.sms.onActivity(value => {

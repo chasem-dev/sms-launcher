@@ -116,3 +116,33 @@ test('the Apple Silicon build does not need Rosetta', async () => {
   assert.equal(native.commands, '');
   assert.equal(mac.report(inspection).ready, false);
 });
+
+test('a tool that fails to start says why: its exit code and error, a signal, or a timeout', async () => {
+  const sh = (script, timeout) => mac.probe('/bin/sh', ['-c', script], process.env, timeout);
+  assert.deepEqual(await sh('echo cmake version 3.31.6'), { ok: true, stdout: 'cmake version 3.31.6' });
+  assert.equal((await sh('echo "dyld: Library not loaded" >&2; exit 6')).problem, 'sh exited with code 6: dyld: Library not loaded');
+  assert.equal((await sh('kill -9 $$')).problem, 'sh was stopped by SIGKILL');
+  assert.equal((await sh('exec sleep 5', 200)).problem, 'sh did not start within 0.2 s');
+  assert.match((await mac.probe('/nonexistent/cmake', [], process.env)).problem, /^cmake could not start: /);
+});
+
+test('when the launcher\'s own tools do not run, the message names each one and why', async () => {
+  const fake = fixture({ missing: ['7zz'] });
+  const run = fake.run;
+  fake.run = async (command, args, env, timeout) => {
+    assert.equal(timeout, 60000);
+    if (command?.endsWith('/cmake')) return { ok: false, stdout: '', problem: 'cmake did not start within 60 s' };
+    if (command?.endsWith('/llvm-objcopy')) return { ok: false, stdout: '', problem: 'llvm-objcopy was stopped by SIGKILL' };
+    return run(command, args, env);
+  };
+  const report = mac.report(await mac.inspect({}, { ...fake, timeout: 60000 }), { archives: true, managed: true });
+  assert.equal(report.ready, false);
+  assert.equal(report.message, 'The downloaded build tools did not run: CMake 3.20 or newer (cmake did not start within 60 s); ' +
+    'LLVM build tools (llvm-objcopy was stopped by SIGKILL); 7-Zip (HD textures and Eclipse) (7zz not found). ' +
+    'Try again, and if it happens again, share the activity log.');
+  const old = mac.report(await mac.inspect({}, fixture({ cmakeVersion: '3.19.8' })), { managed: true });
+  assert.match(old.message, /CMake 3\.20 or newer \(cmake is too old: cmake version 3\.19\.8\)/);
+  // Apple's installs are still the player's to do, and named as before.
+  assert.match(mac.report(await mac.inspect({}, fixture({ sdk: false })), { managed: true }).message,
+    /^Install Apple Command Line Tools to continue/);
+});

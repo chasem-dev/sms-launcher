@@ -16,10 +16,11 @@ let macInspection;
 let macCheck;
 let macCheckedAt = 0;
 
-async function check(userData, { platform = process.platform, env = process.env, refresh = false, archives = false, rosetta = true } = {}) {
+async function check(userData, { platform = process.platform, env = process.env, refresh = false, archives = false, rosetta = true,
+  timeout } = {}) {
   if (platform !== 'darwin') return status(userData, platform, env);
   if (refresh || !macInspection || Date.now() - macCheckedAt > 15000) {
-    if (!macCheck) macCheck = macTools.inspect(environment(userData, env, platform)).then(result => {
+    if (!macCheck) macCheck = macTools.inspect(environment(userData, env, platform), { timeout }).then(result => {
       macInspection = result;
       macCheckedAt = Date.now();
     }).finally(() => { macCheck = null; });
@@ -618,7 +619,15 @@ async function prepare(userData, { platform = process.platform, run, progress = 
     if (!commandWorks(path.join(bin, platform === 'win32' ? 'g++.exe' : platform === 'darwin' ? 'clang++' : 'g++'), ['--version'], env))
       throw new Error('The downloaded compiler could not start on this computer.');
     if (platform === 'darwin') {
-      const found = await check(userData, { platform, refresh: true, archives, rosetta });
+      // The first start of each tool just unpacked can take a while on a slow
+      // Mac, as macOS checks it: give them a minute, and a second try.
+      const options = { platform, refresh: true, archives, rosetta, timeout: 60000 };
+      let found = await check(userData, options);
+      if (!found.ready) {
+        progress(null, `Checking build tools again, as some did not run: ${found.requirements
+          .filter(item => !item.ready && !item.optional).map(item => item.problem || item.label).join('; ')}`);
+        found = await check(userData, options);
+      }
       if (!found.ready) throw new Error(found.message);
     }
     if (keptPrevious) void fs.promises.rm(previous, { recursive: true, force: true,

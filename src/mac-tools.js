@@ -27,22 +27,28 @@ function environment(base = process.env, exists = executable) {
   return { ...base, PATH: [...new Set(bins.filter(Boolean))].join(':') };
 }
 
-function probe(command, args, env) {
-  if (!command) return Promise.resolve({ ok: false, stdout: '' });
+// A failed probe says why in `problem` (it went to the activity log): which
+// tool that is, and whether it timed out, was killed or exited with an error.
+function probe(command, args, env, timeout = 10000) {
+  const name = path.posix.basename(command);
   return new Promise(resolve => {
-    const child = spawn(command, args, { env, stdio: ['ignore', 'pipe', 'ignore'] });
-    let stdout = '';
+    const child = spawn(command, args, { env, stdio: ['ignore', 'pipe', 'pipe'] });
+    let stdout = '', stderr = '';
     let settled = false;
-    const finish = ok => {
+    const finish = (ok, problem) => {
       if (settled) return;
       settled = true;
       clearTimeout(timer);
-      resolve({ ok, stdout: stdout.trim() });
+      resolve({ ok, stdout: stdout.trim(), ...(ok ? {} : { problem: `${name} ${problem}` }) });
     };
-    const timer = setTimeout(() => { child.kill('SIGKILL'); finish(false); }, 10000);
+    const timer = setTimeout(() => { child.kill('SIGKILL'); finish(false, `did not start within ${timeout / 1000} s`); }, timeout);
     child.stdout.on('data', bytes => { if (stdout.length < 16384) stdout += bytes; });
-    child.on('error', () => finish(false));
-    child.on('close', code => finish(code === 0));
+    child.stderr.on('data', bytes => { if (stderr.length < 16384) stderr += bytes; });
+    child.on('error', error => finish(false, `could not start: ${error.message}`));
+    child.on('close', (code, signal) => {
+      const said = stderr.trim().split('\n')[0].slice(0, 200);
+      finish(code === 0, signal ? `was stopped by ${signal}` : `exited with code ${code}${said ? `: ${said}` : ''}`);
+    });
   });
 }
 
@@ -77,12 +83,17 @@ async function linkableSdk(defaultSdk, env, run, list) {
   return defaultSdk;
 }
 
-async function inspect(base = process.env, { run = probe, exists = executable, list = listSdks } = {}) {
+// timeout: how long each tool may take to start. Freshly unpacked programs can
+// take seconds the first time, while macOS checks them.
+async function inspect(base = process.env, { run = probe, exists = executable, list = listSdks, timeout = 10000 } = {}) {
   const env = environment(base, exists);
-  const runTool = (command, args) => run(find(command, env, exists), args, env);
+  const runTool = (command, args) => {
+    const file = find(command, env, exists);
+    return file ? run(file, args, env, timeout) : { ok: false, stdout: '', problem: `${command} not found` };
+  };
   const [sdk, silicon, cmake, objcopy, brew] = await Promise.all([
-    run('/usr/bin/xcrun', ['--sdk', 'macosx', '--show-sdk-path'], env),
-    run('/usr/sbin/sysctl', ['-n', 'hw.optional.arm64'], env),
+    run('/usr/bin/xcrun', ['--sdk', 'macosx', '--show-sdk-path'], env, timeout),
+    run('/usr/sbin/sysctl', ['-n', 'hw.optional.arm64'], env, timeout),
     runTool('cmake', ['--version']), runTool('llvm-objcopy', ['--version']),
     // Homebrew is useful for fixing missing packages, but is not itself required.
     Promise.resolve(Boolean(find('brew', env, exists)))
@@ -93,26 +104,29 @@ async function inspect(base = process.env, { run = probe, exists = executable, l
     sdk.ok || find('python3', env, exists) !== '/usr/bin/python3'
       ? runTool('python3', ['--version']) : { ok: false },
     Promise.all(['7zz', '7z', '7za'].map(command => runTool(command, ['-h']))),
-    silicon.stdout === '1' ? run('/usr/bin/arch', ['-x86_64', '/usr/bin/true'], env) : { ok: true },
+    silicon.stdout === '1' ? run('/usr/bin/arch', ['-x86_64', '/usr/bin/true'], env, timeout) : { ok: true },
     Promise.all(['clang', 'clang++'].map(command => sdk.ok || find(command, env, exists) !== `/usr/bin/${command}`
       ? runTool(command, ['--version']) : { ok: false }))
   ]);
-  const sdkPath = sdk.ok && sdk.stdout ? await linkableSdk(sdk.stdout, env, run, list) : '';
+  const sdkPath = sdk.ok && sdk.stdout ? await linkableSdk(sdk.stdout, env, (...args) => run(...args, timeout), list) : '';
   const cmakeVersion = cmake.stdout.match(/cmake version (\d+)\.(\d+)/);
   const cmakeReady = cmake.ok && Boolean(cmakeVersion) &&
     (Number(cmakeVersion[1]) > 3 || Number(cmakeVersion[1]) === 3 && Number(cmakeVersion[2]) >= 20);
+  const problem = (...results) => results.find(result => !result.ok)?.problem;
   return {
     checked: true, homebrew: brew, sdkPath,
     requirements: [
       { id: 'apple', label: 'Apple Command Line Tools', ready: sdk.ok && Boolean(sdk.stdout) &&
         appleCommands.length === 3 && appleCommands.every(result => result.ok) &&
         ['curl', 'hdiutil'].every(command => find(command, env, exists)) },
-      { id: 'cmake', label: 'CMake 3.20 or newer', package: 'cmake', ready: cmakeReady },
-      { id: 'python', label: 'Python 3', package: 'python3', ready: python.ok },
-      { id: 'llvm', label: 'LLVM build tools', package: 'llvm', ready: objcopy.ok && compilers.every(result => result.ok) },
+      { id: 'cmake', label: 'CMake 3.20 or newer', package: 'cmake', ready: cmakeReady,
+        problem: cmakeReady ? undefined : problem(cmake) || `cmake is too old: ${cmake.stdout.split('\n')[0]}` },
+      { id: 'python', label: 'Python 3', package: 'python3', ready: python.ok, problem: problem(python) },
+      { id: 'llvm', label: 'LLVM build tools', package: 'llvm', ready: objcopy.ok && compilers.every(result => result.ok),
+        problem: problem(objcopy, ...compilers) },
       ...(silicon.stdout === '1' ? [{ id: 'rosetta', label: 'Rosetta 2', ready: rosetta.ok }] : []),
       { id: 'zip', label: '7-Zip (HD textures and Eclipse)', package: 'sevenzip', optional: true,
-        ready: zip.some(result => result.ok) }
+        ready: zip.some(result => result.ok), problem: zip.some(result => result.ok) ? undefined : problem(...zip) }
     ]
   };
 }
@@ -131,10 +145,17 @@ function report(inspection = { checked: false, requirements: [] }, { archives = 
   return { ...inspection, requirements, ready: inspection.checked && missing.length === 0,
     mode: inspection.checked && missing.length === 0 ? 'system' : 'missing', managed,
     needsHomebrew: packages.length > 0 && !inspection.homebrew, commands: commands.join('\n'),
-    message: inspection.checked
-      ? missing.length ? `Install ${missing.filter(item => !managed || !item.package).map(item => item.label).join(', ') || 'the downloaded build tools'} to continue. Open Mac setup help in Step 1.`
-        : 'Mac tools are ready.'
-      : 'Check the tools needed to prepare your game on this Mac.' };
+    message: inspection.checked ? message(missing, managed) : 'Check the tools needed to prepare your game on this Mac.' };
 }
 
-module.exports = { environment, inspect, report };
+// With the launcher's own tools, a missing package means one of them did not
+// run: name each one and why, as only Apple's installs are the player's to do.
+function message(missing, managed) {
+  if (!missing.length) return 'Mac tools are ready.';
+  const install = missing.filter(item => !managed || !item.package);
+  if (install.length) return `Install ${install.map(item => item.label).join(', ')} to continue. Open Mac setup help in Step 1.`;
+  return `The downloaded build tools did not run: ${missing.map(item => item.problem ? `${item.label} (${item.problem})` : item.label)
+    .join('; ')}. Try again, and if it happens again, share the activity log.`;
+}
+
+module.exports = { environment, probe, inspect, report };

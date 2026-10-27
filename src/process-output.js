@@ -1,6 +1,7 @@
 'use strict';
 
 const { execFileSync } = require('node:child_process');
+const os = require('node:os');
 const path = require('node:path');
 const { cleanOutputLine, failureReason } = require('./progress');
 
@@ -135,11 +136,27 @@ function exitDescription(label, code, signal, platform = process.platform) {
   return `${label} exited with code ${code}${detail}`;
 }
 
+// What a game exit code means when it isn't the game's own: on Windows, 3 is
+// abort() (the C runtime's exit code for it, after the game's crash report);
+// elsewhere a shell that ran the game reports a signal as 128 + its number.
+function gameExitCause(code, platform = process.platform) {
+  if (!Number.isInteger(code)) return '';
+  if (platform === 'win32') return code === 3 ? 'abort: the game stopped itself after an error' : '';
+  if (code <= 128 || code >= 160) return '';
+  const name = Object.keys(os.constants.signals).find(key => os.constants.signals[key] === code - 128);
+  return name ? `${name}: the game crashed` : '';
+}
+
 function failureMessage(label, result, recent, { game = false, platform = process.platform } = {}) {
   const native = platform === 'win32' && Number.isInteger(result.code) && (result.code >>> 0) >= 0x80000000;
   // Game reports contain ordinary warnings and stage state. They do not tell
   // us what caused an abrupt exit, so quote only the actual process status.
   const reason = game || result.signal || native ? '' : failureReason(recent);
+  const cause = game && !result.signal && !native ? gameExitCause(result.code, platform) : '';
+  if (cause) {
+    return `${exitDescription(label, result.code, result.signal, platform)} (${cause}). ` +
+      'The activity log has its crash report: Copy log there to add it to a bug report.';
+  }
   return `${exitDescription(label, result.code, result.signal, platform)}${reason ? `: ${reason}` : ''}. See the activity log.`;
 }
 

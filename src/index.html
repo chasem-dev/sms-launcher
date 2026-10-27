@@ -186,6 +186,7 @@
           <button id="tab-manage" class="settings-tab" role="tab" aria-controls="pane-manage" aria-selected="false"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 4h12M4 10h12M4 16h12"/><circle cx="8" cy="4" r="2"/><circle cx="13" cy="10" r="2"/><circle cx="7" cy="16" r="2"/></svg>Manage game</button>
           <button id="tab-mods" class="settings-tab" role="tab" aria-controls="pane-mods" aria-selected="false"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 6.5h3.2a1.8 1.8 0 1 1 3.6 0H14v3.2a1.8 1.8 0 1 1 0 3.6V16.5H10.8a1.8 1.8 0 1 0-3.6 0H4v-3.2a1.8 1.8 0 1 0 0-3.6z"/></svg>Mods<i id="mods-new" class="tab-dot" title="New mods" hidden></i></button>
           <button id="tab-launcher" class="settings-tab" role="tab" aria-controls="pane-launcher" aria-selected="false"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="7.5"/><path d="M10 9v5M10 6.2v.1"/></svg>Launcher</button>
+          <button id="tab-credits" class="settings-tab" role="tab" aria-controls="pane-credits" aria-selected="false"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 16.5S3.5 12.7 3.5 8.3A3.4 3.4 0 0 1 10 6.6a3.4 3.4 0 0 1 6.5 1.7c0 4.4-6.5 8.2-6.5 8.2z"/></svg>Credits</button>
         </nav>
 
         <div id="settings-panes" class="settings-panes">
@@ -342,6 +343,24 @@
               <div id="native-mod-list" class="native-mod-list"></div>
               <div class="actions"><button class="subtle" id="native-mods-check">Check for updates</button><button class="subtle" id="open-native-mods">Open mods folder</button></div>
               <p id="native-mod-result" class="helper" role="status" aria-live="polite"></p>
+            </div>
+          </section>
+          <section id="pane-credits" class="settings-pane" role="tabpanel" aria-labelledby="tab-credits" hidden>
+            <h2 class="group-title">Thank you</h2>
+            <div class="settings-group">
+              <p class="row-note lead">SMS Launcher brings together the work of these people and teams, made for players to enjoy for free.</p>
+            </div>
+            <h2 class="group-title">Super Mario Eclipse</h2>
+            <div class="settings-group">
+              <div class="field credit"><span>The Eclipse team<small>Made Super Mario Eclipse, the fan-made expansion of Super Mario Sunshine with its own stages, story and characters, which the launcher sets up from your disc.</small></span><div class="credit-links"><a class="credit-link" data-credit="eclipse-github" href="https://github.com/JoshuaMKW/Super-Mario-Eclipse" aria-label="Super Mario Eclipse on GitHub (opens in your browser)" title="Super Mario Eclipse on GitHub"><svg viewBox="0 0 16 16"><path d="M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z"/></svg><span>GitHub</span></a><a class="credit-link" data-credit="eclipse-gamebanana" href="https://gamebanana.com/mods/536309" aria-label="Super Mario Eclipse on GameBanana (opens in your browser)" title="Super Mario Eclipse on GameBanana"><svg viewBox="0 0 16 16"><path d="M8 1.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13Zm0 1.3c.7 0 1.6 1.4 1.9 3.7H6.1C6.4 4.2 7.3 2.8 8 2.8Zm-2.1.4A8.6 8.6 0 0 0 4.8 6.5H3.1a5.2 5.2 0 0 1 2.8-3.3Zm4.2 0a5.2 5.2 0 0 1 2.8 3.3h-1.7a8.6 8.6 0 0 0-1.1-3.3ZM2.8 7.8h1.9a13 13 0 0 0 0 1.4H2.8a5.3 5.3 0 0 1 0-1.4Zm3.2 0h4a11.6 11.6 0 0 1 0 1.4H6a11.6 11.6 0 0 1 0-1.4Zm5.3 0h1.9a5.3 5.3 0 0 1 0 1.4h-1.9a13 13 0 0 0 0-1.4ZM3.1 10.5h1.7a8.6 8.6 0 0 0 1.1 2.3 5.2 5.2 0 0 1-2.8-2.3Zm3 0h3.8c-.3 1.6-1.2 2.7-1.9 2.7s-1.6-1.1-1.9-2.7Zm5.1 0h1.7a5.2 5.2 0 0 1-2.8 2.3 8.6 8.6 0 0 0 1.1-2.3Z"/></svg><span>GameBanana</span></a></div></div>
+            </div>
+            <h2 class="group-title">HD textures</h2>
+            <div class="settings-group">
+              <div class="field credit"><span>iZePlayzYT<small>Made the Super Mario Eclipse HiRes Texture Pack: Eclipse's own HD textures, which the launcher downloads when you play Eclipse with HD textures on.</small></span><div class="credit-links"><a class="credit-link" data-credit="eclipse-textures-github" href="https://github.com/iZePlayzYT/SuperMarioEclipse-TexturePacks" aria-label="Super Mario Eclipse HiRes Texture Pack on GitHub (opens in your browser)" title="Super Mario Eclipse HiRes Texture Pack on GitHub"><svg viewBox="0 0 16 16"><path d="M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z"/></svg><span>GitHub</span></a></div></div>
+            </div>
+            <h2 class="group-title">Languages</h2>
+            <div class="settings-group">
+              <div class="field credit"><span>Traduções PKG<small>Translated the game into Brazilian Portuguese for Super Mario 3D All-Stars. The Português (Brasil) language pack, under Settings → Gameplay, is made from their translation.</small></span></div>
             </div>
           </section>
           <section id="pane-launcher" class="settings-pane" role="tabpanel" aria-labelledby="tab-launcher" hidden>

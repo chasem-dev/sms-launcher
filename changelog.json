@@ -6,7 +6,8 @@
     ],
     "game": [
       "Stick Dead Zone in the game's settings menu (pause, then Y), under Controls, sets the same dead zone while you play, for Super Mario Eclipse too.",
-      "Co-op in Super Mario Eclipse: fixed player 2 being stuck in the Shine Get pose for good after getting a Shine that keeps you in the level (like a red coin Shine), while player 1 carried on."
+      "Co-op in Super Mario Eclipse: fixed player 2 being stuck in the Shine Get pose for good after getting a Shine that keeps you in the level (like a red coin Shine), while player 1 carried on.",
+      "HD textures in French, German, Spanish and Italian: the pause menu's Quit option is now as sharp as the words above it, instead of the game's original low-resolution word."
     ]
   },
   "releases": [

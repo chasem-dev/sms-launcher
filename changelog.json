@@ -3,7 +3,8 @@
   "beta": {
     "launcher": [
       "Stick dead zone: set how far your controller's sticks move before Mario or the camera does, to stop a stick that drifts or make small movements count. Find it under Settings, Controls; 15% matches the console.",
-      "Nintendo controllers: Nintendo Switch button prompts, which Match my controller picks for Switch controllers. For a controller with A on the right and B at the bottom that still has its buttons mixed up, turn on Nintendo button layout under Settings, Controls: each button then does what its letter says, in the game and in the launcher."
+      "Nintendo controllers: Nintendo Switch button prompts, which Match my controller picks for Switch controllers. For a controller with A on the right and B at the bottom that still has its buttons mixed up, turn on Nintendo button layout under Settings, Controls: each button then does what its letter says, in the game and in the launcher.",
+      "Controller works in the background: turn it on under Settings, Controls to keep playing with your controller while another window has focus, such as with the game on a second screen. It stays off by default, so a controller used in another app doesn't move Mario."
     ],
     "game": [
       "Stick Dead Zone in the game's settings menu (pause, then Y), under Controls, sets the same dead zone while you play, for Super Mario Eclipse too.",

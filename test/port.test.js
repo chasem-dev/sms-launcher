@@ -815,6 +815,13 @@ test('the rumble slider reaches the game at twice its value, 50% the console\'s,
   assert.deepEqual([env({ rumbleStrength: 0 }).SMS_RUMBLE, env({ rumbleStrength: 0 }).SMS_RUMBLE_STRENGTH], ['0', '0']);
 });
 
+test('input in the background is off unless chosen, and reaches the game as SMS_BACKGROUND_INPUT', () => {
+  assert.equal(port.normalizeSettings({}).backgroundInput, false);
+  const env = settings => port.buildEnvironment(port.normalizeSettings(settings), '/my/disc.iso', '/port');
+  assert.equal(env({}).SMS_BACKGROUND_INPUT, '0');
+  assert.equal(env({ backgroundInput: true }).SMS_BACKGROUND_INPUT, '1');
+});
+
 test('settings keep only changed, known controller buttons', () => {
   assert.deepEqual(port.normalizeSettings({}).padBindings, {});
   assert.deepEqual(port.normalizeSettings({ padBindings: { A: ['PAD_Y'], B: ['PAD_B'], JUMP: ['PAD_A'], X: ['NOPE'] } }).padBindings,

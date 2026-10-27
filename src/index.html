@@ -216,9 +216,9 @@
               <label class="switch"><span><strong>Tilt with the C-stick</strong><small>Up and down on the C-stick tilts the camera over or under Mario, as the mouse does, instead of moving it nearer or further. Hold the right stick in to zoom.</small></span><input id="cstickOrbit" type="checkbox"><i></i></label>
               <label class="field range-field"><span><strong>Camera speed</strong><output id="cameraSpeed-value" for="cameraSpeed">100%</output></span><input id="cameraSpeed" type="range" min="25" max="300" step="5" aria-label="Camera speed"></label>
               <label class="switch"><span><strong>Mouse look</strong><small>Orbit the camera around Mario with the mouse and zoom with the wheel; F10 frees it. The default keys are laid out for it.</small></span><input id="mouseCamera" type="checkbox"><i></i></label>
-              <label class="switch"><span><strong>Mouse aim in Mario Cam</strong><small>In the close-up view Y opens, and when you spray in place (R all the way down, or L), the mouse aims FLUDD, as in shooters.</small></span><input id="closeCameraMouse" type="checkbox"><i></i></label>
-              <label class="field range-field"><span><strong>Mouse sensitivity</strong><output id="mouseSensitivity-value" for="mouseSensitivity">100%</output></span><input id="mouseSensitivity" type="range" min="25" max="400" step="5" aria-label="Mouse sensitivity"></label>
-              <label class="switch"><span><strong>Raw mouse input</strong><small>Reads the mouse directly, without your system's pointer speed. Turn it off if mouse look feels too slow, as it can on some laptops. Windows and Linux (X11) only.</small></span><input id="rawMouse" type="checkbox"><i></i></label>
+              <label class="switch sub"><span><strong>Mouse aim in Mario Cam</strong><small>In the close-up view Y opens, and when you spray in place (R all the way down, or L), the mouse aims FLUDD, as in shooters.</small></span><input id="closeCameraMouse" type="checkbox"><i></i></label>
+              <label class="field range-field sub"><span><strong>Mouse sensitivity</strong><output id="mouseSensitivity-value" for="mouseSensitivity">100%</output></span><input id="mouseSensitivity" type="range" min="25" max="400" step="5" aria-label="Mouse sensitivity"></label>
+              <label class="switch sub"><span><strong>Raw mouse input</strong><small>Reads the mouse directly, without your system's pointer speed. Turn it off if mouse look feels too slow, as it can on some laptops. Windows and Linux (X11) only.</small></span><input id="rawMouse" type="checkbox"><i></i></label>
             </div>
           </section>
 
@@ -226,8 +226,8 @@
             <h2 class="group-title">Screen</h2>
             <div class="settings-group">
               <label class="switch"><span><strong>Full screen</strong><small>Game fills your display. F11 or Alt+Enter switches while playing.</small></span><input id="fullscreen" type="checkbox"><i></i></label>
-              <label class="field"><span>Full screen type</span><select id="fullscreenMode"><option value="desktop">Borderless</option><option value="exclusive">Exclusive</option></select></label>
-              <label class="field"><span>Exclusive resolution<small>Changes your display's resolution while the game runs.</small></span><select id="exclusiveResolution"><option value="desktop">Desktop resolution</option></select></label>
+              <label class="field sub"><span>Full screen type</span><select id="fullscreenMode"><option value="desktop">Borderless</option><option value="exclusive">Exclusive</option></select></label>
+              <label class="field sub"><span>Exclusive resolution<small>Changes your display's resolution while the game runs.</small></span><select id="exclusiveResolution"><option value="desktop">Desktop resolution</option></select></label>
               <label class="field"><span>Monitor</span><select id="display"><option value="launcher">Same as the launcher</option><option value="primary">Primary monitor</option></select></label>
             </div>
             <h2 class="group-title">Picture</h2>
@@ -239,7 +239,7 @@
               <label class="field range-field"><span><strong>Brightness</strong><output id="brightness-value" for="brightness">100%</output></span><input id="brightness" type="range" min="50" max="200" step="5" aria-label="Brightness"></label>
               <label class="field"><span>Colour correction<small>The colours of the TVs the game was made for, as Dolphin's colour correction shows them. NTSC-J has Japanese TVs' bluer white.</small></span><select id="colorSpace"><option value="off">Off</option><option value="ntsc-m">NTSC-M (Americas)</option><option value="ntsc-j">NTSC-J (Japan)</option><option value="pal">PAL (Europe)</option></select></label>
               <label class="field"><span>TV gamma<small>The darker midtones those TVs had, which can make the picture look less washed out. 2.35 is NTSC's, 2.8 PAL's.</small></span><select id="gameGamma"><option value="off">Off</option><option value="2.2">2.2</option><option value="2.35">2.35 (NTSC)</option><option value="2.5">2.5</option><option value="2.8">2.8 (PAL)</option></select></label>
-              <label class="field"><span>Display gamma<small>Your display's, for TV gamma. sRGB suits most PC monitors.</small></span><select id="displayGamma"><option value="srgb">sRGB</option><option value="2.2">2.2</option><option value="2.4">2.4</option></select></label>
+              <label class="field sub"><span>Display gamma<small>Your display's, for TV gamma. sRGB suits most PC monitors.</small></span><select id="displayGamma"><option value="srgb">sRGB</option><option value="2.2">2.2</option><option value="2.4">2.4</option></select></label>
             </div>
             <h2 class="group-title">Frame rate</h2>
             <div class="settings-group">
@@ -251,13 +251,13 @@
               <h2 class="group-title">HDR</h2>
               <div class="settings-group">
                 <label class="switch"><span><strong>HDR</strong><small>Brighter highlights and richer colour on an HDR display. Turn on Windows HDR first: Settings → System → Display → Use HDR.</small></span><input id="hdr" type="checkbox"><i></i></label>
-                <label class="switch"><span><strong>Use Windows HDR calibration</strong><small>Peak brightness from your Windows HDR Calibration profile, paper white from Windows' SDR content brightness.</small></span><input id="hdrCalibration" type="checkbox"><i></i></label>
-                <div class="row-note"><span class="hdr-display" id="hdr-display" role="status">Checking your display…</span><button class="text-button" id="hdr-calibration-app">Get the calibration app ↗</button></div>
-                <label class="field range-field"><span><strong>Paper white</strong><output id="hdrPaperWhite-value" for="hdrPaperWhite">200 nits</output><small>How bright ordinary whites, menus and text are.</small></span><input id="hdrPaperWhite" type="range" min="80" max="500" step="10" aria-label="Paper white"></label>
-                <label class="field range-field"><span><strong>Peak brightness</strong><output id="hdrPeak-value" for="hdrPeak">1000 nits</output><small>The brightest a highlight can reach.</small></span><input id="hdrPeak" type="range" min="400" max="4000" step="50" aria-label="Peak brightness"></label>
-                <label class="field range-field"><span><strong>Contrast</strong><output id="hdrContrast-value" for="hdrContrast">100%</output></span><input id="hdrContrast" type="range" min="50" max="150" step="5" aria-label="HDR contrast"></label>
-                <label class="field range-field"><span><strong>Saturation</strong><output id="hdrSaturation-value" for="hdrSaturation">100%</output></span><input id="hdrSaturation" type="range" min="0" max="200" step="5" aria-label="HDR saturation"></label>
-                <label class="field range-field"><span><strong>Highlights</strong><output id="hdrHighlights-value" for="hdrHighlights">40%</output><small>How far the brightest parts climb toward peak; 0% keeps them at paper white.</small></span><input id="hdrHighlights" type="range" min="0" max="100" step="5" aria-label="HDR highlights"></label>
+                <label class="switch sub"><span><strong>Use Windows HDR calibration</strong><small>Peak brightness from your Windows HDR Calibration profile, paper white from Windows' SDR content brightness.</small></span><input id="hdrCalibration" type="checkbox"><i></i></label>
+                <div class="row-note sub"><span class="hdr-display" id="hdr-display" role="status">Checking your display…</span><button class="text-button" id="hdr-calibration-app">Get the calibration app ↗</button></div>
+                <label class="field range-field sub"><span><strong>Paper white</strong><output id="hdrPaperWhite-value" for="hdrPaperWhite">200 nits</output><small>How bright ordinary whites, menus and text are.</small></span><input id="hdrPaperWhite" type="range" min="80" max="500" step="10" aria-label="Paper white"></label>
+                <label class="field range-field sub"><span><strong>Peak brightness</strong><output id="hdrPeak-value" for="hdrPeak">1000 nits</output><small>The brightest a highlight can reach.</small></span><input id="hdrPeak" type="range" min="400" max="4000" step="50" aria-label="Peak brightness"></label>
+                <label class="field range-field sub"><span><strong>Contrast</strong><output id="hdrContrast-value" for="hdrContrast">100%</output></span><input id="hdrContrast" type="range" min="50" max="150" step="5" aria-label="HDR contrast"></label>
+                <label class="field range-field sub"><span><strong>Saturation</strong><output id="hdrSaturation-value" for="hdrSaturation">100%</output></span><input id="hdrSaturation" type="range" min="0" max="200" step="5" aria-label="HDR saturation"></label>
+                <label class="field range-field sub"><span><strong>Highlights</strong><output id="hdrHighlights-value" for="hdrHighlights">40%</output><small>How far the brightest parts climb toward peak; 0% keeps them at paper white.</small></span><input id="hdrHighlights" type="range" min="0" max="100" step="5" aria-label="HDR highlights"></label>
               </div>
             </div>
           </section>
@@ -285,7 +285,7 @@
             <div class="settings-group">
               <label class="switch"><span><strong>HD textures <span id="textures-badge" class="badge">Checking</span></strong><small>Adds more detail to the game.</small></span><input id="textures" type="checkbox"><i></i></label>
               <p class="row-note" id="texture-info">Checking for HD textures…</p>
-              <label class="field"><span>HD texture loading<small id="texture-loading-hint">Before each level: a level's HD textures load with it, so they don't pop in while you play.</small></span><select id="textureLoading"><option value="stage">Before each level</option><option value="all">Whole pack</option><option value="play">While playing</option></select></label>
+              <label class="field sub"><span>HD texture loading<small id="texture-loading-hint">Before each level: a level's HD textures load with it, so they don't pop in while you play.</small></span><select id="textureLoading"><option value="stage">Before each level</option><option value="all">Whole pack</option><option value="play">While playing</option></select></label>
               <div class="field"><span>Custom textures<small>Put texture packs made for Dolphin here: they replace the HD textures where both change the same texture, and work with HD textures off too.</small></span><button class="subtle" id="open-custom-textures">Open custom textures folder</button></div>
               <label class="switch"><span><strong>Prepare shaders ahead</strong><small>Builds a level's effects while it loads, so the first moments in it don't stutter.</small></span><input id="shaderWarmup" type="checkbox"><i></i></label>
               <label class="switch"><span><strong>HD cutscenes <span id="cutscenes-badge" class="badge">Checking</span></strong><small id="cutscenes-description">Sharper Sunshine movies, made from your own disc. About 5.4 GB to download.</small></span><input id="cutscenes" type="checkbox"><i></i></label>

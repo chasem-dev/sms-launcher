@@ -8,7 +8,7 @@
       "When the game crashes, the launcher now says what its exit code means, such as code 3 on Windows (the game stopped itself after an error) or 139 on a Mac or Linux (a crash), and that Copy log in the activity log has the crash report for a bug report.",
       "Custom cutscenes: play your own Sunshine movies, such as ones from the Switch, instead of the disc's or the HD cutscenes, and they are never downloaded over. Put them in the folder that Open custom cutscenes folder opens, under Settings, HD visuals, as .thp files named like the game's (openingA.thp).",
       "DualSense FLUDD trigger: on a PlayStation 5 controller, R2 can get harder to pull as you press it while Mario has FLUDD, most at the end of the pull. Off by default; choose how strong under Settings, Controls.",
-      "Settings: a switch that only works with another one on, such as Mouse aim in Mario Cam under Mouse look or Use Windows HDR calibration under HDR, is now greyed out while that one is off, like the sliders below it."
+      "Settings: options that only work with another one on, such as Mouse aim in Mario Cam under Mouse look or Use Windows HDR calibration under HDR, now sit indented under it, and switches among them are greyed out while it is off, as sliders already were."
     ],
     "game": [
       "Stick Dead Zone in the game's settings menu (pause, then Y), under Controls, sets the same dead zone while you play, for Super Mario Eclipse too.",

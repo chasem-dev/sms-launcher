@@ -496,6 +496,8 @@ pre { height: 120px; margin: 0; padding: 12px; overflow: auto; border-radius: 8p
 .settings-group > .row-note { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: -4px; padding-bottom: 12px; color: #6e8183; font-size: 11px; line-height: 1.45; }
 .settings-group > .row-note.lead { margin: 0; padding: 14px 0 2px; color: #405a60; font-size: 12px; }
 .settings-group > .row-note.lead + .actions, .settings-group > .small-path + .actions { border-top: 0; }
+/* a setting that only matters with the one above it on */
+.settings-group > .sub { margin-left: 14px; padding-left: 14px; box-shadow: inset 2px 0 #cfe0de; }
 .path-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
 .path-row > div:first-child { display: grid; gap: 3px; min-width: 0; }
 .path-row strong, .backup-picker span { color: #334b51; font-size: 13px; font-weight: 650; }
@@ -591,6 +593,7 @@ pre { height: 120px; margin: 0; padding: 12px; overflow: auto; border-radius: 8p
 .dark .danger { color: #ff9c92; }
 .dark .switch i { background: #3a5864; }
 .dark .switch input:checked + i { background: #1a9aa2; }
+.dark .settings-group > .sub { box-shadow: inset 2px 0 #2f5a6d; }
 .dark .badge { background: #22414f; color: #b6cbd1; }
 .dark .badge.good { background: #17473a; color: #8fe0bd; }
 .dark .badge.warn { background: #4a3a17; color: #f5cf86; }

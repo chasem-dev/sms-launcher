@@ -13,7 +13,8 @@
       "Mac: setting up the build tools no longer fails on a slower Mac when its tools take a while to start the first time; the launcher now waits longer and checks twice. If a tool still does not run, the message says which one and why, instead of asking to install the downloaded build tools.",
       "World editor (Beta): a new tab opens any stage on your disc in 3D, drawn the way the game draws it, with every NPC in their own colours and outfits. Place anything the game puts in any stage, from buildings and NPCs to enemies and coins, from a catalog you can search and filter by category and world; move, turn and remove what's there; paint the stage's ground with the game's own textures (grass to sand, plaza to paving) and ground types; build floors, walls, stairs, ramps, roofs and houses with grassy banks and grass fringes where ground meets, or copy whole buildings such as Delfino's bell tower; start from an empty stage to make a level of your own; walk around as Mario; save your level or export it as the game's own stage files; and Play in game starts the game straight in your level.",
       "World editor: click anything to get red, green and blue arrows on it, like in Blender: drag an arrow to move it along that direction, a square between two arrows to slide it, or the yellow ring to turn it, with Ctrl to snap. Play in game also no longer makes Mario walk or jump by himself when your level starts.",
-      "World editor: things that crash the game away from their own stage, such as Bowser without his bathtub, now say what they need in the catalog, and Export and Play in game stop with a message saying what to remove instead of the game crashing."
+      "World editor: things that crash the game away from their own stage, such as Bowser without his bathtub, now say what they need in the catalog, and Export and Play in game stop with a message saying what to remove instead of the game crashing.",
+      "World editor: Play in game now opens straight on your level, without the logos, title screen or file select, and the screen stays black until the level fades in."
     ],
     "game": [
       "Stick Dead Zone in the game's settings menu (pause, then Y), under Controls, sets the same dead zone while you play, for Super Mario Eclipse too.",
@@ -31,7 +32,8 @@
       "Mouse look on Mecha-Bowser's roller coaster in Pinna Park: from the car the mouse tilts the view and FLUDD's aim, and in the view from behind (Y switches) it moves the camera. Mouse movement made while no camera follows it, such as in a cutscene or the pause menu, no longer swings the camera all at once afterwards.",
       "Multiplayer: people in the background no longer slide along standing still while you talk to someone; they stand and wait, as they do when you play alone.",
       "Multiplayer in Super Mario Eclipse: the Shines you get for putting out Bollente Crypt's fires now fly out of the lava to their platform, instead of staying in the lava where you couldn't get them.",
-      "Multiplayer: joining a game goes straight to the host's level, without the Nintendo and Dolby logos, the opening movie or the title screen. The screen stays black while it connects, then fades into the level."
+      "Multiplayer: joining a game goes straight to the host's level, without the Nintendo and Dolby logos, the opening movie or the title screen. The screen stays black while it connects, then fades into the level.",
+      "The game can start straight in a stage, with no logos, title screen or file select, as a new game: the launcher's World editor uses it for Play in game."
     ]
   },
   "releases": [

@@ -1514,10 +1514,11 @@ async function worldExport(event, input, kind) {
 // Play in game: the level exported into a folder of its own that the game
 // lays over its disc (SMS_MOD), then the game started on a memory card of
 // its own (the player's saves stay out of it) and sent to the level's stage
-// (SMS_WARP) through the title and file select by scripted presses
-// (SMS_AUTOPRESS). On every screen on the way, A takes the choice already
-// picked (Yes to make a file, No to hearing an explanation again), and right
-// walks Mario under file B; once the stage has loaded, the presses stop.
+// (SMS_WARP): straight there with SMS_WARP_DIRECT, or, in games before it,
+// through the title and file select by scripted presses (SMS_AUTOPRESS). On
+// every screen on the way, A takes the choice already picked (Yes to make a
+// file, No to hearing an explanation again), and right walks Mario under
+// file B; once the stage has loaded, the presses stop.
 function worldPlayPresses(skipsIntro) {
   const presses = [];
   const press = (at, control, hold) => presses.push([at, `${control}@${at}+${hold}`]);
@@ -1558,9 +1559,13 @@ async function worldPlay(input) {
     fs.writeFileSync(target, data);
   }
   log(`World editor: playing ${project.name} in ${world.sceneLabel(project.base)} (area ${start.area}, episode ${start.episode}).`);
+  // A game with ext/warp starts in the level straight away, behind a black
+  // screen, as a multiplayer guest joins; older ones go through the title and
+  // file select by presses.
+  const direct = fs.existsSync(path.join(root, 'ext', 'warp', 'game', 'warp_game.cpp'));
   return play(null, null, { env: {
-    SMS_MOD: folder, SMS_WARP: `${start.area},${start.episode}`, SMS_SAVE_DIR: card,
-    SMS_SKIP_INTRO: '1', SMS_SKIP_MOVIES: '1', SMS_AUTOPRESS: worldPlayPresses(source('platform/port_runtime.cpp').includes('SMS_SKIP_INTRO')),
+    SMS_MOD: folder, SMS_WARP: `${start.area},${start.episode}`, SMS_SAVE_DIR: card, SMS_SKIP_INTRO: '1', SMS_SKIP_MOVIES: '1',
+    ...direct ? { SMS_WARP_DIRECT: '1' } : { SMS_AUTOPRESS: worldPlayPresses(source('platform/port_runtime.cpp').includes('SMS_SKIP_INTRO')) },
   } });
 }
 

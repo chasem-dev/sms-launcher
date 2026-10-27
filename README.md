@@ -110,6 +110,8 @@ HD textures are **on by default for first-time setup**. In Sunshine mode, this a
 
 If HD setup is incomplete, choose **Finish HD setup** to download and prepare the missing files. Previously installed textures and movies are reused. The launcher shows download progress and checks all movies before activating the pack. Failed or cancelled setup keeps the previous pack. Your original disc and saves stay intact. Eclipse keeps its own movies.
 
+With **Super Mario Eclipse** on, HD textures also bring Eclipse's own: [iZePlayzYT's Super Mario Eclipse HiRes Texture Pack](https://github.com/iZePlayzYT/SuperMarioEclipse-TexturePacks), about **9 GB to download** and **16 GB installed**, downloaded before Eclipse plays. It unpacks as it downloads, so it never needs room for the zip as well; a stopped download carries on from where it stopped, and every game version shares one copy. Until it is installed, or if your drive has no room for it, Eclipse plays with Sunshine's HD textures.
+
 **Settings → Graphics → HD texture loading** chooses when HD textures load:
 
 - **Before each level** (default): a level's textures load while it loads, so they don't appear late while you play.

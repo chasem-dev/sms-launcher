@@ -275,3 +275,40 @@ print(digest.hexdigest())
     assert.deepEqual(of('no-range'), [[null, null], [null, null], [`bytes=${half}-`, '"v1"']]);
     assert.deepEqual(fs.readdirSync(kept), []);
   });
+
+test('parts of a file (range requests, as the Eclipse textures installer makes) leave the progress to the installer',
+  { skip: !pythonReady && 'Python is needed to exercise the portable installer adapter' }, async t => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'sms texture ranges '));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    const payload = Buffer.alloc(256 * 1024, 'eclipse textures');
+    const server = http.createServer((req, res) => {
+      const range = /^bytes=(\d+)-(\d+)$/.exec(req.headers.range || '');
+      if (!range) { res.writeHead(200, { 'Content-Length': payload.length }); res.end(payload); return; }
+      const [start, end] = [Number(range[1]), Number(range[2])];
+      res.writeHead(206, { 'Content-Length': end - start + 1, 'Content-Range': `bytes ${start}-${end}/${payload.length}` });
+      res.end(payload.subarray(start, end + 1));
+    });
+    await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+    t.after(() => new Promise(resolve => server.close(resolve)));
+    const installer = path.join(root, 'ranges.py');
+    fs.writeFileSync(installer, `import os, urllib.request
+url = os.environ['TEST_TEXTURE_URL']
+for start in range(0, 4 * 65536, 65536):
+    req = urllib.request.Request(url, headers={'Range': 'bytes=%d-%d' % (start, start + 65535)})
+    with urllib.request.urlopen(req) as r:
+        got = b''.join(iter(lambda: r.read(8192), b''))  # to the end, as a download reads
+        assert r.status == 206 and len(got) == 65536
+    print('Eclipse texture download: %d/%d bytes (%d/4 textures)' % (start + 65536, 4 * 65536, start // 65536 + 1), flush=True)
+with urllib.request.urlopen(url) as r:
+    assert len(b''.join(iter(lambda: r.read(8192), b''))) == ${payload.length}
+`);
+    const { stdout } = await promisify(execFile)(python, [path.resolve(__dirname, '..', 'scripts', 'texture-progress.py'), installer],
+      { cwd: root, env: { ...process.env, TEST_TEXTURE_URL: `http://127.0.0.1:${server.address().port}/pack.zip` } });
+    const lines = stdout.trim().split(/\r?\n/);
+    assert.deepEqual(lines.filter(line => line.startsWith('Eclipse texture download:')).map(line => activityFromLine(line).percent),
+      [25, 50, 75, 100]);
+    assert.ok(lines.filter(line => line.startsWith('Texture download:')).every(line => line.endsWith(`/${payload.length} bytes`)),
+      'only the whole file reports its own bytes');
+    assert.ok(lines.some(line => line.startsWith('Texture download: ')), 'the whole file still reports');
+    assert.equal(lines.filter(line => line === 'Checking HD texture download').length, 1);
+  });

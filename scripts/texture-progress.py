@@ -24,6 +24,10 @@ class ProgressResponse:
         self.reported_at = 0.0
 
     def report(self):
+        # A part of a file (an HTTP range request, as the Eclipse textures' installer
+        # makes) is not a download of its own: that installer reports its progress.
+        if getattr(self.response, "status", 200) == 206:
+            return
         print("Texture download: %d/%d bytes" % (self.received, self.total), flush=True)
         self.reported_at = time.monotonic()
 
@@ -32,7 +36,7 @@ class ProgressResponse:
         self.received += len(chunk)
         if not chunk or time.monotonic() - self.reported_at >= 0.5:
             self.report()
-        if not chunk:
+        if not chunk and getattr(self.response, "status", 200) != 206:
             print("Checking HD texture download", flush=True)
         return chunk
 

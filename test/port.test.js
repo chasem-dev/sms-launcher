@@ -486,6 +486,55 @@ test('Eclipse radar maps are downloaded for Eclipse with the radar, again only f
       [progressScript, path.join(root, 'tools', 'mods', 'get.py'), 'eclipse-maps', '--if-outdated']);
 });
 
+test("Super Mario Eclipse's HD textures: downloaded for Eclipse with HD textures, read first while playing Eclipse", t => {
+  const root = temporary(); t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  const on = port.normalizeSettings({ eclipse: true, textures: true });
+  const pin = md5 => {
+    fs.mkdirSync(path.join(root, 'tools', 'mods'), { recursive: true });
+    fs.writeFileSync(path.join(root, 'tools', 'mods', 'eclipse-textures.json'), JSON.stringify({ md5, size: 9, unpacked: 16 }));
+  };
+  const record = md5 => {
+    fs.mkdirSync(port.eclipseTexturesDirectory(root), { recursive: true });
+    fs.writeFileSync(path.join(port.eclipseTexturesDirectory(root), '.release'), JSON.stringify({ md5 }));
+  };
+  const packs = settings => port.texturePackFolders(settings, root, null);
+  assert.equal(port.eclipseTexturesDirectory(root), path.join(root, 'mods', 'eclipse-textures'));
+  // A game version without them: nothing to download, and only the HD textures.
+  assert.equal(port.eclipseTexturesSupported(root), false);
+  assert.equal(port.eclipseTexturesWanted(root, on), false);
+  assert.deepEqual(packs(on), [port.texturePackDirectory(root)]);
+  pin('0491325c595a3f7a05bd68da95a68778');
+  assert.equal(port.eclipseTexturesWanted(root, on), true);
+  for (const settings of [{ eclipse: true, textures: false }, { eclipse: false, textures: true }])
+    assert.equal(port.eclipseTexturesWanted(root, port.normalizeSettings(settings)), false, JSON.stringify(settings));
+  assert.deepEqual(packs(on), [port.texturePackDirectory(root)], 'not installed yet');
+  record('0491325c595a3f7a05bd68da95a68778');
+  assert.equal(port.eclipseTexturesInstalled(root), true);
+  assert.equal(port.eclipseTexturesWanted(root, on), false);
+  assert.deepEqual(packs(on), [port.eclipseTexturesDirectory(root), port.texturePackDirectory(root)]);
+  assert.deepEqual(packs(port.normalizeSettings({ eclipse: false, textures: true })), [port.texturePackDirectory(root)],
+    'Sunshine never reads them');
+  assert.deepEqual(packs(port.normalizeSettings({ eclipse: true, textures: false })), [], 'HD textures off: neither pack');
+  pin('0123456789abcdef0123456789abcdef');  // a newer release pinned: downloaded, and the old one read meanwhile
+  assert.equal(port.eclipseTexturesWanted(root, on), true);
+  assert.deepEqual(packs(on), [port.eclipseTexturesDirectory(root), port.texturePackDirectory(root)]);
+  const custom = path.join(root, 'custom');
+  fs.mkdirSync(custom);
+  fs.writeFileSync(path.join(custom, 'tex1_8x8_0123456789abcdef_14.png'), 'texture');
+  assert.deepEqual(port.texturePackFolders(on, root, custom), [custom, port.eclipseTexturesDirectory(root), port.texturePackDirectory(root)],
+    "the player's own textures still win");
+  // Whole pack keeps every texture in video memory: Eclipse's 16 GB loads before each level instead.
+  const preload = settings => port.buildEnvironment(port.normalizeSettings(settings), '/my/disc.iso', root).SMS_TEXTURE_PACK_PRELOAD;
+  assert.equal(preload({ eclipse: true, textures: true, textureLoading: 'all' }), '1');
+  assert.equal(preload({ eclipse: false, textures: true, textureLoading: 'all' }), 'all');
+  assert.equal(preload({ eclipse: true, textures: true, textureLoading: 'play' }), '0');
+  assert.equal(preload({ eclipse: true, textures: true, textureLoading: 'stage' }), '1');
+  const progressScript = path.resolve(__dirname, '..', 'scripts', 'texture-progress.py');
+  for (const platform of ['linux', 'darwin'])
+    assert.deepEqual(port.commandFor(root, 'eclipse-textures', [], platform).args,
+      [progressScript, path.join(root, 'tools', 'mods', 'get.py'), 'eclipse-textures', '--if-outdated']);
+});
+
 // A game folder whose tools/mods/language-packs.json says what it plays.
 function gameWithLanguages(t, list) {
   const root = temporary(); t.after(() => fs.rmSync(root, { recursive: true, force: true }));

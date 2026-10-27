@@ -56,6 +56,20 @@ test('reports texture install phases without inventing a download percentage', (
     { detail: 'HD textures installed', percent: 100 });
 });
 
+test("reports Super Mario Eclipse's HD textures as they download and unpack", () => {
+  assert.deepEqual(activityFromLine('Downloading Super Mario Eclipse HiRes Texture Pack v5.1.0 (iZePlayzYT)'),
+    { detail: "Downloading Super Mario Eclipse's HD textures (about 9 GB)", percent: null });
+  assert.deepEqual(activityFromLine('Eclipse texture download: 4586852380/9172411025 bytes (2300/4651 textures)'),
+    { detail: "Downloading Super Mario Eclipse's HD textures · 4.6 GB of 9.2 GB", percent: 50 });
+  assert.deepEqual(activityFromLine('Eclipse texture download: 0/9172411025 bytes (0/4651 textures)'),
+    { detail: "Downloading Super Mario Eclipse's HD textures · 0.0 GB of 9.2 GB", percent: 0 });
+  assert.deepEqual(activityFromLine('Installed 4651 textures in mods/eclipse-textures; Super Mario Eclipse shows them with HD textures on.'),
+    { detail: "Super Mario Eclipse's HD textures installed", percent: 100 });
+  for (const invalid of ['Eclipse texture download: 5/4 bytes (1/2 textures)', 'Eclipse texture download: 1/4 bytes (3/2 textures)',
+    'Eclipse texture download: 0/0 bytes (0/0 textures)'])
+    assert.equal(activityFromLine(invalid), null);
+});
+
 test('reports texture download bytes, handles unknown file sizes, and separates checksum checking', () => {
   assert.deepEqual(activityFromLine('Texture download: 500000000/1000000000 bytes'),
     { detail: 'Downloading HD textures · 500 MB of 1,000 MB', percent: 50 });

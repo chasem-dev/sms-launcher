@@ -107,6 +107,7 @@ $('rumbleStrength').addEventListener('input', () => {
   rumbleTimer = setTimeout(() => rumblePreview.play(Number($('rumbleStrength').value) * 2), 120);
 });
 $('rumbleStrength').addEventListener('change', () => saveSettings());
+$('fluddTrigger').addEventListener('change', () => saveSettings());
 
 function bindingNote() {
   return bindingMode === 'controller'
@@ -848,6 +849,8 @@ function refresh(data) {
   $('rumbleStrength').value = String(config.settings.rumbleStrength ?? 50);
   renderRumbleStrength();
   $('rumbleStrength').disabled = Boolean(data.active);
+  $('fluddTrigger').value = String(config.settings.fluddTrigger ?? 0);
+  $('fluddTrigger').disabled = Boolean(data.active);
   // Steam Input can sit between the controller and the game on SteamOS / Steam Deck (Linux).
   $('steamos-note').hidden = data.platform.id !== 'linux';
   if (!capture) renderBindings();
@@ -1223,7 +1226,7 @@ function settingsValue() {
     textureLoading: $('textureLoading').value, shaderWarmup: $('shaderWarmup').checked,
     eclipse: $('eclipse').checked, eclipseSunshineMovies: $('eclipseSunshineMovies').checked, autoUpdate: $('autoUpdate').checked, shareUsage: $('shareUsage').checked, discordPresence: $('discordPresence').checked, autoBackups: $('autoBackups').checked, darkMode: $('darkMode').checked, updateChannel: $('updateChannel').value,
     keyBindings, padBindings, softTrigger: Number($('softTrigger').value), stickDeadzone: Number($('stickDeadzone').value),
-    rumbleStrength: Number($('rumbleStrength').value), buttonPrompts: $('buttonPrompts').value,
+    rumbleStrength: Number($('rumbleStrength').value), fluddTrigger: Number($('fluddTrigger').value), buttonPrompts: $('buttonPrompts').value,
     promptPad: $('promptPad').value, graphicsPreset: $('graphicsPreset').value,
     hdr: $('hdr').checked, hdrCalibration: $('hdrCalibration').checked, hdrPaperWhite: Number($('hdrPaperWhite').value),
     hdrPeak: Number($('hdrPeak').value), hdrContrast: Number($('hdrContrast').value),

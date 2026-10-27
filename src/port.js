@@ -225,6 +225,9 @@ function normalizeSettings(input = {}, platform = process.platform, hostArch = p
     // Controller rumble in percent of the slider: 0 turns it off and 50, the default, is the console's rumble.
     // The game's own strength is twice it (rumbleGameStrength): above 100 it runs the motor more often.
     rumbleStrength: numberSetting(input.rumbleStrength, 50, 0, 100),
+    // DualSense FLUDD trigger: R2's resistance at the end of its pull while Mario has FLUDD, in percent of the
+    // controller's strongest, in quarters as the game's settings menu has it; 0, the default, is off.
+    fluddTrigger: Math.round(numberSetting(input.fluddTrigger, 0, 0, 100) / 25) * 25,
     updateChannel: normalizeChannel(input.updateChannel)
   };
   // The graphics preset chosen (src/presets.js), while the picture settings still match it; else Custom.
@@ -551,6 +554,8 @@ function buildEnvironment(settings, disc, root, { customTextures = null, customC
     SMS_STICK_DEADZONE: String(settings.stickDeadzone ?? 15),
     SMS_RUMBLE: settings.rumbleStrength === 0 ? '0' : '1',
     SMS_RUMBLE_STRENGTH: String(rumbleGameStrength(settings.rumbleStrength)),
+    // games from before the setting ignore it
+    SMS_FLUDD_TRIGGER: String(settings.fluddTrigger ?? 0),
     SMS_HEAT_HAZE: settings.heatHaze === false ? '0' : '1',
     SMS_PAUSE_TRACKER: settings.pauseTracker === false ? '0' : '1',
     SMS_RADAR: settings.radar ? '1' : '0',

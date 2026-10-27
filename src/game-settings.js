@@ -17,7 +17,7 @@ const KEYS = [
   'hdr', 'hdrCalibration', 'hdrPaperWhite', 'hdrPeak', 'hdrContrast', 'hdrSaturation', 'hdrHighlights',
   'skipMovies', 'volume', 'musicVolume', 'sfxVolume', 'invertCameraX', 'invertCameraY', 'invertFluddAimY', 'freeCamera', 'cstickOrbit', 'cameraSpeed',
   'mouseCamera', 'closeCameraMouse', 'mouseSensitivity', 'rawMouse',
-  'softTrigger', 'stickDeadzone', 'rumbleStrength', 'buttonPrompts', 'promptPad'
+  'softTrigger', 'stickDeadzone', 'rumbleStrength', 'fluddTrigger', 'buttonPrompts', 'promptPad'
 ];
 
 function file(userData) { return path.join(userData, 'game-settings.json'); }

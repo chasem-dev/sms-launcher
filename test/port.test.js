@@ -1044,3 +1044,15 @@ test('custom cutscenes are given to Sunshine as a mod once the folder has a movi
   assert.equal(port.buildEnvironment(port.normalizeSettings({}, 'linux'), '/my/disc.iso', '/port',
     { customCutscenes: odd }).SMS_MOD, 'none');
 });
+
+test('the DualSense FLUDD trigger is off by default and reaches the game in quarters as SMS_FLUDD_TRIGGER', () => {
+  assert.equal(port.normalizeSettings({}).fluddTrigger, 0);
+  assert.equal(port.normalizeSettings({ fluddTrigger: 75 }).fluddTrigger, 75);
+  assert.equal(port.normalizeSettings({ fluddTrigger: '50' }).fluddTrigger, 50);
+  assert.equal(port.normalizeSettings({ fluddTrigger: 40 }).fluddTrigger, 50, 'the nearest the settings offer');
+  assert.equal(port.normalizeSettings({ fluddTrigger: 300 }).fluddTrigger, 100);
+  assert.equal(port.normalizeSettings({ fluddTrigger: 'strong' }).fluddTrigger, 0);
+  const env = settings => port.buildEnvironment(port.normalizeSettings(settings), '/my/disc.iso', '/port');
+  assert.equal(env({}).SMS_FLUDD_TRIGGER, '0');
+  assert.equal(env({ fluddTrigger: 100 }).SMS_FLUDD_TRIGGER, '100');
+});

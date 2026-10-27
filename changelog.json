@@ -6,7 +6,8 @@
       "Nintendo controllers: Nintendo Switch button prompts, which Match my controller picks for Switch controllers. For a controller with A on the right and B at the bottom that still has its buttons mixed up, turn on Nintendo button layout under Settings, Controls: each button then does what its letter says, in the game and in the launcher.",
       "Controller works in the background: turn it on under Settings, Controls to keep playing with your controller while another window has focus, such as with the game on a second screen. It stays off by default, so a controller used in another app doesn't move Mario.",
       "When the game crashes, the launcher now says what its exit code means, such as code 3 on Windows (the game stopped itself after an error) or 139 on a Mac or Linux (a crash), and that Copy log in the activity log has the crash report for a bug report.",
-      "Custom cutscenes: play your own Sunshine movies, such as ones from the Switch, instead of the disc's or the HD cutscenes, and they are never downloaded over. Put them in the folder that Open custom cutscenes folder opens, under Settings, HD visuals, as .thp files named like the game's (openingA.thp)."
+      "Custom cutscenes: play your own Sunshine movies, such as ones from the Switch, instead of the disc's or the HD cutscenes, and they are never downloaded over. Put them in the folder that Open custom cutscenes folder opens, under Settings, HD visuals, as .thp files named like the game's (openingA.thp).",
+      "DualSense FLUDD trigger: on a PlayStation 5 controller, R2 can get harder to pull as you press it while Mario has FLUDD, most at the end of the pull. Off by default; choose how strong under Settings, Controls."
     ],
     "game": [
       "Stick Dead Zone in the game's settings menu (pause, then Y), under Controls, sets the same dead zone while you play, for Super Mario Eclipse too.",
@@ -17,7 +18,8 @@
       "Mods: the game has mod API 1.6 beta 1. Mods can open their own screen over a save file's menu at file select (Start, Copy, Erase, Score), such as a new game's options, and you can still back out with B.",
       "Mouse look: with Invert camera X on (the launcher's default) the mouse turned the camera the opposite way to the C-stick; now the mouse always turns the view the way it moves, and Invert camera X flips only the C-stick.",
       "Mouse aim in Mario Cam now also aims FLUDD when you spray in place (R all the way down, or L to walk sideways): the mouse turns Mario and tilts FLUDD up and down, and the camera follows behind him.",
-      "Cheats (F9): Jump Height now goes up to 8x."
+      "Cheats (F9): Jump Height now goes up to 8x.",
+      "DualSense FLUDD Trigger in the game's settings menu (pause, then Y), under Controls, makes a PlayStation 5 controller's R2 harder to pull as you press it while Mario has FLUDD, and lets it go when you pause, leave the game's window or quit."
     ]
   },
   "releases": [

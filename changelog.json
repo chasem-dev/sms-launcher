@@ -19,7 +19,8 @@
       "Mouse look: with Invert camera X on (the launcher's default) the mouse turned the camera the opposite way to the C-stick; now the mouse always turns the view the way it moves, and Invert camera X flips only the C-stick.",
       "Mouse aim in Mario Cam now also aims FLUDD when you spray in place (R all the way down, or L to walk sideways): the mouse turns Mario and tilts FLUDD up and down, and the camera follows behind him.",
       "Cheats (F9): Jump Height now goes up to 8x.",
-      "DualSense FLUDD Trigger in the game's settings menu (pause, then Y), under Controls, makes a PlayStation 5 controller's R2 harder to pull as you press it while Mario has FLUDD, and lets it go when you pause, leave the game's window or quit."
+      "DualSense FLUDD Trigger in the game's settings menu (pause, then Y), under Controls, makes a PlayStation 5 controller's R2 harder to pull as you press it while Mario has FLUDD, and lets it go when you pause, leave the game's window or quit.",
+      "Super Mario Eclipse no longer crashes at the top of Lighthouse Island's lighthouse in Shining Atop the Beacon after using the warp menu or loading a save state."
     ]
   },
   "releases": [

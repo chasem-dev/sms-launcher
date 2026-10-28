@@ -538,6 +538,7 @@ function showWizardStep(data) {
   $('home-title').textContent = ready ? eclipse ? 'Super Mario Eclipse' : 'Super Mario Sunshine' : 'Set up your game';
   $('home-description').textContent = ready
     ? downloadTextures ? 'Set up HD visuals to finish setup.'
+      : !data.binaryReady ? `${eclipse ? 'Super Mario Eclipse' : 'This version of the game'} is not set up yet. Prepare & play gets it ready and starts it, or ▾ Prepare only gets it ready for later.`
       : data.game.needsUpdate ? `Game update${data.game.availableVersion ? ` ${data.game.availableVersion}` : ''} is ready. Your saves carry over.` : 'Ready when you are.'
     : "Three steps, then you're ready to play.";
   const hd = [data.config.settings.textures && !data.texturesInstalled ? 'download HD textures' : '',
@@ -570,8 +571,8 @@ function showWizardStep(data) {
     $(`setup-step-${step}`).hidden = ready || step !== wizardStep;
   if (ready) $('play').textContent = downloadTextures
     ? setupPending || data.active?.label === 'Install UHD textures' || data.active?.label === 'Install HD cutscenes' ? 'Setting up…' : 'Finish HD setup'
-    : data.game.needsUpdate && data.config.settings.autoUpdate
-      ? '↻  Update & play' : !data.binaryReady ? '▶  Prepare & play' : '▶  Play';
+    : !data.binaryReady ? '▶  Prepare & play'
+      : data.game.needsUpdate && data.config.settings.autoUpdate ? '↻  Update & play' : '▶  Play';
   else {
     $('step-count').textContent = `Step ${wizardStep} of 3`;
     document.querySelectorAll('.setup-progress-track i').forEach((segment, index) => {
@@ -589,18 +590,21 @@ function showWizardStep(data) {
 // A waiting update always offers the same three ways to play: Update & play, Update only and Play now.
 // Update automatically picks which the big button does; ▾ beside it opens a menu with all of them,
 // the big button's marked Default. Pending HD setup offers Play now beside Finish HD setup the same way.
+// A game not built for these settings yet (Super Mario Eclipse just switched on, say) can only Prepare &
+// play, so the menu offers Prepare only beside it, to get it ready and play later.
 // The menu also always has Play co-op (split screen for two), so it is there once the game is set up.
 let playMenuOpen = false;
 function renderPlayMenu(data) {
-  const update = data.game.needsUpdate, hd = needsTextureDownload(data), auto = data.config.settings.autoUpdate;
-  const next = data.game.availableVersion ? ` ${data.game.availableVersion}` : '';
-  const offered = data.binaryReady && data.romReady && wizardStep === 0;
+  const prepare = !data.binaryReady, update = data.game.needsUpdate && !prepare, hd = needsTextureDownload(data) && !prepare;
+  const auto = data.config.settings.autoUpdate, next = data.game.availableVersion ? ` ${data.game.availableVersion}` : '';
+  const name = data.config.settings.eclipse ? 'Super Mario Eclipse' : 'the game';
+  const offered = data.romReady && wizardStep === 0;
   $('play-more').hidden = !offered;
   $('play').classList.toggle('has-more', offered);
   $('play-more').disabled = Boolean(data.active) || setupPending;
   if (playMenuOpen && (!offered || $('play-more').disabled)) $('play-menu').hidePopover();
-  const [kind, label, detail] = hd
-    ? ['hd', 'Finish HD setup', update && auto ? `Update to${next} and set up HD, then start` : 'Set up HD visuals, then start']
+  const [kind, label, detail] = prepare ? ['update', 'Prepare & play', `Set up ${name}, then start`]
+    : hd ? ['hd', 'Finish HD setup', update && auto ? `Update to${next} and set up HD, then start` : 'Set up HD visuals, then start']
     : update && auto ? ['update', 'Update & play', `Install${next}, then start`]
       : ['play', 'Play', update ? 'Start without updating' : 'One player'];
   $('menu-default').dataset.kind = kind;
@@ -608,20 +612,21 @@ function renderPlayMenu(data) {
   $('menu-default-detail').textContent = detail;
   $('menu-update-play').hidden = !update || auto;
   $('menu-update-play-detail').textContent = `Install${next}, then start`;
-  $('menu-update-only').hidden = !update;
-  $('menu-update-only-detail').textContent = `Install${next}, play later`;
+  $('menu-update-only').hidden = !update && !prepare;
+  $('menu-update-only-label').textContent = prepare ? 'Prepare only' : 'Update only';
+  $('menu-update-only-detail').textContent = prepare ? `Set up ${name}, play later` : `Install${next}, play later`;
   $('menu-play-now').hidden = !(update && auto) && !hd;
   const later = [update ? 'update' : '', hd ? 'HD visuals' : ''].filter(Boolean).join(' and ');
   $('menu-play-now-detail').textContent = `${later.charAt(0).toUpperCase()}${later.slice(1)} later`;
   $('play-menu-note').hidden = !update;
-  // co-op needs a game version that has it: Update & play brings one when there is one
-  const coop = Boolean(data.features?.coop), coopLater = !coop && update && auto;
+  // co-op needs a game version that has it: Update & play brings one when there is one, and a game being set up is the newest
+  const coop = Boolean(data.features?.coop), coopLater = !coop && (prepare || update && auto);
   $('menu-coop').disabled = !coop && !coopLater;
   $('menu-coop-detail').textContent = coop || coopLater
-    ? `Split screen for two${coopLater ? ` (updates to${next} first)` : ''}: player 2 presses START on a controller`
+    ? `Split screen for two${coopLater ? prepare ? ' (sets up first)' : ` (updates to${next} first)` : ''}: player 2 presses START on a controller`
     : 'Needs a newer game version: update the game first';
-  const others = Object.entries({ 'menu-update-play': 'Update & play', 'menu-update-only': 'Update only', 'menu-play-now': 'Play now', 'menu-coop': 'Play co-op' })
-    .filter(([id]) => !$(id).hidden).map(([, name]) => name);
+  const others = Object.entries({ 'menu-update-play': 'Update & play', 'menu-update-only': $('menu-update-only-label').textContent, 'menu-play-now': 'Play now', 'menu-coop': 'Play co-op' })
+    .filter(([id]) => !$(id).hidden).map(([, item]) => item);
   $('play-more-hint').hidden = !offered || Boolean(data.active);
   $('play-more-hint').textContent = `▾ for ${others.join(' or ')}`;
 }
@@ -1079,7 +1084,7 @@ function showError(error) { closeModal(); setMessage(errorText(error), true); }
 function needsBuild(method) {
   if (method === 'launchGame' || method === 'playCoop') return !current.binaryReady || !current.hdVisualsReady ||
     Boolean(current.config.settings.autoUpdate && current.game.needsUpdate);
-  return ['installPort', 'installEclipse', 'installTextures', 'build', 'setupGame', 'updateAndPlay', 'updatePort',
+  return ['installPort', 'installEclipse', 'installTextures', 'build', 'setupGame', 'prepareGame', 'updateAndPlay', 'updatePort',
     'clean', 'cleanPreview'].includes(method);
 }
 
@@ -1088,7 +1093,7 @@ async function action(method) {
   // In a folder too deep for Windows, explain instead of starting a build that would fail.
   if (current?.pathProblem && needsBuild(method)) { showPathProblem(); return; }
   try {
-    if (['installPort', 'installEclipse', 'installTextures', 'build', 'setupGame', 'launchGame', 'updateAndPlay', 'updatePort', 'play', 'playPrevious', 'playCoop', 'clean', 'cleanPreview'].includes(method)) { closeModal(); showPage('play'); }
+    if (['installPort', 'installEclipse', 'installTextures', 'build', 'setupGame', 'prepareGame', 'launchGame', 'updateAndPlay', 'updatePort', 'play', 'playPrevious', 'playCoop', 'clean', 'cleanPreview'].includes(method)) { closeModal(); showPage('play'); }
     const result = await window.sms[method]();
     if (result && result.config) refresh(result);
     await sync();
@@ -1307,13 +1312,24 @@ for (const [id, method] of Object.entries({
   'clean-preview': 'cleanPreview', clean: 'clean', 'remove-build-tools': 'removeBuildTools', 'backup-saves': 'backupSaves',
   'open-backups': 'openBackups', stop: 'stop', docs: 'openDocs'
 })) $(id).addEventListener('click', () => action(method));
-// Update only builds the new game and stays in the launcher.
+// Update game (Settings) builds the new game and stays in the launcher.
 async function updateOnly() {
   await action('updatePort');
   if (current.binaryReady && !current.game.needsUpdate && !current.active)
     setMessage(`Updated to game ${current.game.installedVersion || current.game.availableVersion}. Play whenever you're ready.`);
 }
 $('update-port').addEventListener('click', updateOnly);
+// The Play menu's Update only / Prepare only gets everything Play would first (HD visuals and Eclipse's
+// downloads too), so Play later starts straight away.
+async function prepareOnly() {
+  const update = current.binaryReady, eclipse = current.config.settings.eclipse;
+  setupPending = true;
+  refresh(current);
+  try { await action('prepareGame'); } finally { setupPending = false; if (current) refresh(current); }
+  if (current.binaryReady && !current.game.needsUpdate && !current.active)
+    setMessage(update ? `Updated to game ${current.game.installedVersion || current.game.availableVersion}. Play whenever you're ready.`
+      : `${eclipse ? 'Super Mario Eclipse' : 'The game'} is ready. Play whenever you're ready.`);
+}
 // The menu sits in the top layer, above the panel that would clip it, and closes on a click outside or Escape.
 $('play-menu').addEventListener('beforetoggle', event => {
   if (event.newState !== 'open') return;
@@ -1342,7 +1358,7 @@ function closePlayMenu() {
 for (const [id, run] of Object.entries({
   'menu-default': () => $('play').click(),
   'menu-update-play': () => runWizardAction('updateAndPlay'),
-  'menu-update-only': updateOnly,
+  'menu-update-only': prepareOnly,
   'menu-play-now': () => action('play'),
   'menu-coop': () => runWizardAction('playCoop')
 })) $(id).addEventListener('click', () => { $('play-menu').hidePopover(); run(); });

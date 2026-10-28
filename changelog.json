@@ -1,7 +1,9 @@
 {
   "_instructions": "Players see this file in the launcher. Add each player-visible change here in the same commit: launcher changes to beta.launcher, game changes Beta now builds to beta.game. Releases move beta into a new entry (npm run update:game does it). One plain sentence for players per line, no commit hashes or PR numbers. See AGENTS.md.",
   "beta": {
-    "launcher": [],
+    "launcher": [
+      "Achievements in dark mode: the page now goes dark with the rest of the launcher, instead of staying white. Unlocked achievements glow gold, locked ones sit back, and the filters, stage list and progress ring match."
+    ],
     "game": []
   },
   "releases": [

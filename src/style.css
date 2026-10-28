@@ -867,3 +867,41 @@ small.renderer-warning { color: #a8481a; }
 @media (max-width: 1000px) { .nav-tab { gap: 6px; padding: 0 8px; } }
 @media (max-width: 900px) { .nav-tab { font-size: 12.5px; } }
 .achievements-game { margin-left: 8px; vertical-align: middle; background: #f3e8ff; color: #6b3fa0; font-size: 11px; letter-spacing: 0; }
+
+/* Achievements in dark mode: the cards take the Settings panels' deep blue; unlocked ones keep a gold edge and glow, locked ones sink back. */
+.dark .achievements-summary span { color: #b9dde3; }
+.dark .achievements-ring { background: radial-gradient(closest-side, #0c3247 76%, transparent 78%), conic-gradient(#ffc75a calc(var(--done) * 1turn), #ffffff24 0); }
+.dark .achievements-ring strong { color: #ffd98a; }
+.dark .achievements-game { background: #33285a; color: #c9b8ff; }
+.dark .achievements-toolbar { border-color: #2a4d61; background: #10283a; }
+.dark .segmented { border-color: #2a4d61; background: #0b1e2b; }
+.dark .segment { color: #93acb4; }
+.dark .segment:hover { color: #e6f2f4; }
+.dark .segment.active { background: #1c3e53; color: #ffe2a3; }
+.dark .achievement-stages button { border-color: #27475a; background: #0f2636; color: #a9c3ca; }
+.dark .achievement-stages button:hover:not(:disabled) { border-color: #4a7387; background: #17364b; color: #fff; }
+.dark .achievement-stages button small { color: #6f8b94; }
+.dark .achievement-stages button.complete { border-color: #6b5622; background: #2b2716; color: #f3e2a8; }
+.dark .achievement-stages button.complete small { color: #d1a957; }
+.dark .achievements-update { background: #ffc75a1c; color: #f3e2a8; }
+.dark .achievements-empty { color: #93acb4; }
+.dark .achievement-group-head h2 { color: #7fd3d6; }
+.dark .achievement-group-head span { color: #93acb4; }
+.dark .achievement-group-head i { background: #1f3b4a; }
+.dark .achievement-group-head i b { background: #ffc75a; }
+.dark .achievement { border-color: #2a4d61; border-top-color: #36637a; background: linear-gradient(180deg, #17364b, #132e40); }
+.dark .achievement:not(.locked) { border-color: #6b5622; border-top-color: #8a6f2c; background: radial-gradient(circle at 39px 50%, #ffc75a24, #ffc75a00 64px), linear-gradient(180deg, #1b3a4b, #15303f); box-shadow: 0 6px 18px #0005, inset 0 1px #ffd98a14; }
+.dark .achievement-text strong { color: #e6f2f4; }
+.dark .achievement-text p { color: #a9c3ca; }
+.dark .achievement-text small { color: #f0c873; }
+.dark .achievement.locked { border-color: #1f3b4a; background: #0f2636; }
+.dark .achievement.locked img, .dark .achievement.locked .achievement-no-icon { filter: grayscale(1) contrast(.8) brightness(.85); opacity: .45; }
+.dark .achievement.locked .achievement-text strong { color: #a9c3ca; }
+.dark .achievement.locked .achievement-text p { color: #7f99a2; }
+.dark .achievement.locked .achievement-text small { color: #5f7a84; }
+.dark .achievement.fresh { animation-name: achievement-fresh-dark; }
+@keyframes achievement-fresh-dark { 0% { box-shadow: 0 0 0 0 #ffc75acc; transform: scale(1.03); } 30% { box-shadow: 0 0 0 7px #ffc75a40; transform: scale(1); } 100% { box-shadow: 0 6px 18px #0005, inset 0 1px #ffd98a14; } }
+.dark .achievements-get-progress { color: #93acb4; }
+.dark .achievements-get-progress i { background: #1f3b4a; }
+.dark .achievements-get-progress b { background: #ffc75a; }
+.dark .achievements-get-error { color: #ff9a85; }

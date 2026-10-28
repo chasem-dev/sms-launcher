@@ -1,41 +1,52 @@
 {
   "_instructions": "Players see this file in the launcher. Add each player-visible change here in the same commit: launcher changes to beta.launcher, game changes Beta now builds to beta.game. Releases move beta into a new entry (npm run update:game does it). One plain sentence for players per line, no commit hashes or PR numbers. See AGENTS.md.",
   "beta": {
-    "launcher": [
-      "A dot on Settings and its Mods tab tells you when the list of mods has changed, such as when a new mod is added, and goes once you open the Mods tab. The launcher checks the list each time it starts and keeps a copy, so mods it has seen are still offered offline.",
-      "New mods appear under Settings, Mods as soon as they are published, without a launcher update: opening the page or pressing Check for updates fetches the latest list of mods. Each mod now says who made it, with a link to its GitHub page. First up: First Person by Allebale, which lets you play through Mario's eyes.",
-      "Stick dead zone: set how far your controller's sticks move before Mario or the camera does, to stop a stick that drifts or make small movements count. Find it under Settings, Controls; 15% matches the console.",
-      "Nintendo controllers: Nintendo Switch button prompts, which Match my controller picks for Switch controllers. For a controller with A on the right and B at the bottom that still has its buttons mixed up, turn on Nintendo button layout under Settings, Controls: each button then does what its letter says, in the game and in the launcher.",
-      "Controller works in the background: turn it on under Settings, Controls to keep playing with your controller while another window has focus, such as with the game on a second screen. It stays off by default, so a controller used in another app doesn't move Mario.",
-      "When the game crashes, the launcher now says what its exit code means, such as code 3 on Windows (the game stopped itself after an error) or 139 on a Mac or Linux (a crash), and that Copy log in the activity log has the crash report for a bug report.",
-      "Custom cutscenes: play your own Sunshine movies, such as ones from the Switch, instead of the disc's or the HD cutscenes, and they are never downloaded over. Put them in the folder that Open custom cutscenes folder opens, under Settings, HD visuals, as .thp files named like the game's (openingA.thp).",
-      "DualSense FLUDD trigger: on a PlayStation 5 controller, R2 can get harder to pull as you press it while Mario has FLUDD, most at the end of the pull. Off by default; choose how strong under Settings, Controls.",
-      "Settings: options that only work with another one on, such as Mouse aim in Mario Cam under Mouse look or Use Windows HDR calibration under HDR, now sit indented under it and are greyed out while it is off. Screen icons at edges now greys out in Original 4:3, where the game keeps them centred, and Sunshine's movies in Eclipse, Upscaling quality and Controller prompts now show greyed out instead of appearing only once you pick Eclipse, FSR or NIS, or Automatic prompts.",
-      "Mac: setting up the build tools no longer fails on a slower Mac when its tools take a while to start the first time; the launcher now waits longer and checks twice. If a tool still does not run, the message says which one and why, instead of asking to install the downloaded build tools.",
-      "Super Mario Eclipse in HD: with HD textures on, playing Super Mario Eclipse now also downloads iZePlayzYT's Super Mario Eclipse HiRes Texture Pack, so Eclipse's own stages, menus and characters are sharp too. It is about 9 GB to download and 16 GB on your drive, unpacks as it downloads, carries on from where it stopped if you stop it or lose your connection, and is kept for every game version. Until it is installed, Eclipse plays with Sunshine's HD textures.",
-      "Credits, a new tab in Settings, thanks the people whose work the launcher brings you: the Eclipse team for Super Mario Eclipse, iZePlayzYT for its HD texture pack, and Traduções PKG for the Brazilian Portuguese translation, with links to their pages."
-    ],
-    "game": [
-      "Stick Dead Zone in the game's settings menu (pause, then Y), under Controls, sets the same dead zone while you play, for Super Mario Eclipse too.",
-      "Co-op in Super Mario Eclipse: fixed player 2 being stuck in the Shine Get pose for good after getting a Shine that keeps you in the level (like a red coin Shine), while player 1 carried on.",
-      "HD textures in French, German, Spanish and Italian: the pause menu's Quit option is now as sharp as the words above it, instead of the game's original low-resolution word.",
-      "Co-op with keyboard and mouse: moving the mouse or turning its wheel no longer tilts or zooms the other player's camera.",
-      "Nintendo Switch button prompts in the game's settings menu (pause, then Y), under Button Prompts and Prompt Controller, and Switch controllers show them when prompts match the controller. Nintendo button layout swaps A and B, and X and Y, on controllers printed like Nintendo's that the game read as an Xbox pad.",
-      "Mods: the game has mod API 1.6 beta 1. Mods can open their own screen over a save file's menu at file select (Start, Copy, Erase, Score), such as a new game's options, and you can still back out with B.",
-      "Mouse look: with Invert camera X on (the launcher's default) the mouse turned the camera the opposite way to the C-stick; now the mouse always turns the view the way it moves, and Invert camera X flips only the C-stick.",
-      "Mouse aim in Mario Cam now also aims FLUDD when you spray in place (R all the way down, or L to walk sideways): the mouse turns Mario and tilts FLUDD up and down, and the camera follows behind him.",
-      "Cheats (F9): Jump Height now goes up to 8x.",
-      "DualSense FLUDD Trigger in the game's settings menu (pause, then Y), under Controls, makes a PlayStation 5 controller's R2 harder to pull as you press it while Mario has FLUDD, and lets it go when you pause, leave the game's window or quit.",
-      "Super Mario Eclipse no longer crashes at the top of Lighthouse Island's lighthouse in Shining Atop the Beacon after using the warp menu or loading a save state.",
-      "Thin vertical lines no longer show in the sky, as they did in split-screen co-op and at some resolutions and widescreen widths (most visible by Bianco Hills' Grand Pianta statue).",
-      "Mouse look on Mecha-Bowser's roller coaster in Pinna Park: from the car the mouse tilts the view and FLUDD's aim, and in the view from behind (Y switches) it moves the camera. Mouse movement made while no camera follows it, such as in a cutscene or the pause menu, no longer swings the camera all at once afterwards.",
-      "Multiplayer: people in the background no longer slide along standing still while you talk to someone; they stand and wait, as they do when you play alone.",
-      "Multiplayer in Super Mario Eclipse: the Shines you get for putting out Bollente Crypt's fires now fly out of the lava to their platform, instead of staying in the lava where you couldn't get them.",
-      "Multiplayer: joining a game goes straight to the host's level, without the Nintendo and Dolby logos, the opening movie or the title screen. The screen stays black while it connects, then fades into the level.",
-      "Multiplayer: coins from defeated enemies, boxes and flowers now stay on the coin counter. Once coins in a level had been collected, these coins could count for a second and then disappear from the counter, which could make the 100-coin Shine impossible."
-    ]
+    "launcher": [],
+    "game": []
   },
   "releases": [
+    {
+      "version": "0.1.68",
+      "date": "2026-10-27",
+      "launcher": [
+        "Super Mario Eclipse in HD: with HD textures on, playing Super Mario Eclipse now also downloads iZePlayzYT's Super Mario Eclipse HiRes Texture Pack, so Eclipse's own stages, menus and characters are sharp too. It is about 9 GB to download and 16 GB on your drive, unpacks as it downloads, carries on from where it stopped if you stop it or lose your connection, and is kept for every game version. Until it is installed, Eclipse plays with Sunshine's HD textures.",
+        "Custom cutscenes: play your own Sunshine movies, such as ones from the Switch, instead of the disc's or the HD cutscenes, and they are never downloaded over. Put them in the folder that Open custom cutscenes folder opens, under Settings, HD visuals, as .thp files named like the game's (openingA.thp).",
+        "New mods appear under Settings, Mods as soon as they are published, without a launcher update: opening the page or pressing Check for updates fetches the latest list of mods. Each mod now says who made it, with a link to its GitHub page. First up: First Person by Allebale, which lets you play through Mario's eyes.",
+        "A dot on Settings and its Mods tab tells you when the list of mods has changed, such as when a new mod is added, and goes once you open the Mods tab. The launcher checks the list each time it starts and keeps a copy, so mods it has seen are still offered offline.",
+        "Stick dead zone: set how far your controller's sticks move before Mario or the camera does, to stop a stick that drifts or make small movements count. Find it under Settings, Controls; 15% matches the console.",
+        "Nintendo controllers: Nintendo Switch button prompts, which Match my controller picks for Switch controllers. For a controller with A on the right and B at the bottom that still has its buttons mixed up, turn on Nintendo button layout under Settings, Controls: each button then does what its letter says, in the game and in the launcher.",
+        "Controller works in the background: turn it on under Settings, Controls to keep playing with your controller while another window has focus, such as with the game on a second screen. It stays off by default, so a controller used in another app doesn't move Mario.",
+        "DualSense FLUDD trigger: on a PlayStation 5 controller, R2 can get harder to pull as you press it while Mario has FLUDD, most at the end of the pull. Off by default; choose how strong under Settings, Controls.",
+        "Credits, a new tab in Settings, thanks the people whose work the launcher brings you: the Eclipse team for Super Mario Eclipse, iZePlayzYT for its HD texture pack, and Traduções PKG for the Brazilian Portuguese translation, with links to their pages.",
+        "Settings: options that only work with another one on, such as Mouse aim in Mario Cam under Mouse look or Use Windows HDR calibration under HDR, now sit indented under it and are greyed out while it is off. Screen icons at edges now greys out in Original 4:3, where the game keeps them centred, and Sunshine's movies in Eclipse, Upscaling quality and Controller prompts now show greyed out instead of appearing only once you pick Eclipse, FSR or NIS, or Automatic prompts.",
+        "When the game crashes, the launcher now says what its exit code means, such as code 3 on Windows (the game stopped itself after an error) or 139 on a Mac or Linux (a crash), and that Copy log in the activity log has the crash report for a bug report.",
+        "Mac: setting up the build tools no longer fails on a slower Mac when its tools take a while to start the first time; the launcher now waits longer and checks twice. If a tool still does not run, the message says which one and why, instead of asking to install the downloaded build tools."
+      ],
+      "game": {
+        "version": "2026.10.27.1",
+        "commit": "d74cd2893f6ec6a4bed9883153c2d6dc54528872",
+        "changes": [
+          "Multiplayer: joining a game goes straight to the host's level, without the Nintendo and Dolby logos, the opening movie or the title screen. The screen stays black while it connects, then fades into the level.",
+          "Nintendo Switch button prompts in the game's settings menu (pause, then Y), under Button Prompts and Prompt Controller, and Switch controllers show them when prompts match the controller. Nintendo button layout swaps A and B, and X and Y, on controllers printed like Nintendo's that the game read as an Xbox pad.",
+          "Stick Dead Zone in the game's settings menu (pause, then Y), under Controls, sets the same dead zone while you play, for Super Mario Eclipse too.",
+          "DualSense FLUDD Trigger in the game's settings menu (pause, then Y), under Controls, makes a PlayStation 5 controller's R2 harder to pull as you press it while Mario has FLUDD, and lets it go when you pause, leave the game's window or quit.",
+          "Mouse look on Mecha-Bowser's roller coaster in Pinna Park: from the car the mouse tilts the view and FLUDD's aim, and in the view from behind (Y switches) it moves the camera. Mouse movement made while no camera follows it, such as in a cutscene or the pause menu, no longer swings the camera all at once afterwards.",
+          "Mouse aim in Mario Cam now also aims FLUDD when you spray in place (R all the way down, or L to walk sideways): the mouse turns Mario and tilts FLUDD up and down, and the camera follows behind him.",
+          "Cheats (F9): Jump Height now goes up to 8x.",
+          "Mods: the game has mod API 1.6 beta 1. Mods can open their own screen over a save file's menu at file select (Start, Copy, Erase, Score), such as a new game's options, and you can still back out with B.",
+          "Mouse look: with Invert camera X on (the launcher's default) the mouse turned the camera the opposite way to the C-stick; now the mouse always turns the view the way it moves, and Invert camera X flips only the C-stick.",
+          "Multiplayer: people in the background no longer slide along standing still while you talk to someone; they stand and wait, as they do when you play alone.",
+          "Multiplayer: coins from defeated enemies, boxes and flowers now stay on the coin counter. Once coins in a level had been collected, these coins could count for a second and then disappear from the counter, which could make the 100-coin Shine impossible.",
+          "Co-op in Super Mario Eclipse: fixed player 2 being stuck in the Shine Get pose for good after getting a Shine that keeps you in the level (like a red coin Shine), while player 1 carried on.",
+          "Co-op with keyboard and mouse: moving the mouse or turning its wheel no longer tilts or zooms the other player's camera.",
+          "Multiplayer in Super Mario Eclipse: the Shines you get for putting out Bollente Crypt's fires now fly out of the lava to their platform, instead of staying in the lava where you couldn't get them.",
+          "Super Mario Eclipse no longer crashes at the top of Lighthouse Island's lighthouse in Shining Atop the Beacon after using the warp menu or loading a save state.",
+          "Thin vertical lines no longer show in the sky, as they did in split-screen co-op and at some resolutions and widescreen widths (most visible by Bianco Hills' Grand Pianta statue).",
+          "HD textures in French, German, Spanish and Italian: the pause menu's Quit option is now as sharp as the words above it, instead of the game's original low-resolution word.",
+          "Fixed the circle wipes into and out of a level on a Mac with the Vulkan renderer: the area outside the circle was a see-through grey that showed the scene, instead of black."
+        ]
+      }
+    },
     {
       "version": "0.1.67",
       "title": "Achievement banner hotfix",

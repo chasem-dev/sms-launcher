@@ -1193,6 +1193,19 @@ async function setupGame() {
   return state();
 }
 
+// The Play menu's Update only / Prepare only: everything Play would do first (a build, HD visuals,
+// Eclipse's maps and textures), then stay in the launcher. A chosen game source moves to its newest commit
+// first, as Update game does.
+async function prepareGame() {
+  requireRepo();
+  port.validateRom(config.rom);
+  if (config.gameSource) {
+    await ensureBuildTools();
+    await refreshGameSource();
+  }
+  return setupGame();
+}
+
 const PLAYER_SETTINGS = [
   'volume', 'musicVolume', 'sfxVolume', 'invertCameraX', 'invertCameraY', 'invertFluddAimY', 'keyBindings', 'padBindings', 'softTrigger', 'stickDeadzone', 'rumbleStrength', 'fluddTrigger', 'freeCamera', 'cstickAim', 'cstickOrbit', 'backgroundInput', 'nintendoLayout', 'cameraSpeed', 'mouseCamera', 'closeCameraMouse',
   'coopSplit', 'mouseSensitivity', 'rawMouse', 'skipMovies', 'skipIntro', 'language', 'heatHaze', 'pauseTracker', 'radar', 'autoSave', 'buttonPrompts', 'promptPad', 'hdr', 'hdrCalibration', 'hdrPaperWhite', 'hdrPeak', 'hdrContrast', 'hdrSaturation', 'hdrHighlights', 'overlay', 'fullscreenMode', 'exclusiveResolution', 'display', 'vsync',
@@ -2269,7 +2282,7 @@ function registerHandlers() {
   const actions = { 'install-port': ['Download port source', installPort],
     'update-port': ['Update game', updatePort], 'install-eclipse': ['Install Eclipse', () => installEclipse()],
     'install-textures': ['Install UHD textures', () => installTextures()], 'build': ['Build game', () => build(true)],
-    'setup-game': ['Build game', setupGame], 'play': ['Play Super Mario Sunshine', playInstalled],
+    'setup-game': ['Build game', setupGame], 'prepare-game': ['Prepare game', prepareGame], 'play': ['Play Super Mario Sunshine', playInstalled],
     'launch-game': ['Prepare game', () => launchGame()], 'update-and-play': ['Prepare game', () => launchGame(null, true)],
     'play-coop': ['Play co-op', playCoop],
     'play-previous': ['Play Super Mario Sunshine', () => {

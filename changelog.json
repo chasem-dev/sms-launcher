@@ -1,7 +1,9 @@
 {
   "_instructions": "Players see this file in the launcher. Add each player-visible change here in the same commit: launcher changes to beta.launcher, game changes Beta now builds to beta.game. Releases move beta into a new entry (npm run update:game does it). One plain sentence for players per line, no commit hashes or PR numbers. See AGENTS.md.",
   "beta": {
-    "launcher": [],
+    "launcher": [
+      "Prepare only: with Super Mario Eclipse switched on, or any game not set up yet, ▾ beside Prepare & play now has Prepare only, which gets the game ready without starting it. Update only now also gets the HD visuals and Eclipse's downloads, so Play later starts straight away."
+    ],
     "game": []
   },
   "releases": [

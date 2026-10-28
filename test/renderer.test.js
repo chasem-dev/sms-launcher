@@ -73,6 +73,9 @@ async function renderer(data = state(), copyError = null, notes = { releases: []
     play: async () => { calls.push('play'); }, launchGame: async () => { calls.push('launchGame'); },
     removeBuildTools: async () => { calls.push('removeBuildTools'); },
     updateAndPlay: async () => { calls.push('updateAndPlay'); }, playCoop: async () => { calls.push('playCoop'); },
+    prepareGame: async () => {
+      calls.push('prepareGame'); Object.assign(data, { binaryReady: true, hdVisualsReady: true }); data.game = { ...data.game, needsUpdate: false, installedVersion: data.game.availableVersion };
+    },
     updatePort: async () => {
       calls.push('updatePort'); data.game = { ...data.game, needsUpdate: false, installedVersion: data.game.availableVersion };
       achievements?.update?.('updatePort');
@@ -154,7 +157,7 @@ test('a waiting update makes Update & play the default, with Update only and Pla
 test('Update only installs the update without starting the game', async () => {
   const ui = await renderer();
   await ui.click('menu-update-only');
-  assert.deepEqual(ui.calls, ['updatePort']);
+  assert.deepEqual(ui.calls, ['prepareGame']);
   // the menu stays for Play co-op alone
   assert.equal(ui.elements.get('play-more').hidden, false);
   assert.deepEqual(offered(ui), []);
@@ -174,6 +177,30 @@ test('without automatic updates Play is the default and Update & play still upda
   assert.equal(ui.elements.get('play-more-hint').textContent, '▾ for Update & play or Update only or Play co-op');
   await ui.click('menu-update-play');
   assert.deepEqual(ui.calls, ['updateAndPlay']);
+});
+
+test('a game not set up for its settings, like Eclipse just switched on, offers Prepare only beside Prepare & play', async () => {
+  for (const autoUpdate of [true, false]) {
+    const data = state();
+    data.config.settings = port.normalizeSettings({ autoUpdate, eclipse: true });
+    Object.assign(data, { binaryReady: false, hdVisualsReady: false, features: { coop: false } });
+    const ui = await renderer(data);
+    assert.match(ui.elements.get('play').textContent, /Prepare & play/);
+    assert.match(ui.elements.get('home-description').textContent, /Super Mario Eclipse is not set up yet/);
+    assert.equal(ui.elements.get('play-more').hidden, false);
+    assert.equal(ui.elements.get('menu-default-label').textContent, 'Prepare & play');
+    assert.equal(ui.elements.get('menu-default-detail').textContent, 'Set up Super Mario Eclipse, then start');
+    assert.deepEqual(offered(ui), ['menu-update-only']);
+    assert.equal(ui.elements.get('menu-update-only-label').textContent, 'Prepare only');
+    assert.equal(ui.elements.get('menu-update-only-detail').textContent, 'Set up Super Mario Eclipse, play later');
+    assert.equal(ui.elements.get('menu-coop').disabled, false);
+    assert.equal(ui.elements.get('play-menu-note').hidden, true);
+    assert.equal(ui.elements.get('play-more-hint').textContent, '▾ for Prepare only or Play co-op');
+    await ui.click('menu-update-only');
+    assert.deepEqual(ui.calls, ['prepareGame']);
+    assert.match(ui.elements.get('play').textContent, /▶ {2}Play/);
+    assert.match(ui.elements.get('message-text').textContent, /Super Mario Eclipse is ready/);
+  }
 });
 
 test('Play co-op starts the game for two, once the game version has co-op', async () => {
@@ -244,7 +271,7 @@ test('Dolphin save import offers a chooser and drop of one or more saves, report
 });
 
 test('installed play is unavailable before setup, without a disc, or while busy', async () => {
-  for (const patch of [{ binaryReady: false }, { romReady: false }]) {
+  for (const patch of [{ binaryReady: false, config: { ...state().config, completedSetup: false } }, { romReady: false }]) {
     const ui = await renderer({ ...state(), ...patch });
     assert.equal(ui.elements.get('play-more').hidden, true);
   }

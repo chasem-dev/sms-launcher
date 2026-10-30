@@ -749,6 +749,32 @@ pre { height: 120px; margin: 0; padding: 12px; overflow: auto; border-radius: 8p
 .dark .path-legend-over { background: #7a2a24; }
 .dark .path-why { color: #9fc3cb; }
 
+/* Characters */
+.characters-body { flex: 1; min-height: 0; display: grid; grid-template-columns: 190px minmax(0, 1fr) 280px; }
+.characters-list, .characters-panel { min-height: 0; overflow: auto; padding: 12px; background: #f8faf9; }
+.characters-list { display: flex; flex-direction: column; gap: 3px; border-right: 1px solid #dce7e6; }
+.characters-panel { display: flex; flex-direction: column; gap: 10px; border-left: 1px solid #dce7e6; }
+.characters-item, .characters-anim { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; padding: 7px 10px; border: 1px solid transparent; border-radius: 9px; background: transparent; color: #2e4c53; font-size: 13px; font-weight: 600; text-align: left; }
+.characters-item:hover, .characters-anim:hover { background: #e8f1f1; }
+.characters-item[aria-pressed="true"], .characters-anim[aria-pressed="true"] { border-color: #158188; background: #158188; color: #fff; }
+.characters-anim small { color: inherit; font-size: 10.5px; font-weight: 500; opacity: .7; }
+.characters-animations { display: flex; flex-direction: column; gap: 2px; min-height: 0; overflow: auto; }
+.characters-compare { display: flex; align-items: center; justify-content: space-between; gap: 8px; color: #334b51; font-size: 13px; font-weight: 650; }
+.characters-stage-wrap { position: relative; min-height: 0; overflow: hidden; background: radial-gradient(ellipse 70% 60% at 50% 40%, #ffffff 0%, #dff1f4 60%, #b9dde4 100%); }
+.characters-stage { display: block; width: 100%; height: 100%; cursor: grab; outline: none; touch-action: none; }
+.characters-stage:active { cursor: grabbing; }
+.characters-stage:focus-visible { box-shadow: inset 0 0 0 3px #2fa3b0; }
+.characters-views { position: absolute; top: 10px; right: 10px; z-index: 2; display: flex; gap: 4px; }
+.characters-views button { padding: 4px 10px; border: 1px solid #cddcdc; border-radius: 20px; background: #ffffffd9; color: #2e4c53; font-size: 12px; font-weight: 650; }
+.characters-transport { position: absolute; left: 10px; right: 10px; bottom: 10px; z-index: 2; display: flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 14px; background: #ffffffd9; }
+.characters-transport input[type="range"] { flex: 1; }
+.characters-transport button:not(.solid) { padding: 2px 9px; font-size: 16px; }
+.characters-transport select { flex: none; width: auto; }
+.characters-frame-label { min-width: 70px; color: #4d6a71; font-size: 12px; font-variant-numeric: tabular-nums; text-align: right; }
+.dark .characters-list, .dark .characters-panel { border-color: #2f5468; background: #0d2231; }
+.dark :is(.characters-item, .characters-anim, .characters-compare) { color: #cfe3e8; }
+.dark :is(.characters-item, .characters-anim):hover { background: #16354a; }
+
 /* Tabs along the top: the launcher's pages, with Settings and Discord at the right end. */
 .nav-bar { flex: none; display: flex; align-items: center; gap: 4px; height: 48px; padding: 0 22px; border-bottom: 1px solid #ffffff22; background: #072a40d9; backdrop-filter: blur(16px); }
 .nav-tab { position: relative; align-self: stretch; display: flex; align-items: center; gap: 8px; padding: 0 14px; border: 0; border-radius: 0; background: transparent; color: #c4dfe6; font-size: 13.5px; font-weight: 650; }

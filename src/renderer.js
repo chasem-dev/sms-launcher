@@ -21,6 +21,7 @@ function closeModal() {
 const pages = {
   play: { section: 'page-home', nav: 'nav-play' }, multiplayer: { section: 'multiplayer', nav: 'open-multiplayer' },
   mario: { section: 'mario-look', nav: 'customize-mario' },
+  characters: { section: 'page-characters', nav: 'nav-characters' },
   achievements: { section: 'page-achievements', nav: 'nav-achievements' }, saves: { section: 'page-saves', nav: 'nav-saves' },
   changelog: { section: 'changelog', nav: 'open-changelog' }, settings: { section: 'page-settings', nav: 'settings-cog' }
 };

@@ -39,6 +39,7 @@ const { observeProcess, exitDescription, failureMessage } = require('./process-o
 const { createSessionLog } = require('./session-log');
 const displayScale = require('./display-scale');
 const marioModel = require('./mario-model');
+const characterModel = require('./character-model');
 const marioColors = require('./mario-colors');
 const marioPack = require('./mario-pack');
 const { relaunchOptions } = require('./relaunch');
@@ -1403,6 +1404,7 @@ async function play(installation = null, session = null) {
 
 // Mario's model from the chosen disc, read once per disc while the launcher runs.
 let marioCache = null;
+const characterCache = characterModel.createCache();
 function marioFrom(rom) {
   if (marioCache?.rom !== rom) marioCache = { rom, model: marioModel.loadMario(rom) };
   return marioCache.model;
@@ -2228,6 +2230,22 @@ function registerHandlers() {
     return state();
   });
   ipcMain.handle('mario-model', () => ({ model: marioFrom(port.validateRom(config.rom)), look: config.marioLook }));
+  // The Characters page: Mario and the game's character packs, posed by their animations. The page names a
+  // character by id; only the ones listed here are read.
+  const charactersRoot = () => (config.repo && fs.existsSync(config.repo) ? config.repo : null);
+  const characterNamed = id => {
+    const character = characterModel.listCharacters(charactersRoot()).find(c => c.id === id);
+    if (!character) throw new Error(`There is no character ${id}.`);
+    return characterCache.get(character.file ? null : port.validateRom(config.rom), character);
+  };
+  ipcMain.handle('characters', () => ({ characters: characterModel.listCharacters(charactersRoot()).map(({ id, name }) => ({ id, name })),
+    folder: charactersRoot() && characterModel.packsDirectory(charactersRoot()) }));
+  ipcMain.handle('character-model', (_event, id) => characterNamed(String(id)).model);
+  ipcMain.handle('character-animation', (_event, id, name) => {
+    const { files, model } = characterNamed(String(id));
+    if (!model.animations.includes(name)) throw new Error(`There is no animation ${name}.`);
+    return characterModel.loadAnimation(files, model.joints, name);
+  });
   // Customize Mario's way out when its 3D view can't start: a new launcher
   // gets a new GPU process. Not while the game or a task runs.
   ipcMain.handle('relaunch-launcher', () => {

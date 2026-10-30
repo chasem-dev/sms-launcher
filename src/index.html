@@ -27,6 +27,7 @@
       <button id="nav-play" class="nav-tab active" aria-current="page"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6.5 4.5v11l9-5.5z"/></svg><span>Play</span></button>
       <button id="open-multiplayer" class="nav-tab" title="Host a game or join one"><span class="nav-icon"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="7.2" cy="6.6" r="2.6"/><path d="M2.6 16.4c.4-3 2.2-4.7 4.6-4.7s4.2 1.7 4.6 4.7"/><circle cx="13.8" cy="7.4" r="2.2"/><path d="M12.6 11.9c.4-.1.8-.2 1.2-.2 2 0 3.5 1.4 3.8 4"/></svg><em id="mp-online" class="nav-online" hidden><span id="mp-online-count"></span></em></span><span>Online</span><em class="nav-badge">Beta</em></button>
       <button id="customize-mario" class="nav-tab" title="Customize Mario" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 1 0 0 18c1.1 0 1.8-.8 1.8-1.7 0-.5-.2-.9-.5-1.2-.3-.3-.5-.7-.5-1.2 0-.9.8-1.7 1.7-1.7h2A4.5 4.5 0 0 0 21 10.7C21 6.4 17 3 12 3z"/><circle cx="7.5" cy="11" r="1.1"/><circle cx="10.5" cy="7" r="1.1"/><circle cx="15" cy="7.4" r="1.1"/></svg><span>Mario</span></button>
+      <button id="nav-characters" class="nav-tab" title="Characters: see each character in any of Mario's animations"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="5" r="2.4"/><path d="M5 9.5h10M10 8v5M10 13l-3 4.5M10 13l3 4.5"/></svg><span>Characters</span></button>
       <button id="nav-achievements" class="nav-tab"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6 3h8v4.5a4 4 0 0 1-8 0z"/><path d="M6 4.5H3.5v1.2A2.8 2.8 0 0 0 6.3 8.5M14 4.5h2.5v1.2a2.8 2.8 0 0 1-2.8 2.8M10 11.5V14M6.8 17h6.4M7.8 14h4.4l.6 3H7.2z"/></svg><span>Achievements</span><em id="achievements-new" class="nav-badge nav-new" hidden>New</em></button>
       <button id="nav-saves" class="nav-tab" title="Saves &amp; states"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 3h10l3 3v11H4z"/><path d="M7 3v4h6V3M7 17v-5h7v5"/></svg><span>Saves</span></button>
       <span class="nav-spacer" aria-hidden="true"></span>
@@ -116,6 +117,30 @@
       <div class="mario-look-body">
         <div class="mario-stage-wrap"><canvas id="mario-stage" class="mario-stage" tabindex="0" aria-label="Mario, drag or use the arrow keys to turn him"></canvas><div id="mario-status" class="mario-status" role="status" hidden><span class="mario-loader" aria-hidden="true"></span><span id="mario-status-text"></span><span id="mario-status-actions" class="actions mario-status-actions" hidden><button id="mario-retry" class="solid">Try again</button><button id="mario-relaunch" class="subtle">Restart launcher</button></span></div><p id="mario-preview-note" class="mario-preview-note">Your colours show in the game the next time it starts.</p></div>
         <div class="mario-panel"><label class="switch mario-in-game"><span><strong>Use in the game</strong><small>Off: the game shows Mario as usual. Your colours stay here.</small></span><input id="mario-in-game" type="checkbox" checked><i></i></label><div id="mario-presets" class="mario-presets" role="group" aria-label="Presets"></div><div id="mario-regions"></div></div>
+      </div>
+      </section>
+      <section id="page-characters" class="page sheet characters-page" aria-label="Characters" hidden>
+      <div class="modal-head"><div><h1>Characters</h1><p>Each character as its archive draws it, in any of Mario's animations. Drag to turn, right-drag to move up and down, scroll to zoom.</p></div></div>
+      <div class="characters-body">
+        <div id="characters-list" class="characters-list" aria-label="Characters"></div>
+        <div class="characters-stage-wrap">
+          <canvas id="characters-stage" class="characters-stage" tabindex="0" aria-label="The character, drag or use the arrow keys to turn it"></canvas>
+          <div id="characters-status" class="mario-status" role="status" hidden><span class="mario-loader" aria-hidden="true"></span><span id="characters-status-text"></span></div>
+          <div class="characters-views" role="group" aria-label="Views"><button id="characters-view-front">Front</button><button id="characters-view-side">Side</button><button id="characters-view-back">Back</button><button id="characters-view-above">Above</button></div>
+          <div class="characters-transport">
+            <button id="characters-play" class="solid">Pause</button>
+            <button id="characters-step-back" title="Previous frame (,)" aria-label="Previous frame">&#8249;</button>
+            <input id="characters-frame" type="range" min="0" max="0" step="0.01" value="0" aria-label="Frame">
+            <button id="characters-step-ahead" title="Next frame (.)" aria-label="Next frame">&#8250;</button>
+            <span id="characters-frame-label" class="characters-frame-label"></span>
+            <select id="characters-speed" aria-label="Speed"><option value="0.25">&#188;&#215;</option><option value="0.5">&#189;&#215;</option><option value="1" selected>1&#215;</option></select>
+          </div>
+        </div>
+        <div class="characters-panel">
+          <label class="characters-compare">Mario <select id="characters-compare"><option value="off">hidden</option><option value="beside">beside</option><option value="over">see-through, over</option></select></label>
+          <input id="characters-filter" type="search" placeholder="Find an animation" aria-label="Find an animation">
+          <div id="characters-animations" class="characters-animations" aria-label="Animations"></div>
+        </div>
       </div>
       </section>
       <section id="page-saves" class="page sheet saves-page" aria-labelledby="saves-title" hidden>
@@ -466,5 +491,6 @@
   <script src="achievements-page.js"></script>
   <script src="mario-colors.js"></script>
   <script type="module" src="mario-look.js"></script>
+  <script type="module" src="characters-page.js"></script>
 </body>
 </html>

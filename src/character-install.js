@@ -133,4 +133,4 @@ function install(directory, item, id = item.id, check = checkModel) {
   }
 }
 
-module.exports = { packsFrom, packsIn, checkModel, install, freeId, slug, ID };
+module.exports = { packsFrom, packsIn, checkModel, install, freeId, slug, ID, MAX_SIZE };

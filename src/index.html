@@ -126,9 +126,10 @@
           <div class="characters-actions">
             <button id="characters-add" class="solid">Add character…</button>
             <button id="characters-add-folder">Add a pack folder…</button>
+            <button id="characters-import">Make one from a model…</button>
             <button id="characters-remove" class="subtle" hidden>Remove</button>
             <p id="characters-notice" class="characters-notice" role="status"></p>
-            <p class="characters-hint">Packs (a folder, .zip or .szs) can also be dropped here.</p>
+            <p class="characters-hint">Packs (a folder, .zip or .szs) and rigged models (.glb, .vrm) can also be dropped here.</p>
           </div>
         </div>
         <div class="characters-stage-wrap">
@@ -464,6 +465,21 @@
       </div>
     </dialog>
 
+    <dialog id="characters-import-dialog" class="launcher-modal characters-import" aria-labelledby="characters-import-title">
+      <div class="modal-head"><div><p class="eyebrow">CHARACTERS</p><h1 id="characters-import-title">Make a character from a model</h1><p id="characters-import-file"></p></div><button class="modal-close" data-close-modal aria-label="Close">×</button></div>
+      <div class="modal-body characters-import-body">
+        <div class="characters-import-fields">
+          <label>Name <input id="characters-import-name" maxlength="40" autocomplete="off"></label>
+          <label>Height <input id="characters-import-height" type="number" min="40" max="400" step="5" value="150"> <small>Mario is 150</small></label>
+        </div>
+        <p class="helper">Label the bones that move each part of the body. Bones left blank (fingers, toes, hair) move with the bone they hang from. The labels are guessed from the bones' names: check the arms and legs. Every one of Mario's animations then plays on the model.</p>
+        <label class="characters-import-all"><input id="characters-import-all" type="checkbox"> Show every bone (fingers, toes, ends)</label>
+        <div id="characters-import-bones" class="characters-import-bones"></div>
+        <p id="characters-import-missing" class="characters-import-missing" role="alert"></p>
+        <p id="characters-import-progress" class="characters-import-progress" role="status"></p>
+        <div class="actions"><button class="subtle" data-close-modal>Cancel</button><button id="characters-import-make" class="solid">Make character</button></div>
+      </div>
+    </dialog>
     <dialog id="achievements-get" class="launcher-modal path-modal" aria-labelledby="achievements-get-title">
       <div class="modal-head"><div><p class="eyebrow">ACHIEVEMENTS</p><h1 id="achievements-get-title">Download the achievement icons</h1><p>One download, then the Achievements page opens.</p></div><button class="modal-close" data-close-modal aria-label="Close">×</button></div>
       <div class="modal-body">

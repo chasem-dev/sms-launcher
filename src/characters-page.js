@@ -176,7 +176,80 @@ function notice(text, problem = false) {
   $('characters-notice').classList.toggle('problem', problem);
 }
 
+// --- Making a character from a rigged model ---------------------------------------
+
+const LABELS = [['', '—'], ['hips', 'Hips'], ['spine', 'Spine / chest'], ['neck', 'Neck'], ['head', 'Head'],
+  ...['L', 'R'].flatMap(S => [['shoulder', 'shoulder'], ['upperarm', 'upper arm'], ['forearm', 'forearm'], ['hand', 'hand'],
+    ['thigh', 'thigh'], ['shin', 'shin'], ['foot', 'foot']].map(([role, text]) => [`${role}.${S}`, `${S === 'L' ? 'Left' : 'Right'} ${text}`]))];
+const REQUIRED = ['hips', 'head', ...['L', 'R'].flatMap(S => ['upperarm', 'forearm', 'thigh', 'shin'].map(r => `${r}.${S}`))];
+let importing = null;
+
+async function openImport(file = null) {
+  notice('');
+  try {
+    const model = await window.sms.characterImportOpen(file);
+    if (!model) return;
+    importing = { labels: Object.fromEntries(model.bones.map(b => [b.node, b.label])) };
+    $('characters-import-file').textContent = `${model.file}: ${model.bones.length} bones, ${model.triangles.toLocaleString()} triangles${model.vrm ? ', labelled by its VRM data' : ''}.`;
+    $('characters-import-name').value = model.name;
+    $('characters-import-progress').textContent = '';
+    const list = $('characters-import-bones');
+    list.replaceChildren(...model.bones.map(bone => {
+      const row = document.createElement('label');
+      row.className = 'characters-import-bone';
+      const name = document.createElement('span');
+      name.textContent = bone.name;
+      name.style.paddingLeft = `${Math.min(bone.depth, 12) * 10}px`;
+      const select = document.createElement('select');
+      select.setAttribute('aria-label', `${bone.name}'s part of the body`);
+      for (const [value, text] of LABELS) select.add(new Option(text, value, false, value === bone.label));
+      select.addEventListener('change', () => { importing.labels[bone.node] = select.value; syncImport(); });
+      row.append(name, select);
+      row.dataset.minor = bone.minor ? '1' : '';
+      row.hidden = bone.minor && !$('characters-import-all').checked;
+      return row;
+    }));
+    syncImport();
+    $('characters-import-dialog').showModal();
+  } catch (error) { notice(error.message || String(error), true); }
+}
+
+function syncImport() {
+  const used = Object.values(importing.labels);
+  for (const row of $('characters-import-bones').children) row.classList.toggle('labelled', Boolean(row.querySelector('select').value));
+  const missing = REQUIRED.filter(label => !used.includes(label)).map(label => LABELS.find(([v]) => v === label)[1].toLowerCase());
+  $('characters-import-missing').textContent = missing.length ? `Still to label: ${missing.join(', ')}.` : '';
+  $('characters-import-make').disabled = missing.length > 0;
+}
+
+$('characters-import-all').addEventListener('change', event => {
+  for (const row of $('characters-import-bones').children) row.hidden = row.dataset.minor === '1' && !event.target.checked;
+});
+
+$('characters-import-make').addEventListener('click', async () => {
+  const button = $('characters-import-make');
+  button.disabled = true;
+  const stop = window.sms.onCharacterImportProgress(text => { $('characters-import-progress').textContent = `${text}…`; });
+  try {
+    const { id, summary } = await window.sms.characterImportMake({ name: $('characters-import-name').value,
+      height: Number($('characters-import-height').value), labels: importing.labels });
+    $('characters-import-dialog').close();
+    if (!id) return;
+    const { characters } = await window.sms.characters();
+    state.characters = characters;
+    renderList();
+    await choose(id);
+    notice(`Made ${characters.find(c => c.id === id)?.name || id}: ${summary.triangles.toLocaleString()} triangles, all ${summary.animations} animations.`);
+  } catch (error) {
+    $('characters-import-progress').textContent = error.message || String(error);
+  } finally {
+    stop();
+    button.disabled = false;
+  }
+});
+
 $('characters-add').addEventListener('click', () => add('file'));
+$('characters-import').addEventListener('click', () => openImport());
 $('characters-add-folder').addEventListener('click', () => add('folder'));
 $('characters-remove').addEventListener('click', remove);
 page.addEventListener('dragover', event => {
@@ -188,7 +261,10 @@ page.addEventListener('dragleave', event => { if (!page.contains(event.relatedTa
 page.addEventListener('drop', event => {
   event.preventDefault();
   page.classList.remove('dropping');
-  if (event.dataTransfer?.files.length) add('drop', event.dataTransfer.files);
+  const files = [...(event.dataTransfer?.files || [])];
+  const model = files.find(file => /\.(glb|vrm)$/i.test(file.name));
+  if (model) openImport(model);
+  else if (files.length) add('drop', files);
 });
 
 function syncTransport() {

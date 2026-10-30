@@ -41,6 +41,10 @@ const displayScale = require('./display-scale');
 const marioModel = require('./mario-model');
 const characterModel = require('./character-model');
 const characterInstall = require('./character-install');
+const characterConvert = require('./character-convert');
+const { Disc } = require('./disc');
+const { Glb } = require('./glb');
+const { Worker } = require('node:worker_threads');
 const marioColors = require('./mario-colors');
 const marioPack = require('./mario-pack');
 const { relaunchOptions } = require('./relaunch');
@@ -2275,6 +2279,81 @@ function registerHandlers() {
       }
     }
     return { added, problems };
+  });
+  // Making a character from the player's own rigged model (.glb, .vrm): its bones and their guessed
+  // labels first, for the player to check; then the conversion, off the main thread, and the pack.
+  let pendingImport = null;
+  ipcMain.handle('character-import-open', async (_event, file) => {
+    if (!charactersRoot()) throw new Error('Set up the game first: characters go in its mods/characters folder.');
+    let chosen = typeof file === 'string' && file ? file : null;
+    if (!chosen) {
+      const picked = await dialog.showOpenDialog(window, { title: 'Choose a rigged model', properties: ['openFile'],
+        filters: [{ name: 'Rigged models (.glb, .vrm)', extensions: ['glb', 'vrm'] }] });
+      if (picked.canceled) return null;
+      chosen = picked.filePaths[0];
+    }
+    if (fs.statSync(chosen).size > characterInstall.MAX_SIZE) throw new Error(`${path.basename(chosen)} is too large to be a character.`);
+    const data = fs.readFileSync(chosen);
+    const analysis = characterConvert.analyze(data);
+    pendingImport = { file: chosen, data };
+    const base = path.basename(chosen).replace(/\.[^.]+$/, '');
+    return { file: path.basename(chosen), name: base.replace(/[-_]+/g, ' ').replace(/\b\w/g, c => c.toUpperCase()).slice(0, 40), ...analysis };
+  });
+  ipcMain.handle('character-import-make', async (event, options = {}) => {
+    if (!pendingImport) throw new Error('Choose a model first.');
+    const root = charactersRoot();
+    if (!root) throw new Error('Set up the game first: characters go in its mods/characters folder.');
+    const directory = characterModel.packsDirectory(root);
+    const disc = new Disc(port.validateRom(config.rom));
+    let marioSzs;
+    try { marioSzs = disc.file('data/mario.szs'); } finally { disc.close(); }
+    // the model's images, decoded here (the worker has no image decoder); one that can't be read is left out
+    const glb = new Glb(pendingImport.data);
+    const images = glb.json.images.map((_, i) => {
+      try {
+        const image = nativeImage.createFromBuffer(glb.image(i).bytes);
+        if (image.isEmpty()) return null;
+        const { width, height } = image.getSize(), bgra = image.toBitmap(), rgba = new Uint8Array(bgra.length);
+        for (let p = 0; p < bgra.length; p += 4) { rgba[p] = bgra[p + 2]; rgba[p + 1] = bgra[p + 1]; rgba[p + 2] = bgra[p]; rgba[p + 3] = bgra[p + 3]; }
+        return { width, height, rgba };
+      } catch (_) { return null; }
+    });
+    const labels = {};
+    for (const [node, label] of Object.entries(options.labels || {})) if (/^\d+$/.test(node) && typeof label === 'string') labels[node] = label;
+    const height = Math.max(40, Math.min(400, Number(options.height) || 150));
+    const job = { glbData: pendingImport.data, images, marioSzs, labels, height };
+    const progress = text => { if (!event.sender.isDestroyed()) event.sender.send('character-import-progress', text); };
+    const result = await new Promise((resolve, reject) => {
+      let started = false;
+      const inProcess = () => {
+        try { resolve(characterConvert.convert({ ...job, progress })); } catch (error) { reject(error); }
+      };
+      let worker;
+      try { worker = new Worker(path.join(__dirname, 'character-import-worker.js'), { workerData: job }); }
+      catch (_) { inProcess(); return; }
+      worker.on('message', message => {
+        started = true;
+        if (message.progress) progress(message.progress);
+        else if (message.error) reject(new Error(message.error));
+        else resolve({ model: Buffer.from(message.model), summary: message.summary });
+      });
+      // a worker that can't start (a packaged launcher's archive) converts here instead
+      worker.on('error', error => (started ? reject(error) : inProcess()));
+    });
+    const name = String(options.name || '').trim().slice(0, 40) || 'Character';
+    let id = characterInstall.slug(name);
+    if (id === 'mario') id = 'mario-2';
+    const installed = characterModel.listCharacters(root).find(character => character.id === id);
+    if (installed) {
+      const { response } = await dialog.showMessageBox(window, { type: 'question', buttons: ['Replace', 'Keep both', 'Cancel'],
+        defaultId: 0, cancelId: 2, message: `${installed.name} is already installed.`,
+        detail: `Replace ${installed.name} with the character made from ${path.basename(pendingImport.file)}, or keep both? Replacing keeps the installed voice.` });
+      if (response === 2) return { id: null, summary: result.summary };
+      if (response === 1) id = characterInstall.freeId(directory, id);
+    }
+    characterInstall.install(directory, { id, name, named: true, model: result.model, voice: [] }, id);
+    log(`Made the character ${name} (${id}) from ${path.basename(pendingImport.file)}.`);
+    return { id, summary: result.summary };
   });
   ipcMain.handle('character-remove', async (_event, id) => {
     const character = characterModel.listCharacters(charactersRoot()).find(c => c.id === String(id));

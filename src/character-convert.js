@@ -156,7 +156,8 @@ function readModel(glb) {
           for (const v of [a, b, c]) for (let k = 0; k < 3; k++) n[v * 3 + k] += f[k];
         }
       }
-      const st = A.TEXCOORD_0 !== undefined ? glb.accessor(A.TEXCOORD_0) : new Float64Array(count * 2);
+      // without texture coordinates, the middle of the material's swatch (its edges blend into the next one)
+      const st = A.TEXCOORD_0 !== undefined ? glb.accessor(A.TEXCOORD_0) : new Float64Array(count * 2).fill(0.5);
       const pos = new Float64Array(count * 3), nrm = new Float64Array(count * 3), weights = new Array(count);
       const J = skin && A.JOINTS_0 !== undefined ? glb.accessor(A.JOINTS_0) : null, Wt = J ? glb.accessor(A.WEIGHTS_0) : null;
       for (let v = 0; v < count; v++) {
@@ -501,7 +502,7 @@ function materialTextures(glb, materials, images) {
     if (!image) {
       const rgba = new Uint8Array(16 * 16 * 4);
       for (let i = 0; i < 256; i++) { for (let c = 0; c < 3; c++) rgba[i * 4 + c] = Math.round(toSrgb(f[c]) * 255); rgba[i * 4 + 3] = 255; }
-      return { width: 16, height: 16, rgba };
+      return { width: 16, height: 16, rgba, plain: true };
     }
     let out = image.width > 1024 || image.height > 1024
       ? resize(image, Math.max(1, Math.round(image.width * 1024 / Math.max(image.width, image.height))), Math.max(1, Math.round(image.height * 1024 / Math.max(image.width, image.height))))
@@ -517,6 +518,7 @@ function materialTextures(glb, materials, images) {
 
 // Every texture in one atlas (the smallest of 512x512, 1024x512 and 1024x1024 that holds them),
 // shrinking all of them until they fit. Returns the atlas and each texture's rectangle (0..1).
+const PAD = 4;
 function buildAtlas(textures, used) {
   for (let limit = 1024; limit >= 16; limit >>= 1) {
     const imgs = new Map();
@@ -539,9 +541,10 @@ function buildAtlas(textures, used) {
       let x = 0, y = 0, shelf = 0, ok = true;
       for (const t of order) {
         const { width, height } = imgs.get(t);
-        if (x + width > W) { x = 0; y += shelf; shelf = 0; }
+        // a border between textures, filled with their edge colours (gutter), so filtering at one's edge stays in it
+        if (x + width > W) { x = 0; y += shelf + PAD; shelf = 0; }
         if (y + height > H || width > W) { ok = false; break; }
-        rects.set(t, [x, y]); x += width; shelf = Math.max(shelf, height);
+        rects.set(t, [x, y]); x += width + PAD; shelf = Math.max(shelf, height);
       }
       if (!ok) continue;
       const rgba = new Uint8Array(W * H * 4), covered = new Uint8Array(W * H);
@@ -555,7 +558,7 @@ function buildAtlas(textures, used) {
         }
         out.set(t, [x0 / W, y0 / H, img.width / W, img.height / H]);
       }
-      gutter(rgba, covered, W, H);
+      gutter(rgba, covered, W, H, PAD * 2);
       return { atlas: { width: W, height: H, rgba }, rects: out };
     }
   }
@@ -686,6 +689,9 @@ function buildBody(ch, template, positions, triLists, atlas, uvOf) {
   const mtypes = [0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 3];
   const joints = SHAPE_JOINT.map(n => (n ? ch.jidx[n] : null));
   const shapes = makeShapes(b, triLists, mtypes, joints, uvOf);
+  // the game indexes vertices with 16 bits
+  if (b.pos.length > 0xffff || b.uv.length > 0xffff)
+    throw new Error(`The model has ${Math.max(b.pos.length, b.uv.length).toLocaleString()} vertices, more than the game's 65,535: simplify it (in Blender, a Decimate modifier) and try again.`);
   b.finalize(shapes);
   bounds(shapes, b);
   const { section: shp, packets } = write.shp1(shapes);
@@ -975,6 +981,8 @@ function convert({ glbData, images, marioSzs, labels, height = 150, curl = 75, p
   const { atlas, rects } = buildAtlas(textures, new Set(model.meshes.map(m => m.material)));
   const uvOf = (mi, v) => {
     const m = ch.meshes[mi], [x, y, w, h] = rects.get(m.material);
+    // a plain colour is sampled in its middle, whatever the mesh's own texture coordinates
+    if (textures[m.material].plain) return [x + w / 2, y + h / 2];
     return [x + Math.max(0, Math.min(1, m.st[v * 2])) * w, y + Math.max(0, Math.min(1, m.st[v * 2 + 1])) * h];
   };
   const lists = classify(ch);
@@ -1015,8 +1023,8 @@ function convert({ glbData, images, marioSzs, labels, height = 150, curl = 75, p
 
   progress('Fitting Mario\'s animations');
   // the bodies posed frame by frame: the character's (as built) and Mario's, without his cap and Shine shirt
-  const charVerts = [];
-  ch.meshes.forEach((m, mi) => { const step = Math.max(1, Math.floor(m.weights.length * ch.meshes.length / 4000)); for (let v = 0; v < m.weights.length; v += step) charVerts.push([Array.from(fist[mi].subarray(v * 3, v * 3 + 3)), m.sms[v]]); });
+  const charVerts = [], total = ch.meshes.reduce((n, m) => n + m.weights.length, 0);
+  ch.meshes.forEach((m, mi) => { const step = Math.max(1, Math.ceil(total / 20000)); for (let v = 0; v < m.weights.length; v += step) charVerts.push([Array.from(fist[mi].subarray(v * 3, v * 3 + 3)), m.sms[v]]); });
   const charJoints = sms.joints.map((j, i) => ({ ...j, translation: ch.newT[i] }));
   const body = posable(charJoints, ch.invBind, charVerts);
   const marioRest = worlds(sms.joints, sms.joints.map(j => jointLocal(j.scale, j.rotation, j.translation)));

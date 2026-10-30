@@ -16,6 +16,8 @@ contextBridge.exposeInMainWorld('sms', {
   characters: () => ipcRenderer.invoke('characters'),
   characterModel: id => ipcRenderer.invoke('character-model', id),
   characterAnimation: (id, name) => ipcRenderer.invoke('character-animation', id, name),
+  characterAdd: (kind, files = null) => ipcRenderer.invoke('character-add', files ? Array.from(files, file => webUtils.getPathForFile(file)) : null, kind),
+  characterRemove: id => ipcRenderer.invoke('character-remove', id),
   saveMarioLook: look => ipcRenderer.invoke('save-mario-look', look),
   relaunchLauncher: () => ipcRenderer.invoke('relaunch-launcher'),
   chooseRepo: () => ipcRenderer.invoke('choose-repo'),

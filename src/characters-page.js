@@ -103,6 +103,9 @@ function rebuild() {
 // --- Controls ------------------------------------------------------------------
 
 function renderList() {
+  const removeButton = $('characters-remove');
+  removeButton.hidden = !state.id || state.id === 'mario';
+  removeButton.textContent = `Remove ${state.characters.find(c => c.id === state.id)?.name || ''}`;
   const list = $('characters-list');
   list.replaceChildren(...state.characters.map(({ id, name }) => {
     const button = document.createElement('button');
@@ -137,6 +140,56 @@ function renderAnimations() {
     return button;
   }));
 }
+
+// --- Adding and removing characters ----------------------------------------------
+
+async function add(kind, files = null) {
+  notice('');
+  try {
+    const { added, problems } = await window.sms.characterAdd(kind, files);
+    if (added.length) {
+      const { characters } = await window.sms.characters();
+      state.characters = characters;
+      renderList();
+      await choose(added[0]);
+    }
+    const names = added.map(id => state.characters.find(c => c.id === id)?.name || id);
+    notice([added.length ? `Added ${names.join(', ')}.` : '', ...problems].filter(Boolean).join('\n'), problems.length > 0);
+  } catch (error) { notice(error.message || String(error), true); }
+}
+
+async function remove() {
+  const character = state.characters.find(c => c.id === state.id);
+  if (!character || character.id === 'mario') return;
+  try {
+    const { removed } = await window.sms.characterRemove(character.id);
+    if (!removed) return;
+    const { characters } = await window.sms.characters();
+    state.characters = characters;
+    notice(`Removed ${character.name}.`);
+    await choose('mario');
+  } catch (error) { notice(error.message || String(error), true); }
+}
+
+function notice(text, problem = false) {
+  $('characters-notice').textContent = text;
+  $('characters-notice').classList.toggle('problem', problem);
+}
+
+$('characters-add').addEventListener('click', () => add('file'));
+$('characters-add-folder').addEventListener('click', () => add('folder'));
+$('characters-remove').addEventListener('click', remove);
+page.addEventListener('dragover', event => {
+  if (!event.dataTransfer?.types.includes('Files')) return;
+  event.preventDefault();
+  page.classList.add('dropping');
+});
+page.addEventListener('dragleave', event => { if (!page.contains(event.relatedTarget)) page.classList.remove('dropping'); });
+page.addEventListener('drop', event => {
+  event.preventDefault();
+  page.classList.remove('dropping');
+  if (event.dataTransfer?.files.length) add('drop', event.dataTransfer.files);
+});
 
 function syncTransport() {
   const c = clip();

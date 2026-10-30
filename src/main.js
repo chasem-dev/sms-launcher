@@ -40,6 +40,7 @@ const { createSessionLog } = require('./session-log');
 const displayScale = require('./display-scale');
 const marioModel = require('./mario-model');
 const characterModel = require('./character-model');
+const characterInstall = require('./character-install');
 const marioColors = require('./mario-colors');
 const marioPack = require('./mario-pack');
 const { relaunchOptions } = require('./relaunch');
@@ -2236,6 +2237,56 @@ function registerHandlers() {
   ipcMain.handle('characters', () => ({ characters: characterModel.listCharacters(charactersRoot()).map(({ id, name }) => ({ id, name })),
     folder: charactersRoot() && characterModel.packsDirectory(charactersRoot()) }));
   ipcMain.handle('character-model', (_event, id) => characterNamed(String(id)).model);
+  // Adding character packs (picked, or dropped on the page) and removing them.
+  ipcMain.handle('character-add', async (_event, paths, kind) => {
+    const root = charactersRoot();
+    if (!root) throw new Error('Set up the game first: characters go in its mods/characters folder.');
+    const directory = characterModel.packsDirectory(root);
+    let files = Array.isArray(paths) ? paths.filter(file => typeof file === 'string' && file) : [];
+    if (!files.length) {
+      const chosen = await dialog.showOpenDialog(window, kind === 'folder'
+        ? { title: 'Choose a character pack folder', properties: ['openDirectory', 'multiSelections'] }
+        : { title: 'Choose character packs', properties: ['openFile', 'multiSelections'],
+          filters: [{ name: 'Character packs (.zip, .szs)', extensions: ['zip', 'szs', 'arc'] }] });
+      if (chosen.canceled) return { added: [], problems: [] };
+      files = chosen.filePaths;
+    }
+    const added = [], problems = [];
+    for (const file of files) {
+      let packs;
+      try { packs = characterInstall.packsFrom(file); }
+      catch (error) { problems.push(error.message); continue; }
+      if (!packs.length) problems.push(`${path.basename(file)} has no character in it.`);
+      for (const item of packs) {
+        try {
+          // "mario" is the disc's Mario in the game's list
+          let id = item.id === 'mario' ? characterInstall.freeId(directory, 'mario-2') : item.id;
+          const installed = characterModel.listCharacters(root).find(character => character.id === id);
+          if (installed) {
+            const { response } = await dialog.showMessageBox(window, { type: 'question', buttons: ['Replace', 'Keep both', 'Skip'],
+              defaultId: 0, cancelId: 2, message: `${installed.name} is already installed.`,
+              detail: `Replace ${installed.name}'s model with the one in ${path.basename(file)}, or add it as another character? Replacing keeps the installed name and voice unless the new pack has its own.` });
+            if (response === 2) continue;
+            if (response === 1) id = characterInstall.freeId(directory, id);
+          }
+          added.push(characterInstall.install(directory, item, id));
+          log(`Added the character ${id} from ${path.basename(file)}.`);
+        } catch (error) { problems.push(`${item.name}: ${error.message}`); }
+      }
+    }
+    return { added, problems };
+  });
+  ipcMain.handle('character-remove', async (_event, id) => {
+    const character = characterModel.listCharacters(charactersRoot()).find(c => c.id === String(id));
+    if (!character?.file) throw new Error('Only installed character packs can be removed.');
+    const target = path.basename(character.file) === 'model.szs' ? path.dirname(character.file) : character.file;
+    const { response } = await dialog.showMessageBox(window, { type: 'question', buttons: ['Remove', 'Cancel'], defaultId: 1, cancelId: 1,
+      message: `Remove ${character.name}?`, detail: `Moves ${target} to the trash.` });
+    if (response !== 0) return { removed: false };
+    await shell.trashItem(target);
+    log(`Removed the character ${character.id}.`);
+    return { removed: true };
+  });
   ipcMain.handle('character-animation', (_event, id, name) => {
     const { files, model } = characterNamed(String(id));
     if (!model.animations.includes(name)) throw new Error(`There is no animation ${name}.`);

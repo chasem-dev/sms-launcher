@@ -121,7 +121,16 @@
       <section id="page-characters" class="page sheet characters-page" aria-label="Characters" hidden>
       <div class="modal-head"><div><h1>Characters</h1><p>Each character as its archive draws it, in any of Mario's animations. Drag to turn, right-drag to move up and down, scroll to zoom.</p></div></div>
       <div class="characters-body">
-        <div id="characters-list" class="characters-list" aria-label="Characters"></div>
+        <div class="characters-side">
+          <div id="characters-list" class="characters-list" aria-label="Characters"></div>
+          <div class="characters-actions">
+            <button id="characters-add" class="solid">Add character…</button>
+            <button id="characters-add-folder">Add a pack folder…</button>
+            <button id="characters-remove" class="subtle" hidden>Remove</button>
+            <p id="characters-notice" class="characters-notice" role="status"></p>
+            <p class="characters-hint">Packs (a folder, .zip or .szs) can also be dropped here.</p>
+          </div>
+        </div>
         <div class="characters-stage-wrap">
           <canvas id="characters-stage" class="characters-stage" tabindex="0" aria-label="The character, drag or use the arrow keys to turn it"></canvas>
           <div id="characters-status" class="mario-status" role="status" hidden><span class="mario-loader" aria-hidden="true"></span><span id="characters-status-text"></span></div>

@@ -77,3 +77,13 @@ test('Super Mario Eclipse has its own list, unlocks file and icons', () => {
   assert.deepEqual(sunshine.achievements.map(item => [item.title, item.unlockedAt]), [['Paint Job', 1761170000]]);
   for (const folder of [root, userData]) fs.rmSync(folder, { recursive: true });
 });
+
+test('online games earn achievements only when the player allows it; alone and split-screen always do', () => {
+  assert.equal(achievements.earned(null), true);
+  assert.equal(achievements.earned({ mode: 'coop', env: {} }), true);
+  for (const mode of ['host', 'join']) {
+    assert.equal(achievements.earned({ mode, env: {} }), false);
+    assert.equal(achievements.earned({ mode, env: {} }, undefined), false);
+    assert.equal(achievements.earned({ mode, env: {} }, true), true);
+  }
+});

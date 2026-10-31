@@ -284,12 +284,15 @@ function createViewer(canvas) {
       geometry.setAttribute('uv', new THREE.BufferAttribute(shape.uv, 2));
       if (shape.color) geometry.setAttribute('color', new THREE.BufferAttribute(shape.color, 4));
       geometry.setIndex(new THREE.BufferAttribute(shape.index, 1));
-      const material = new THREE.MeshToonMaterial({ map: shape.texture >= 0 ? textures[shape.texture] : null,
-        vertexColors: Boolean(shape.color), transparent: ghost || shape.translucent, opacity: ghost ? 0.35 : shape.tint ? 0.8 : 1,
-        ...(shape.tint ? { color: shape.tint } : {}),
-        // see-through Mario is drawn over the character, never hidden behind it
-        depthWrite: !ghost && !shape.translucent, depthTest: !ghost, alphaTest: shape.alphaTest || 0, gradientMap: gradient,
-        side: shape.doubleSided ? THREE.DoubleSide : THREE.FrontSide });
+      const side = shape.doubleSided ? THREE.DoubleSide : THREE.FrontSide;
+      // Shadow Mario: his own colour unlit, with a light blue shine
+      const material = shape.shine && !ghost
+        ? new THREE.MeshPhongMaterial({ color: 0x000000, emissive: 0xffffff, emissiveMap: textures[shape.texture] || null,
+          specular: 0x9dc2ff, shininess: 24, side })
+        : new THREE.MeshToonMaterial({ map: shape.texture >= 0 ? textures[shape.texture] : null,
+          vertexColors: Boolean(shape.color), transparent: ghost || shape.translucent, opacity: ghost ? 0.35 : 1,
+          // see-through Mario is drawn over the character, never hidden behind it
+          depthWrite: !ghost && !shape.translucent, depthTest: !ghost, alphaTest: shape.alphaTest || 0, gradientMap: gradient, side });
       const mesh = new THREE.Mesh(geometry, material);
       mesh.frustumCulled = false;
       if (ghost) mesh.renderOrder = 1;

@@ -61,14 +61,22 @@ function loadCharacter(character, files, look = null) {
     return byIndex.get(index);
   };
   const shapes = [], shadow = Boolean(look) && model.textures.some(t => /kagemario/i.test(t.name));
+  const shadowFor = material => {
+    const key = `shadow ${model.materials.indexOf(material)}`;
+    if (!byIndex.has(key)) {
+      byIndex.set(key, textures.length);
+      textures.push(shadowTexture(model.textures[material.textures[1]], material.tevColors));
+    }
+    return byIndex.get(key);
+  };
   model.shapes.forEach((shape, i) => {
     if ((!look && i === ALOHA_SHAPE) || !shape.index.length) return;
     const material = model.materials[shape.material] || {};
-    const texture = material.textures ? textureFor(material.textures[0]) : -1;
+    const texture = !material.textures ? -1 : shadow ? shadowFor(material) : textureFor(material.textures[0]);
     shapes.push({ position: shape.position, normal: shape.normal, uv: shape.uv, color: texture < 0 && shape.hasColor ? shape.color : null,
-      drawIndex: shape.drawIndex, index: shape.index, texture, doubleSided: material.cull === 0, translucent: shadow || material.mode === 4,
-      // Shadow Mario's colours come from the screen behind him in the game: a deep blue here
-      tint: shadow ? 0x3d4fb8 : null,
+      drawIndex: shape.drawIndex, index: shape.index, texture, doubleSided: material.cull === 0, translucent: !shadow && material.mode === 4,
+      // Shadow Mario is lit only by his shine (his colours are his texture's, unlit)
+      shine: shadow,
       alphaTest: material.alphaTest?.comp0 === 6 ? material.alphaTest.ref0 / 255 : 0 });
   });
   const toon = model.textures.find(t => /toon/i.test(t.name));
@@ -81,6 +89,22 @@ function loadCharacter(character, files, look = null) {
     joints: model.joints, draw: model.draw, envelopes: model.envelopes, inverseBind: model.inverseBind, shapes, textures,
     toon: toon ? toonBands(toon) : [0.72, 1], animations,
   };
+}
+
+// Shadow Mario's colour, as his material makes it in the game: the screen behind him (his first
+// texture is a stand-in for it) between his first two colours, then his body texture between his
+// third colour and that. The screen here is a bright plaza, as the viewer's backdrop is.
+const SHADOW_SCREEN = 0.6;
+function shadowTexture(main, colours) {
+  const [c0, c1, c2] = colours.map(c => c || [0, 0, 0, 255]);
+  const screen = [0, 1, 2].map(k => c0[k] + (c1[k] - c0[k]) * SHADOW_SCREEN);
+  const rgba = new Uint8Array(main.width * main.height * 4);
+  for (let p = 0; p < rgba.length; p += 4) {
+    const m = main.rgba[p] / 255;
+    for (let k = 0; k < 3; k++) rgba[p + k] = Math.round(c2[k] + (screen[k] - c2[k]) * m);
+    rgba[p + 3] = 255;
+  }
+  return { name: `${main.name} (shadow)`, width: main.width, height: main.height, rgba, wrapS: main.wrapS, wrapT: main.wrapT };
 }
 
 // One animation sampled at every frame for this character's joints.

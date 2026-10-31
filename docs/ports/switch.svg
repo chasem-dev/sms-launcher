@@ -21,5 +21,5 @@
     <text x="128" y="100" font-size="16" opacity=".92">Homebrew, up to 60 fps</text>
   </g>
   <rect x="128" y="110" width="145.60000000000002" height="28" rx="14" fill="#fff"/>
-  <text x="142" y="129" font-family="system-ui,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="14" font-weight="700" fill="#C8102E">Download NRO →</text>
+  <text x="142" y="129" font-family="system-ui,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="14" font-weight="700" fill="#C8102E">Build NRO →</text>
 </svg>

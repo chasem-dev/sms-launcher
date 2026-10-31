@@ -962,18 +962,24 @@ const DEG = 180 / Math.PI;
 const wrap180 = a => ((a + 180) % 360 + 360) % 360 - 180;
 
 // The hem below the thighs, hanging from the waist alone, follows the thigh on its side a little.
-function swayGown(ch) {
+function swayGown(ch, sway = GOWN_SWAY, wide = false) {
   const wj = ch.jidx.jnt_waist, L = ch.jidx.jnt_leg_L1, R = ch.jidx.jnt_leg_R1;
-  const top = ch.bind[L][7], xL = ch.bind[L][3], xR = ch.bind[R][3];
+  const top = ch.bind[L][7], xL = ch.bind[L][3], xR = ch.bind[R][3], mid = (xL + xR) / 2;
   const waistOnly = w => w.length === 1 && w[0][0] === wj;
-  let bottom = Infinity;
-  for (const m of ch.meshes) m.sms.forEach((w, v) => { if (waistOnly(w)) bottom = Math.min(bottom, m.pos[v * 3 + 1]); });
+  let bottom = Infinity, half = 0;
+  for (const m of ch.meshes) m.sms.forEach((w, v) => {
+    if (!waistOnly(w)) return;
+    bottom = Math.min(bottom, m.pos[v * 3 + 1]);
+    half = Math.max(half, Math.abs(m.pos[v * 3] - mid));
+  });
   if (!Number.isFinite(bottom)) return;
   for (const m of ch.meshes) m.sms = m.sms.map((w, v) => {
     const x = m.pos[v * 3], y = m.pos[v * 3 + 1];
     if (!waistOnly(w) || y >= top) return w;
-    const f = GOWN_SWAY * Math.min(1, Math.max(0, (top - y) / Math.max(top - bottom, 1e-3))) ** 1.5;
-    const side = Math.min(1, Math.max(0, (x - xR) / (xL - xR)));  // 1 at the left thigh
+    const f = sway * Math.min(1, Math.max(0, (top - y) / Math.max(top - bottom, 1e-3))) ** 1.5;
+    // 1 at the left: from thigh to thigh, or (wide) across the whole gown, so a low-polygon hem bends
+    // between the legs rather than creasing to a point
+    const side = Math.min(1, Math.max(0, wide ? 0.5 + 0.5 * (x - mid) / Math.max(half, 1e-3) : (x - xR) / (xL - xR)));
     return [[wj, 1 - f], [L, f * side], [R, f * (1 - side)]].filter(([, k]) => k > 1e-3).sort((a, b) => b[1] - a[1]);
   });
 }
@@ -1097,9 +1103,9 @@ function clampGown(clip, anim, ch, joints) {
   return true;
 }
 
-function gownAnimation(ch, body, clip, data, counts) {
+function gownAnimation(ch, body, clip, data, counts, legs = GOWN_LEGS) {
   const anim = write.decodeBck(data);
-  dampLegs(anim, ch, GOWN_LEGS);
+  dampLegs(anim, ch, legs);
   if (pirouette(clip, anim, ch, body.joints)) counts.pirouettes++;
   if (clampGown(clip, anim, ch, body.joints)) counts.clamped++;
   return write.encodeBck(anim);
@@ -1134,11 +1140,12 @@ function analyze(glbData) {
 // A model ({ parent, names, world, meshes, materials, vrm }) and a texture per material, made into the
 // archive: gown (a long skirt hiding the legs) brings refine.py's gown handling: the hem following the
 // thighs a little, the legs swinging less, somersaults as pirouettes, nothing tipping the gown over.
-function convertModel({ model, textures, marioSzs, labels, height = 150, curl = 75, gown = false, progress = () => {} }) {
+function convertModel({ model, textures, marioSzs, labels, height = 150, curl = 75, gown = false, progress = () => {}, inspect = null }) {
   const marioRaw = yaz0(marioSzs), files = rarc(marioRaw);
   const template = files.get(BODY), sms = j3d.parseBmd(template);
   const ch = new Character(model, labels, sms, height);
-  if (gown) swayGown(ch);
+  if (gown) gown = { sway: GOWN_SWAY, legs: GOWN_LEGS, ...(gown === true ? {} : gown) };
+  if (gown) swayGown(ch, gown.sway, gown.wide);
   const { atlas, rects } = buildAtlas(textures, new Set(model.meshes.map(m => m.material)));
   const uvOf = (mi, v) => {
     const m = ch.meshes[mi], [x, y, w, h] = rects.get(m.material);
@@ -1207,9 +1214,11 @@ function convertModel({ model, textures, marioSzs, labels, height = 150, curl = 
   const retargeted = new Map(), gowned = { pirouettes: 0, clamped: 0 };
   for (const n of names) {
     let r = retargetBck(ch, files.get(n));
-    if (r && gown) r = gownAnimation(ch, body, n.slice(4, -4), r, gowned);
+    if (r && gown) r = gownAnimation(ch, body, n.slice(4, -4), r, gowned, gown.legs);
     if (r) retargeted.set(n, r);
   }
+  // for checks (tools): the character, its posable body and the fitted animations
+  if (inspect) inspect({ ch, body, retargeted, fist });
   let stand = 0;
   if (retargeted.has('bck/ma_wait.bck')) {
     const r = groundOffsets(body, j3d.parseBck(retargeted.get('bck/ma_wait.bck')), mario, j3d.parseBck(files.get('bck/ma_wait.bck')), hover);
@@ -1245,7 +1254,7 @@ function convert({ glbData, images, marioSzs, labels, height = 150, curl = 75, p
 
 // A model of the game's own (.bmd) made into a character archive: its body, with part models fixed to its
 // joints ({ data, joint, part: 'open' for an open hand, side }), labels by joint name, at its own size.
-function convertSunshine({ body, parts = [], labels, marioSzs, gown = false, progress = () => {} }) {
+function convertSunshine({ body, parts = [], labels, marioSzs, gown = false, progress = () => {}, inspect = null }) {
   progress('Reading the model');
   const bmd = j3d.parseBmd(body), joints = bmd.joints;
   const world = worlds(joints, joints.map(j => jointLocal(j.scale, j.rotation, j.translation)));
@@ -1289,7 +1298,7 @@ function convertSunshine({ body, parts = [], labels, marioSzs, gown = false, pro
     add(j3d.parseBmd(part.data), world[j], j, part.part ? { part: part.part, side: part.side } : {});
   }
   const byName = Object.fromEntries(Object.entries(labels).map(([name, label]) => [names.indexOf(name), label]).filter(([i]) => i >= 0));
-  return convertModel({ model: { parent, names, world, meshes, materials, vrm: new Map() }, textures, marioSzs, labels: byName, height: null, gown, progress });
+  return convertModel({ model: { parent, names, world, meshes, materials, vrm: new Map() }, textures, marioSzs, labels: byName, height: null, gown, progress, inspect });
 }
 
-module.exports = { analyze, convert, convertSunshine, guessRole, ROLES, SIDED };
+module.exports = { analyze, convert, convertSunshine, guessRole, ROLES, SIDED, worlds, jointLocal, mul, inv, apply };

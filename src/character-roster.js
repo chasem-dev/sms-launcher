@@ -34,7 +34,13 @@ const PEACH_LABELS = {
   jnt_sldr_R: 'shoulder.R', jnt_arm_R1: 'upperarm.R', jnt_arm_R2: 'forearm.R', jnt_hand_R: 'hand.R',
   jnt_leg_L1: 'thigh.L', jnt_leg_L2: 'shin.L', jnt_foot_L: 'foot.L', jnt_leg_R1: 'thigh.R', jnt_leg_R2: 'shin.R', jnt_foot_R: 'foot.R',
 };
-function peach(disc, progress) {
+// How her gown moves (character-convert.js: GOWN_SWAY, GOWN_LEGS). Her gown has few polygons and swings
+// far from the hips: the hem follows the thighs a little, bending across its whole width (not creasing
+// at the front into a point), and her legs swing much less than Mario's, so running and jumping they
+// stay inside it (more and the gown split at the front with a leg through it).
+const PEACH_GOWN = { wide: true, sway: 0.35,
+  legs: { jnt_leg_L1: 0.3, jnt_leg_R1: 0.3, jnt_leg_L2: 0.15, jnt_leg_R2: 0.15, jnt_foot_L: 0.5, jnt_foot_R: 0.5 } };
+function peach(disc, progress, options = {}) {
   const plaza = rarc(yaz0(disc.file('data/scene/dolpic1.szs')));
   const get = name => {
     const data = plaza.get(`peach/${name}`);
@@ -42,7 +48,7 @@ function peach(disc, progress) {
     return data;
   };
   const { model } = convertSunshine({
-    body: get('peach_model.bmd'), labels: PEACH_LABELS, marioSzs: disc.file('data/mario.szs'), gown: true, progress,
+    body: get('peach_model.bmd'), labels: PEACH_LABELS, marioSzs: disc.file('data/mario.szs'), gown: options.gown || PEACH_GOWN, progress, inspect: options.inspect,
     parts: [
       { data: get('peach_hair_normal.bmd'), joint: 'kubi' },
       { data: get('peach_hand2_l.bmd'), joint: 'jnt_hand_L' }, { data: get('peach_hand2_r.bmd'), joint: 'jnt_hand_R' },
@@ -55,7 +61,7 @@ function peach(disc, progress) {
 
 const ROSTER = [
   { id: 'mario', name: 'Mario', about: 'As on your disc.' },
-  { id: 'princess-peach', name: 'Princess Peach', about: 'Delfino\'s Peach, gown and all, on Mario\'s moves.', version: 1, build: peach },
+  { id: 'princess-peach', name: 'Princess Peach', about: 'Delfino\'s Peach, gown and all, on Mario\'s moves.', version: 2, build: peach },
   { id: 'shadow-mario', name: 'Shadow Mario', about: 'The paintbrush impostor, see-through and shimmering, as he looks in Delfino Plaza.', version: 2, build: shadowMario },
 ];
 

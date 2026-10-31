@@ -16,6 +16,8 @@ contextBridge.exposeInMainWorld('sms', {
   characters: () => ipcRenderer.invoke('characters'),
   characterModel: id => ipcRenderer.invoke('character-model', id),
   characterAnimation: (id, name) => ipcRenderer.invoke('character-animation', id, name),
+  characterBuild: id => ipcRenderer.invoke('character-build', id),
+  characterPlay: id => ipcRenderer.invoke('character-play', id),
   saveMarioLook: look => ipcRenderer.invoke('save-mario-look', look),
   relaunchLauncher: () => ipcRenderer.invoke('relaunch-launcher'),
   chooseRepo: () => ipcRenderer.invoke('choose-repo'),

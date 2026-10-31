@@ -40,6 +40,7 @@ const { createSessionLog } = require('./session-log');
 const displayScale = require('./display-scale');
 const marioModel = require('./mario-model');
 const characterModel = require('./character-model');
+const characterRoster = require('./character-roster');
 const marioColors = require('./mario-colors');
 const marioPack = require('./mario-pack');
 const { relaunchOptions } = require('./relaunch');
@@ -2230,21 +2231,36 @@ function registerHandlers() {
     return state();
   });
   ipcMain.handle('mario-model', () => ({ model: marioFrom(port.validateRom(config.rom)), look: config.marioLook }));
-  // The Characters page: Mario and the game's character packs, posed by their animations. The page names a
-  // character by id; only the ones listed here are read.
+  // The Characters page: the launcher's characters (character-roster.js), each made from the player's disc
+  // the first time it is chosen, posed by its animations; Play as sets who the game starts as.
   const charactersRoot = () => (config.repo && fs.existsSync(config.repo) ? config.repo : null);
-  const characterNamed = id => {
-    const character = characterModel.listCharacters(charactersRoot()).find(c => c.id === id);
-    if (!character) throw new Error(`There is no character ${id}.`);
-    return characterCache.get(character.file ? null : port.validateRom(config.rom), character);
+  const characterData = id => {
+    const character = characterRoster.find(String(id)), root = charactersRoot(), rom = port.validateRom(config.rom);
+    if (id !== 'mario' && !characterRoster.list(root).find(c => c.id === id).ready) throw new Error(`${character.name} isn't made yet.`);
+    const stamp = id === 'mario' ? rom : fs.statSync(path.join(characterRoster.packsDirectory(root), id, 'model.szs')).mtimeMs;
+    return characterCache.get(character, stamp, () => characterRoster.archive(root, rom, id));
   };
-  ipcMain.handle('characters', () => ({ characters: characterModel.listCharacters(charactersRoot()).map(({ id, name }) => ({ id, name })),
-    folder: charactersRoot() && characterModel.packsDirectory(charactersRoot()) }));
-  ipcMain.handle('character-model', (_event, id) => characterNamed(String(id)).model);
+  ipcMain.handle('characters', () => ({ characters: characterRoster.list(charactersRoot()), selected: config.settings.character || 'mario',
+    eclipse: Boolean(config.settings.eclipse), ready: Boolean(charactersRoot() && config.rom) }));
+  ipcMain.handle('character-build', (_event, id) => {
+    const root = charactersRoot();
+    if (!root) throw new Error('Set up the game first: characters are made into its mods/characters folder.');
+    characterRoster.build(root, port.validateRom(config.rom), String(id));
+    log(`Made ${characterRoster.find(String(id)).name} from your disc.`);
+    return characterRoster.list(root);
+  });
+  ipcMain.handle('character-model', (_event, id) => characterData(String(id)).model);
   ipcMain.handle('character-animation', (_event, id, name) => {
-    const { files, model } = characterNamed(String(id));
+    const { files, model } = characterData(String(id));
     if (!model.animations.includes(name)) throw new Error(`There is no animation ${name}.`);
     return characterModel.loadAnimation(files, model.joints, name);
+  });
+  ipcMain.handle('character-play', (_event, id) => {
+    const character = characterRoster.find(String(id));
+    config.settings = port.normalizeSettings({ ...config.settings, character: character.id === 'mario' ? '' : character.id });
+    saveConfig();
+    log(`The game starts as ${character.name}.`);
+    return config.settings.character || 'mario';
   });
   // Customize Mario's way out when its 3D view can't start: a new launcher
   // gets a new GPU process. Not while the game or a task runs.

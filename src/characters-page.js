@@ -1,7 +1,8 @@
-// Characters: Mario from the player's disc and each character pack in the
-// game's mods/characters/, drawn from its own model.szs and posed by any of the
-// animations in it, frame by frame, with the floor under it and Mario beside
-// it or over it for comparison. Drag to turn, scroll to zoom.
+// Characters: who the game starts as. Each of the launcher's characters
+// (character-roster.js) is made from the player's own disc the first time it
+// is chosen, then shown as the game draws it, in any of its animations, with
+// the floor under it and Mario beside it or over it. Play as sets who the game
+// starts as (F4 in the game switches between them).
 import * as THREE from '../node_modules/three/build/three.module.js';
 import { createRig, jointMatrix } from './model-rig.js';
 
@@ -25,7 +26,7 @@ const order = name => (ORDER.includes(name) ? ORDER.indexOf(name) : ORDER.length
 const VIEWS = { front: [0, 0.1], side: [Math.PI / 2, 0.1], back: [Math.PI, 0.1], above: [0.6, 0.9] };
 
 const state = {
-  characters: [], id: null, model: null, animation: 'ma_wait', clips: new Map(), mario: null, compare: 'off',
+  characters: [], id: null, playing: 'mario', eclipse: false, model: null, animation: 'ma_wait', clips: new Map(), mario: null, compare: 'off',
   frame: 0, playing: true, speed: 1, filter: '',
 };
 let viewer = null, loading = null;
@@ -42,22 +43,37 @@ async function start() {
   try {
     if (!state.characters.length) {
       setStatus('Looking for characters…', true);
-      const { characters } = await window.sms.characters();
-      state.characters = characters;
-      renderList();
+      await refresh();
     }
-    await choose(state.id || state.characters[0].id);
+    await choose(state.id || state.playing);
   } catch (error) {
     setStatus(error.message || String(error));
   } finally { loading = null; }
 }
 
+async function refresh() {
+  const { characters, selected, eclipse } = await window.sms.characters();
+  state.characters = characters;
+  // the game's own menu keeps a character by its name
+  const playing = characters.find(c => c.id === selected || c.name.toLowerCase() === String(selected).toLowerCase());
+  state.playing = playing ? playing.id : 'mario';
+  state.eclipse = eclipse;
+  renderList();
+}
+
 // --- Loading -------------------------------------------------------------------
 
 async function choose(id) {
-  setStatus('Reading the character…', true);
   state.id = id;
   renderList();
+  const character = state.characters.find(c => c.id === id);
+  if (!character.ready) {
+    setStatus(`Making ${character.name} from your disc…`, true);
+    state.characters = await window.sms.characterBuild(id);
+    if (state.id !== id) return;
+    renderList();
+  }
+  setStatus('Reading the character…', true);
   const model = await window.sms.characterModel(id);
   if (state.id !== id) return;
   state.model = model;
@@ -104,15 +120,31 @@ function rebuild() {
 
 function renderList() {
   const list = $('characters-list');
-  list.replaceChildren(...state.characters.map(({ id, name }) => {
+  list.replaceChildren(...state.characters.map(({ id, name, ready }) => {
     const button = document.createElement('button');
     button.className = 'characters-item';
-    button.textContent = name;
+    button.innerHTML = '<span></span><small></small>';
+    button.querySelector('span').textContent = name;
+    button.querySelector('small').textContent = id === state.playing ? 'Playing' : ready ? '' : 'Made from your disc when chosen';
+    button.classList.toggle('playing', id === state.playing);
     button.setAttribute('aria-pressed', String(id === state.id));
     button.addEventListener('click', () => { if (id !== state.id) choose(id).catch(error => setStatus(error.message)); });
     return button;
   }));
+  const character = state.characters.find(c => c.id === state.id);
+  const play = $('characters-play-as');
+  play.hidden = !character;
+  play.disabled = !character || character.id === state.playing || state.eclipse;
+  play.textContent = !character ? '' : character.id === state.playing ? `Playing as ${character.name}` : `Play as ${character.name}`;
+  $('characters-about').textContent = state.eclipse ? 'With Super Mario Eclipse on, the game plays as its own characters.' : character?.about || '';
 }
+
+$('characters-play-as').addEventListener('click', async () => {
+  try {
+    state.playing = await window.sms.characterPlay(state.id);
+    renderList();
+  } catch (error) { setStatus(error.message || String(error)); }
+});
 
 function renderAnimations() {
   const list = $('characters-animations');
@@ -245,7 +277,8 @@ function createViewer(canvas) {
       if (shape.color) geometry.setAttribute('color', new THREE.BufferAttribute(shape.color, 4));
       geometry.setIndex(new THREE.BufferAttribute(shape.index, 1));
       const material = new THREE.MeshToonMaterial({ map: shape.texture >= 0 ? textures[shape.texture] : null,
-        vertexColors: Boolean(shape.color), transparent: ghost || shape.translucent, opacity: ghost ? 0.35 : 1,
+        vertexColors: Boolean(shape.color), transparent: ghost || shape.translucent, opacity: ghost ? 0.35 : shape.tint ? 0.8 : 1,
+        ...(shape.tint ? { color: shape.tint } : {}),
         // see-through Mario is drawn over the character, never hidden behind it
         depthWrite: !ghost && !shape.translucent, depthTest: !ghost, alphaTest: shape.alphaTest || 0, gradientMap: gradient,
         side: shape.doubleSided ? THREE.DoubleSide : THREE.FrontSide });

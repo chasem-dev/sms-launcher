@@ -752,7 +752,18 @@ pre { height: 120px; margin: 0; padding: 12px; overflow: auto; border-radius: 8p
 /* Characters */
 .characters-body { flex: 1; min-height: 0; display: grid; grid-template-columns: 190px minmax(0, 1fr) 280px; }
 .characters-list, .characters-panel { min-height: 0; overflow: auto; padding: 12px; background: #f8faf9; }
-.characters-list { display: flex; flex-direction: column; gap: 3px; border-right: 1px solid #dce7e6; }
+.characters-side { display: flex; flex-direction: column; min-height: 0; border-right: 1px solid #dce7e6; background: #f8faf9; }
+.characters-list { flex: 1; display: flex; flex-direction: column; gap: 3px; }
+.characters-item small { color: inherit; font-size: 10.5px; font-weight: 500; opacity: .7; }
+.characters-item small:empty { display: none; }
+.characters-item.playing span::after { margin-left: 6px; content: '●'; color: #e9a93a; }
+.characters-actions { display: grid; gap: 8px; padding: 12px; border-top: 1px solid #dce7e6; }
+.characters-actions button[hidden] { display: none; }
+.characters-about { margin: 0; color: #4d6a71; font-size: 12px; line-height: 1.45; }
+.characters-about:empty { display: none; }
+.dark .characters-side { border-color: #2f5468; background: #0d2231; }
+.dark .characters-actions { border-color: #2f5468; }
+.dark .characters-about { color: #9fc3cb; }
 .characters-panel { display: flex; flex-direction: column; gap: 10px; border-left: 1px solid #dce7e6; }
 .characters-item, .characters-anim { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; padding: 7px 10px; border: 1px solid transparent; border-radius: 9px; background: transparent; color: #2e4c53; font-size: 13px; font-weight: 600; text-align: left; }
 .characters-item:hover, .characters-anim:hover { background: #e8f1f1; }
@@ -771,7 +782,7 @@ pre { height: 120px; margin: 0; padding: 12px; overflow: auto; border-radius: 8p
 .characters-transport button:not(.solid) { padding: 2px 9px; font-size: 16px; }
 .characters-transport select { flex: none; width: auto; }
 .characters-frame-label { min-width: 70px; color: #4d6a71; font-size: 12px; font-variant-numeric: tabular-nums; text-align: right; }
-.dark .characters-list, .dark .characters-panel { border-color: #2f5468; background: #0d2231; }
+.dark .characters-panel { border-color: #2f5468; background: #0d2231; }
 .dark :is(.characters-item, .characters-anim, .characters-compare) { color: #cfe3e8; }
 .dark :is(.characters-item, .characters-anim):hover { background: #16354a; }
 

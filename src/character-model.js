@@ -1,11 +1,7 @@
 'use strict';
-// The Characters page's models: Mario from the player's disc and each
-// character pack in the game's mods/characters/ (a folder <id>/ with
-// model.szs and name.txt, or a loose <id>.szs), each with all of the
-// animations in its archive.
-const fs = require('node:fs');
-const path = require('node:path');
-const { Disc } = require('./disc');
+// The Characters page's models: each character of the roster (character-roster.js) as the game
+// draws it, from its archive (Mario's from the disc), with all of the animations in it. A
+// character with a look model (Shadow Mario) is drawn as that model, posed by the same joints.
 const { rarc, yaz0 } = require('./archive');
 const j3d = require('./j3d');
 const { bake } = require('./mario-model');
@@ -14,41 +10,10 @@ const MODEL = 'bmd/ma_mdl1.bmd';
 // The body model's Shine shirt, shown only once Mario has it.
 const ALOHA_SHAPE = 10;
 
-function packsDirectory(root) { return path.join(root, 'mods', 'characters'); }
-
-// Mario first, then the packs by name. `file` is the pack's archive (none for Mario).
-function listCharacters(root) {
-  const list = [{ id: 'mario', name: 'Mario', file: null }];
-  const directory = root ? packsDirectory(root) : null;
-  if (!directory || !fs.existsSync(directory)) return list;
-  const packs = [];
-  for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
-    if (entry.isDirectory()) {
-      const file = path.join(directory, entry.name, 'model.szs');
-      if (!fs.existsSync(file)) continue;
-      let name = entry.name;
-      try { name = fs.readFileSync(path.join(directory, entry.name, 'name.txt'), 'utf8').trim() || name; } catch (_) {}
-      packs.push({ id: entry.name, name, file });
-    } else if (/\.szs$/i.test(entry.name)) {
-      const id = entry.name.replace(/\.szs$/i, '');
-      if (!packs.some(pack => pack.id === id)) packs.push({ id, name: id, file: path.join(directory, entry.name) });
-    }
-  }
-  packs.sort((a, b) => a.name.localeCompare(b.name));
-  return list.concat(packs);
-}
-
-function readFiles(rom, character) {
-  if (character.file) return rarc(yaz0(fs.readFileSync(character.file)));
-  const disc = new Disc(rom);
-  try { return rarc(disc.file('data/mario.szs')); }
-  finally { disc.close(); }
-}
-
 // The body model as the viewer draws it, and the names of the animations.
-function loadCharacter(character, files) {
+function loadCharacter(character, files, look = null) {
   if (!files.has(MODEL)) throw new Error(`${character.name}'s archive has no ${MODEL}.`);
-  const model = j3d.parseBmd(files.get(MODEL));
+  const model = j3d.parseBmd(look || files.get(MODEL));
   const textures = [], byIndex = new Map();
   const textureFor = index => {
     const source = model.textures[index];
@@ -61,11 +26,13 @@ function loadCharacter(character, files) {
   };
   const shapes = [];
   model.shapes.forEach((shape, i) => {
-    if (i === ALOHA_SHAPE || !shape.index.length) return;
+    if ((!look && i === ALOHA_SHAPE) || !shape.index.length) return;
     const material = model.materials[shape.material] || {};
     const texture = material.textures ? textureFor(material.textures[0]) : -1;
     shapes.push({ position: shape.position, normal: shape.normal, uv: shape.uv, color: texture < 0 && shape.hasColor ? shape.color : null,
-      drawIndex: shape.drawIndex, index: shape.index, texture, doubleSided: material.cull === 0, translucent: material.mode === 4,
+      drawIndex: shape.drawIndex, index: shape.index, texture, doubleSided: material.cull === 0, translucent: Boolean(look) || material.mode === 4,
+      // a look model's own colours come from the screen behind it in the game (Shadow Mario): a deep blue here
+      tint: look ? 0x3d4fb8 : null,
       alphaTest: material.alphaTest?.comp0 === 6 ? material.alphaTest.ref0 / 255 : 0 });
   });
   const toon = model.textures.find(t => /toon/i.test(t.name));
@@ -97,25 +64,22 @@ function toonBands({ rgba }) {
   return [low / 255, high / 255];
 }
 
-// Characters read once while the launcher runs, by archive and its time stamp
-// (a pack made again is read again).
+// Characters read once while the launcher runs, made again when their archive changes (a new build).
 function createCache() {
   const cache = new Map();
-  const key = (rom, character) => {
-    if (!character.file) return `disc:${rom}`;
-    return `${character.file}:${fs.statSync(character.file).mtimeMs}`;
-  };
   return {
-    get(rom, character) {
-      const k = key(rom, character);
-      if (!cache.has(k)) {
-        const files = readFiles(rom, character);
-        cache.set(k, { files, model: loadCharacter(character, files) });
+    // `read` gives the character's { model, look } archives when they aren't held yet
+    get(character, stamp, read) {
+      const key = `${character.id}:${stamp}`;
+      if (!cache.has(key)) {
+        for (const k of cache.keys()) if (k.startsWith(`${character.id}:`)) cache.delete(k);
+        const { model, look } = read(), files = rarc(yaz0(model));
+        cache.set(key, { files, model: loadCharacter(character, files, look) });
       }
-      return cache.get(k);
+      return cache.get(key);
     },
     clear() { cache.clear(); },
   };
 }
 
-module.exports = { listCharacters, readFiles, loadCharacter, loadAnimation, createCache, packsDirectory };
+module.exports = { loadCharacter, loadAnimation, createCache };

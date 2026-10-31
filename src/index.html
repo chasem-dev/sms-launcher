@@ -120,9 +120,15 @@
       </div>
       </section>
       <section id="page-characters" class="page sheet characters-page" aria-label="Characters" hidden>
-      <div class="modal-head"><div><h1>Characters</h1><p>Each character as its archive draws it, in any of Mario's animations. Drag to turn, right-drag to move up and down, scroll to zoom.</p></div></div>
+      <div class="modal-head"><div><h1>Characters</h1><p>Who you play as. Each is made from your own disc the first time you choose it. In the game, F4 switches between them. Drag to turn, scroll to zoom.</p></div></div>
       <div class="characters-body">
-        <div id="characters-list" class="characters-list" aria-label="Characters"></div>
+        <div class="characters-side">
+          <div id="characters-list" class="characters-list" aria-label="Characters"></div>
+          <div class="characters-actions">
+            <button id="characters-play-as" class="solid" hidden></button>
+            <p id="characters-about" class="characters-about"></p>
+          </div>
+        </div>
         <div class="characters-stage-wrap">
           <canvas id="characters-stage" class="characters-stage" tabindex="0" aria-label="The character, drag or use the arrow keys to turn it"></canvas>
           <div id="characters-status" class="mario-status" role="status" hidden><span class="mario-loader" aria-hidden="true"></span><span id="characters-status-text"></span></div>

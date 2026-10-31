@@ -118,7 +118,7 @@ async function renderer(data = state(), copyError = null, notes = { releases: []
     vm.runInContext('window.smsAchievementsRefresh(current)', context);
     await new Promise(setImmediate);
   }
-  return { elements, calls, droppedFiles, listeners, changelogSeen, modsSeen, gamepad,
+  return { elements, window: context.window, calls, droppedFiles, listeners, changelogSeen, modsSeen, gamepad,
     async emitLog(entry) { logCallback(entry); await new Promise(setImmediate); },
     async resetLog(sequence) { resetCallback(sequence); await new Promise(setImmediate); },
     async emitActivity(active) { activityCallback(active); await new Promise(setImmediate); },
@@ -669,10 +669,10 @@ test('the Customize Mario banner shows once a disc is chosen', async () => {
 
 test('the tabs show one page at a time and mark it', async () => {
   const ui = await renderer();
-  const sections = ['page-home', 'multiplayer', 'mario-look', 'page-saves', 'changelog', 'page-settings'];
+  const sections = ['page-home', 'multiplayer', 'page-characters', 'mario-look', 'page-saves', 'changelog', 'page-settings'];
   const visible = () => sections.filter(id => !ui.elements.get(id).hidden);
   assert.deepEqual(visible(), ['page-home']);
-  for (const [nav, section] of [['nav-saves', 'page-saves'], ['open-multiplayer', 'multiplayer'], ['customize-mario', 'mario-look'],
+  for (const [nav, section] of [['nav-saves', 'page-saves'], ['open-multiplayer', 'multiplayer'], ['customize-mario', 'page-characters'],
     ['settings-cog', 'page-settings'], ['nav-play', 'page-home']]) {
     await ui.click(nav);
     assert.deepEqual(visible(), [section]);
@@ -680,6 +680,10 @@ test('the tabs show one page at a time and mark it', async () => {
     assert.equal(ui.elements.get(nav)['aria-current'], 'page');
   }
   assert.equal(ui.elements.get('settings-cog').classList.contains('active'), false);
+  // Mario's colours are a page of the Character tab, which stays marked
+  ui.window.smsShowPage('mario');
+  assert.deepEqual(visible(), ['mario-look']);
+  assert.equal(ui.elements.get('customize-mario').classList.contains('active'), true);
 });
 
 test('a hosted room shows under Play and on Multiplayer, and goes when the game ends', async () => {

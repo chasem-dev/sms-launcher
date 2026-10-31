@@ -20,12 +20,12 @@ function closeModal() {
 // returning false keeps the page closed (Achievements asks for its icons first).
 const pages = {
   play: { section: 'page-home', nav: 'nav-play' }, multiplayer: { section: 'multiplayer', nav: 'open-multiplayer' },
-  mario: { section: 'mario-look', nav: 'customize-mario' },
-  characters: { section: 'page-characters', nav: 'nav-characters' },
+  // the Character tab opens the character picker; Mario's colours are a page of it
+  characters: { section: 'page-characters', nav: 'customize-mario' }, mario: { section: 'mario-look', nav: 'customize-mario', sub: true },
   achievements: { section: 'page-achievements', nav: 'nav-achievements' }, saves: { section: 'page-saves', nav: 'nav-saves' },
   changelog: { section: 'changelog', nav: 'open-changelog' }, settings: { section: 'page-settings', nav: 'settings-cog' }
 };
-const pageOrder = Object.keys(pages);
+const pageOrder = Object.keys(pages).filter(name => !pages[name].sub);
 let page = 'play';
 const pageHooks = {};
 function onPage(name, hooks) { pageHooks[name] = { ...pageHooks[name], ...hooks }; }
@@ -40,15 +40,18 @@ function showPage(name) {
   }
   for (const [key, item] of Object.entries(pages)) {
     $(item.section).hidden = key !== name;
-    $(item.nav).classList.toggle('active', key === name);
-    if (key === name) $(item.nav).setAttribute('aria-current', 'page');
+    if (item.sub) continue;  // its tab is its parent page's
+    const current = item.nav === pages[name].nav;
+    $(item.nav).classList.toggle('active', current);
+    if (current) $(item.nav).setAttribute('aria-current', 'page');
     else $(item.nav).removeAttribute('aria-current');
   }
   if (name !== previous) pageHooks[name]?.show?.();
   // An expanded log covers the page: picking one shrinks it back to the drawer.
   if (consoleExpanded) { consoleExpanded = false; setConsoleOpen(true); }
 }
-for (const [name, item] of Object.entries(pages)) $(item.nav).addEventListener('click', () => showPage(name));
+for (const [name, item] of Object.entries(pages)) if (!item.sub) $(item.nav).addEventListener('click', () => showPage(name));
+window.smsShowPage = showPage;
 
 // Settings is one page with a tab per section; it reopens on the last one shown.
 const settingsTabs = ['gameplay', 'display', 'graphics', 'controls', 'manage', 'mods', 'launcher', 'credits'];
@@ -687,7 +690,7 @@ for (const id of ['play-room-copy', 'mp-room-copy']) $(id).addEventListener('cli
 // open, and says so there if the computer can't draw him.
 function showCustomizeMario() {
   $('customize-mario').hidden = !current?.romReady;
-  if ($('customize-mario').hidden && page === 'mario') showPage('play');
+  if ($('customize-mario').hidden && (page === 'mario' || page === 'characters')) showPage('play');
 }
 
 function refresh(data) {
@@ -2271,7 +2274,9 @@ function stepPage(step) {
     return;
   }
   const shown = pageOrder.filter(name => !$(pages[name].nav).hidden);
-  const target = shown[shown.indexOf(page) + step];
+  // a page of another (Mario's colours) counts as its tab's
+  const at = pages[page].sub ? pageOrder.find(name => pages[name].nav === pages[page].nav) : page;
+  const target = shown[shown.indexOf(at) + step];
   if (!target) return;
   showPage(target);
   $(pages[target].nav).focus();

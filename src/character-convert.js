@@ -238,8 +238,10 @@ const ALIGN_MAX_DEG = 35;
 const SHAPE_JOINT = ['M_head', 'M_head', 'M_head', 'M_head', 'M_head_cap1', 'M_hand1_L', 'M_hand1_R', 'M_foot_R', 'M_foot_L', null, null];
 
 class Character {
-  constructor(model, labels, sms, height) {
+  constructor(model, labels, sms, height, chestOffset = null, unitScale = 1) {
     Object.assign(this, model);
+    this.chestOffset = chestOffset;
+    this.unitScale = unitScale;
     this.sms = sms;
     this.jnames = sms.joints.map(j => j.name);
     this.jidx = Object.fromEntries(this.jnames.map((n, i) => [n, i]));
@@ -276,7 +278,7 @@ class Character {
   standOnFloor(height) {
     let lo = [Infinity, Infinity, Infinity], hi = [-Infinity, -Infinity, -Infinity];
     for (const m of this.meshes) for (let v = 0; v < m.pos.length; v += 3) for (let k = 0; k < 3; k++) { lo[k] = Math.min(lo[k], m.pos[v + k]); hi[k] = Math.max(hi[k], m.pos[v + k]); }
-    const s = height ? height / (hi[1] - lo[1]) : 1;
+    const s = height ? height / (hi[1] - lo[1]) : this.unitScale || 1;
     const S = [s, 0, 0, -s * (lo[0] + hi[0]) / 2, 0, s, 0, -s * lo[1], 0, 0, s, -s * (lo[2] + hi[2]) / 2, 0, 0, 0, 1];
     this.world = this.world.map(w => mul(S, w));
     for (const m of this.meshes) for (let v = 0; v < m.pos.length; v += 3) m.pos.set(apply(S, [m.pos[v], m.pos[v + 1], m.pos[v + 2]]), v);
@@ -356,7 +358,7 @@ class Character {
     }
     const hips = this.first('hips'), spine = this.first('spine'), head = this.first('head');
     P.center = P.jnt_waist = this.pos(hips);
-    P.chn_chest = P.jnt_chest = spine !== null ? this.pos(spine) : P.center;
+    P.chn_chest = P.jnt_chest = add(spine !== null ? this.pos(spine) : P.center, this.chestOffset || [0, 0, 0]);
     for (const n of ['jnt_head', 'M_head_cap1', 'M_head']) P[n] = this.pos(head);
     P.eff_sldr_L = P.jnt_arm_L1;
     return [wmap, P];
@@ -1142,10 +1144,12 @@ function analyze(glbData) {
 // A model ({ parent, names, world, meshes, materials, vrm }) and a texture per material, made into the
 // archive: gown (a long skirt hiding the legs) brings refine.py's gown handling: the hem following the
 // thighs a little, the legs swinging less, somersaults as pirouettes, nothing tipping the gown over.
-function convertModel({ model, textures, marioSzs, labels, height = 150, curl = 75, gown = false, progress = () => {}, inspect = null }) {
+// chestOffset: where the chest joint goes from the model's spine joint ([x, y, z]); FLUDD hangs from it,
+// so a short character with a big head (Toad) has it moved back, out of the head.
+function convertModel({ model, textures, marioSzs, labels, height = 150, unitScale = 1, curl = 75, gown = false, chestOffset = null, progress = () => {}, inspect = null }) {
   const marioRaw = yaz0(marioSzs), files = rarc(marioRaw);
   const template = files.get(BODY), sms = j3d.parseBmd(template);
-  const ch = new Character(model, labels, sms, height);
+  const ch = new Character(model, labels, sms, height, chestOffset, unitScale);
   if (gown) gown = { sway: GOWN_SWAY, legs: GOWN_LEGS, ...(gown === true ? {} : gown) };
   if (gown) swayGown(ch, gown.sway, gown.wide);
   const { atlas, rects } = buildAtlas(textures, new Set(model.meshes.map(m => m.material)));
@@ -1248,17 +1252,19 @@ function convertModel({ model, textures, marioSzs, labels, height = 150, curl = 
 }
 
 // A glTF model (.glb, .vrm) made into a character archive.
-function convert({ glbData, images, marioSzs, labels, height = 150, curl = 75, progress = () => {} }) {
+// labels: null takes the guessed ones (analyze); height: null keeps the model's size times unitScale.
+function convert({ glbData, images = [], marioSzs, labels = null, height = 150, unitScale = 1, curl = 75, gown = false, chestOffset = null, progress = () => {}, inspect = null }) {
   progress('Reading the model');
   const glb = new Glb(glbData), model = readModel(glb);
-  return convertModel({ model, textures: materialTextures(glb, model.materials, images), marioSzs, labels, height, curl, progress });
+  if (!labels) labels = guessLabels(glb, model).labels;
+  return convertModel({ model, textures: materialTextures(glb, model.materials, images), marioSzs, labels, height, unitScale, curl, gown, chestOffset, progress, inspect });
 }
 
 // A model of the game's own (.bmd) made into a character archive: its body, with part models fixed to its
 // joints ({ data, joint, part: 'open' for an open hand, side }), labels by joint name, at its own size.
 // tints: { material name: [dark, light] }, colours the game puts on a grey texture per character
 // (TColorChangeInfo: a Toad's spots and vest), its dark parts the first and its light parts the second.
-function convertSunshine({ body, parts = [], labels, marioSzs, gown = false, tints = {}, progress = () => {}, inspect = null }) {
+function convertSunshine({ body, parts = [], labels, marioSzs, gown = false, tints = {}, chestOffset = null, progress = () => {}, inspect = null }) {
   progress('Reading the model');
   const bmd = j3d.parseBmd(body), joints = bmd.joints;
   const world = worlds(joints, joints.map(j => jointLocal(j.scale, j.rotation, j.translation)));
@@ -1309,7 +1315,7 @@ function convertSunshine({ body, parts = [], labels, marioSzs, gown = false, tin
     add(j3d.parseBmd(part.data), world[j], j, part.part ? { part: part.part, side: part.side } : {});
   }
   const byName = Object.fromEntries(Object.entries(labels).map(([name, label]) => [names.indexOf(name), label]).filter(([i]) => i >= 0));
-  return convertModel({ model: { parent, names, world, meshes, materials, vrm: new Map() }, textures, marioSzs, labels: byName, height: null, gown, progress, inspect });
+  return convertModel({ model: { parent, names, world, meshes, materials, vrm: new Map() }, textures, marioSzs, labels: byName, height: null, gown, chestOffset, progress, inspect });
 }
 
 module.exports = { analyze, convert, convertSunshine, guessRole, ROLES, SIDED, worlds, jointLocal, mul, inv, apply };

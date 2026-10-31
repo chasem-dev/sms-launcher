@@ -137,8 +137,13 @@ function renderList() {
   play.hidden = !character;
   play.disabled = !character || character.id === state.playing || state.eclipse;
   play.textContent = !character ? '' : character.id === state.playing ? `Playing as ${character.name}` : `Play as ${character.name}`;
+  // colours are Mario's alone
+  $('characters-colours').hidden = !character || character.id !== 'mario';
   $('characters-about').textContent = state.eclipse ? 'With Super Mario Eclipse on, the game plays as its own characters.' : character?.about || '';
 }
+
+$('characters-colours').addEventListener('click', () => window.smsShowPage('mario'));
+$('mario-characters').addEventListener('click', () => window.smsShowPage('characters'));
 
 $('characters-play-as').addEventListener('click', async () => {
   try {

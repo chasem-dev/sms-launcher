@@ -10,7 +10,7 @@ const crypto = require('node:crypto');
 const { Disc } = require('./disc');
 const { rarc, yaz0 } = require('./archive');
 const { withFolder } = require('./rarc-write');
-const { convertSunshine } = require('./character-convert');
+const { convert, convertSunshine } = require('./character-convert');
 
 // A built character's version: made again when its builder changes.
 const STAMP = '.launcher.json';
@@ -62,8 +62,8 @@ function peach(disc, progress, options = {}) {
 // Characters of the game's own on Mario's skeleton (character-convert.js: convertSunshine), each read
 // from the stage archive that has it; labels name the joints that move each part of the body.
 const sideLabels = (map) => Object.fromEntries(Object.entries(map).flatMap(([role, [l, r]]) => [[l, `${role}.L`], [r, `${role}.R`]]));
-function sunshineCharacter(stage, folder, body, labels, { parts = [], tints = {} } = {}) {
-  return (disc, progress) => {
+function sunshineCharacter(stage, folder, body, labels, { parts = [], tints = {}, chestOffset = null } = {}) {
+  return (disc, progress, options = {}) => {
     const files = rarc(yaz0(disc.file(`data/scene/${stage}.szs`)));
     const get = name => {
       const data = files.get(`${folder}/${name}`);
@@ -71,12 +71,17 @@ function sunshineCharacter(stage, folder, body, labels, { parts = [], tints = {}
       return data;
     };
     const { model } = convertSunshine({ body: get(body), labels, marioSzs: disc.file('data/mario.szs'), progress, tints,
+      chestOffset: options.chestOffset || chestOffset, inspect: options.inspect,
       parts: parts.map(p => ({ ...p, data: get(p.file) })) });
     return { 'model.szs': model };
   };
 }
 
 // Toad and Toadsworth share a rig: arms of two joints and a hand with fingers, a leg of one joint.
+// FLUDD hangs from the chest joint at Mario's size: on a Toad, short with a big cap, it sat inside the
+// back of the cap (14% of FLUDD in the head, Mario's own 3%); the chest joint 12 lower and 16 back puts it
+// behind the cap (0.3%), still on his back.
+const TOAD_CHEST = [0, -12, -16];
 const TOAD_LABELS = { jnt_lumber: 'hips', jnt_body: 'spine', kubi: 'head',
   ...sideLabels({ upperarm: ['jnt_larm_1', 'jnt_rarm_1'], forearm: ['jnt_larm_2', 'jnt_rarm_2'], hand: ['jnt_lhand', 'jnt_rhand'], thigh: ['jnt_lleg', 'jnt_rleg'] }) };
 // The game colours each Toad's spots and vest (NpcInitData.cpp: sKinopio_BodyColor, sKinopio_ClothColor);
@@ -95,17 +100,34 @@ function piantissimo(disc) {
   return { 'model.szs': withFolder(disc.file('data/mario.szs'), 'look', { 'default.bmd': look }) };
 }
 
+// Characters of our own, shipped as their models (characters/*.glb, from their .blend sources; no game
+// data in them) and made on Mario's skeleton like a model the player brings. Their rig is built at 50
+// game units to a Blender unit.
+function ownCharacter(file, options = {}) {
+  return (disc, progress, extra = {}) => {
+    const { model } = convert({ glbData: fs.readFileSync(path.join(__dirname, 'characters', file)), marioSzs: disc.file('data/mario.szs'),
+      height: null, unitScale: 50, progress, ...options, ...(extra.chestOffset ? { chestOffset: extra.chestOffset } : {}), inspect: extra.inspect });
+    return { 'model.szs': model };
+  };
+}
+// (Rivet's chest joint goes 6 lower and 6 back: FLUDD clears his head, 0.2% of it inside, Mario's own 3%.)
+// Roxxy's bell skirt, as Peach's gown
+const ROXXY_GOWN = { wide: true, sway: 0.35,
+  legs: { jnt_leg_L1: 0.3, jnt_leg_R1: 0.3, jnt_leg_L2: 0.15, jnt_leg_R2: 0.15, jnt_foot_L: 0.5, jnt_foot_R: 0.5 } };
+
 const ROSTER = [
   { id: 'mario', name: 'Mario', about: 'As on your disc.' },
   { id: 'princess-peach', name: 'Princess Peach', about: 'Delfino\'s Peach, gown and all, on Mario\'s moves.', version: 2, build: peach },
   { id: 'shadow-mario', name: 'Shadow Mario', about: 'The paintbrush impostor, see-through and shimmering, as he looks in Delfino Plaza.', version: 2, build: shadowMario },
+  { id: 'rivet-cap', name: 'Rivet', about: 'Our own Rivet, in his work cap.', version: 1, build: ownCharacter('rivet.glb', { chestOffset: [0, -6, -6] }) },
+  { id: 'roxxy', name: 'Roxxy', about: 'Our own Roxxy, crown and gown.', version: 1, build: ownCharacter('roxxy.glb', { gown: ROXXY_GOWN }) },
   { id: 'il-piantissimo', name: 'Il Piantissimo', about: 'The racer from Pianta Village, on Mario\'s skeleton as the game moves him.', version: 1, build: piantissimo },
   { id: 'bowser-jr', name: 'Bowser Jr.', about: 'Bowser\'s son, bandana and all, from Corona Mountain.', version: 1,
     build: sunshineCharacter('coronaBoss', 'koopajr', 'koopajr_model.bmd', BOWSER_JR_LABELS) },
-  { id: 'sunshine-toad', name: 'Toad', about: 'A Toad from Delfino Plaza.', version: 1,
-    build: sunshineCharacter('dolpic0', 'kinopio', 'kinopio_body.bmd', TOAD_LABELS, { tints: TOAD_COLOURS }) },
-  { id: 'toadsworth', name: 'Toadsworth', about: 'The princess\'s steward, from Delfino Plaza.', version: 1,
-    build: sunshineCharacter('dolpic0', 'kinojii', 'kinoji_body.bmd', TOAD_LABELS) },
+  { id: 'sunshine-toad', name: 'Toad', about: 'A Toad from Delfino Plaza.', version: 2,
+    build: sunshineCharacter('dolpic0', 'kinopio', 'kinopio_body.bmd', TOAD_LABELS, { tints: TOAD_COLOURS, chestOffset: TOAD_CHEST }) },
+  { id: 'toadsworth', name: 'Toadsworth', about: 'The princess\'s steward, from Delfino Plaza.', version: 2,
+    build: sunshineCharacter('dolpic0', 'kinojii', 'kinoji_body.bmd', TOAD_LABELS, { chestOffset: TOAD_CHEST }) },
 ];
 
 function packsDirectory(root) { return path.join(root, 'mods', 'characters'); }

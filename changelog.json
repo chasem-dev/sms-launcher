@@ -7,7 +7,8 @@
     ],
     "game": [
       "GameCube adapters on Linux and Steam Deck: an adapter in Wii U mode (Nintendo's or a Mayflash) now works in the game. Before, the game could open it but never started it, so its controllers did nothing, mostly after Allow access in Settings, Controls.",
-      "Installing into a folder with brackets in its name, such as Super Mario Sunshine (USA), no longer fails while building the game with \"syntax error near unexpected token\" on Linux, Steam Deck and Mac."
+      "Installing into a folder with brackets in its name, such as Super Mario Sunshine (USA), no longer fails while building the game with \"syntax error near unexpected token\" on Linux, Steam Deck and Mac.",
+      "Mods: the game has mod API 1.6 beta 2. Mods can offer every episode of a world from the start, or start the episode select on another episode; have a Shine taken without its Shine Get, so Mario stays in the stage (a randomizer giving something else for it); and change or stop spin jumps like any other move. The warp menu and loading a save state are no longer reported to mods as walking through a pipe or painting, so mods that shuffle stages leave them alone."
     ]
   },
   "releases": [

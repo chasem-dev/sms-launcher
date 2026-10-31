@@ -236,7 +236,7 @@ function savedMultiplayer(saved) {
     .map(item => ({ address: item.address.slice(0, 255), port: item.port, name: multiplayer.playerName(item.name, '') }));
   return { name: multiplayer.playerName(value.name, ''), address: typeof value.address === 'string' ? value.address.slice(0, 255) : '',
     hostPort: portOr(value.hostPort), joinPort: portOr(value.joinPort), maxPlayers: mostOr(value.maxPlayers),
-    public: value.public === true, collision: value.collision === true, recent };
+    public: value.public === true, collision: value.collision === true, achievements: value.achievements === true, recent };
 }
 
 function loadConfig() {
@@ -1353,9 +1353,13 @@ async function play(installation = null, session = null) {
   env.SMS_SETTINGS_SAVE = gameSettings.file(app.getPath('userData'));
   // Unlocks are the player's, in the launcher's folder, so they survive a new game folder.
   // Eclipse's are its own (achievements-eclipse.txt), as are its icons.
-  if (achievements.supported(root, settings)) env.SMS_ACHIEVEMENTS = achievements.file(app.getPath('userData'), settings.eclipse);
+  // Online, only with Earn achievements online on: without SMS_ACHIEVEMENTS the game unlocks none.
+  const earning = achievements.earned(session, config.multiplayer?.achievements);
+  if (!earning && achievements.supported(root, settings))
+    log('Achievements are off in this online game. Turn on Earn achievements online on the Online page to unlock them while playing together.');
+  if (earning && achievements.supported(root, settings)) env.SMS_ACHIEVEMENTS = achievements.file(app.getPath('userData'), settings.eclipse);
   // The achievements' icons (updateAchievementIcons), for the game's banner.
-  const icons = iconStore.folder(app.getPath('userData'), root, settings.eclipse);
+  const icons = earning && iconStore.folder(app.getPath('userData'), root, settings.eclipse);
   if (icons) env.SMS_ACHIEVEMENT_ICONS = icons;
   if (config.settings.discordPresence) env.SMS_PRESENCE = '1';
   const look = marioLookPack(rom, disc, root, settings);
@@ -1380,7 +1384,7 @@ async function play(installation = null, session = null) {
     : port.commandFor(root, 'run', [disc], process.platform, env);
   const startedAt = Date.now();
   startPresence(startedAt, settings.eclipse);
-  onAchievement = line => announceAchievement(root, line);
+  onAchievement = earning ? line => announceAchievement(root, line) : null;
   onGameLine = line => noteRenderer(line, settings);
   try {
     return await launch(cmd.command, cmd.args, { cwd: cmd.cwd, env: cmd.env }, 'Play Super Mario Sunshine', true);
@@ -1573,6 +1577,7 @@ function saveMultiplayer(input = {}, { strict = true } = {}) {
     maxPlayers: mostField(input.maxPlayers, config.multiplayer.maxPlayers ?? multiplayer.DEFAULT_MAX_PLAYERS),
     public: typeof input.public === 'boolean' ? input.public : config.multiplayer.public === true,
     collision: typeof input.collision === 'boolean' ? input.collision : config.multiplayer.collision === true,
+    achievements: typeof input.achievements === 'boolean' ? input.achievements : config.multiplayer.achievements === true,
     recent: config.multiplayer.recent || [] };
   config.multiplayer = value;
   saveConfig();

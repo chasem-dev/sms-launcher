@@ -75,6 +75,11 @@ function state(root, settings, userData) {
   return { supported: true, counted, eclipse, achievements, unlocked: achievements.filter(item => item.unlockedAt).length, total: achievements.length };
 }
 
+// Whether this game earns achievements: alone and split-screen on one computer always do; an online game
+// (`session` hosted or joined) only when the player turned on Earn achievements online, as the others can
+// get them for you there.
+function earned(session, online = false) { return !session || session.mode === 'coop' || online === true; }
+
 function iconFile(iconDirectory, id) { return path.join(iconDirectory, `${Number(id)}.png`); }
 
-module.exports = { PREFIX, isLine, parseLine, file, bundledFile, readUnlocks, readList, supported, state, iconFile };
+module.exports = { PREFIX, isLine, parseLine, file, bundledFile, readUnlocks, readList, supported, state, earned, iconFile };

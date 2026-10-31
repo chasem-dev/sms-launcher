@@ -75,6 +75,7 @@
         <div class="mp-columns"><div class="mp-column">
         <div class="settings-group">
           <label class="field"><span>Your name<small>The others see it in their player list.</small></span><input id="mp-name" class="mp-input" type="text" maxlength="23" spellcheck="false" autocomplete="off" placeholder="Player"></label>
+          <label class="switch mp-public-switch"><span><strong>Earn achievements online</strong><small>Off: achievements don't unlock while you host or join a game, as the others can get them for you. Playing alone or split-screen still unlocks them.</small></span><input id="mp-achievements" type="checkbox"><i></i></label>
         </div>
         <section class="mp-section mp-network" aria-labelledby="mp-network-title">
           <div class="mp-network-head"><h2 id="mp-network-title">Your network</h2><span id="mp-nat-badge" class="mp-nat-badge">Checking…</span><button id="mp-nat-check" class="text-button">Check again</button></div>
@@ -143,7 +144,7 @@
       </section>
       <section id="page-achievements" class="page sheet achievements-page" aria-labelledby="achievements-title" hidden>
       <div class="modal-head achievements-head">
-        <div><h1 id="achievements-title">Achievements <span id="achievements-game" class="badge achievements-game" hidden>Super Mario Eclipse</span></h1><p>Unlocked as you play, whichever save you play. Warps, save states, cheats and mods don't count.</p></div>
+        <div><h1 id="achievements-title">Achievements <span id="achievements-game" class="badge achievements-game" hidden>Super Mario Eclipse</span></h1><p>Unlocked as you play, whichever save you play. Warps, save states, cheats and mods don't count, nor online games unless you allow them on the Online page.</p></div>
         <div class="achievements-summary" aria-live="polite">
           <div class="achievements-ring" id="achievements-ring"><strong id="achievements-percent">0%</strong></div>
           <div><strong id="achievements-count">0 of 0</strong><span id="achievements-latest">None unlocked yet</span></div>

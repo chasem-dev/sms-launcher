@@ -5,7 +5,8 @@
       "Achievements in dark mode: the page now goes dark with the rest of the launcher, instead of staying white. Unlocked achievements glow gold, locked ones sit back, and the filters, stage list and progress ring match."
     ],
     "game": [
-      "GameCube adapters on Linux and Steam Deck: an adapter in Wii U mode (Nintendo's or a Mayflash) now works in the game. Before, the game could open it but never started it, so its controllers did nothing, mostly after Allow access in Settings, Controls."
+      "GameCube adapters on Linux and Steam Deck: an adapter in Wii U mode (Nintendo's or a Mayflash) now works in the game. Before, the game could open it but never started it, so its controllers did nothing, mostly after Allow access in Settings, Controls.",
+      "Installing into a folder with brackets in its name, such as Super Mario Sunshine (USA), no longer fails while building the game with \"syntax error near unexpected token\" on Linux, Steam Deck and Mac."
     ]
   },
   "releases": [

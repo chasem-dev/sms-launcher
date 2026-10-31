@@ -23,6 +23,7 @@ contextBridge.exposeInMainWorld('sms', {
     return () => ipcRenderer.removeListener('character-build-progress', handler);
   },
   characterPlay: id => ipcRenderer.invoke('character-play', id),
+  characterFludd: () => ipcRenderer.invoke('character-fludd'),
   saveMarioLook: look => ipcRenderer.invoke('save-mario-look', look),
   relaunchLauncher: () => ipcRenderer.invoke('relaunch-launcher'),
   chooseRepo: () => ipcRenderer.invoke('choose-repo'),

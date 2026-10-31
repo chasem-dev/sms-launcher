@@ -2266,6 +2266,8 @@ function registerHandlers() {
     return characterRoster.list(root);
   });
   ipcMain.handle('character-model', (_event, id) => characterData(String(id)).model);
+  let fluddRig = null;
+  ipcMain.handle('character-fludd', () => (fluddRig ||= { rom: config.rom, rig: characterModel.loadFluddRig(port.validateRom(config.rom)) }).rig);
   ipcMain.handle('character-animation', (_event, id, name) => {
     const { files, model } = characterData(String(id));
     if (!model.animations.includes(name)) throw new Error(`There is no animation ${name}.`);

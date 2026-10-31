@@ -26,7 +26,7 @@ const order = name => (ORDER.includes(name) ? ORDER.indexOf(name) : ORDER.length
 const VIEWS = { front: [0, 0.1], side: [Math.PI / 2, 0.1], back: [Math.PI, 0.1], above: [0.6, 0.9] };
 
 const state = {
-  characters: [], id: null, playing: 'mario', eclipse: false, model: null, animation: 'ma_wait', clips: new Map(), mario: null, compare: 'off',
+  characters: [], id: null, playing: 'mario', eclipse: false, showFludd: true, fluddRig: null, model: null, animation: 'ma_wait', clips: new Map(), mario: null, compare: 'off',
   frame: 0, playing: true, speed: 1, filter: '',
 };
 let viewer = null, loading = null;
@@ -75,6 +75,7 @@ async function choose(id) {
     renderList();
   }
   setStatus('Reading the character…', true);
+  if (!state.fluddRig) state.fluddRig = await window.sms.characterFludd().catch(() => null);
   const model = await window.sms.characterModel(id);
   if (state.id !== id) return;
   state.model = model;
@@ -201,6 +202,7 @@ function step(by) {
   viewer?.redraw();
 }
 $('characters-speed').addEventListener('change', event => { state.speed = Number(event.target.value); });
+$('characters-fludd').addEventListener('change', event => { state.showFludd = event.target.checked; rebuild(); });
 $('characters-filter').addEventListener('input', event => { state.filter = event.target.value; renderAnimations(); });
 $('characters-compare').addEventListener('change', async event => {
   state.compare = event.target.value;
@@ -295,14 +297,60 @@ function createViewer(canvas) {
       disposables.push(geometry, material);
       return { shape, mesh, geometry };
     });
-    return { id, data, rig, group };
+    const figure = { id, data, rig, group };
+    if (state.showFludd && state.fluddRig && data.chest >= 0) addFludd(figure, ghost);
+    return figure;
+  }
+
+  // FLUDD on a figure, as the game hangs it from the chest joint, at the character's own size and place.
+  function addFludd(figure, ghost) {
+    const textures = state.fluddRig.textures.map(source => {
+      const texture = new THREE.DataTexture(new Uint8Array(source.rgba), source.width, source.height, THREE.RGBAFormat);
+      texture.colorSpace = THREE.SRGBColorSpace;
+      texture.wrapS = WRAP[source.wrapS] || THREE.ClampToEdgeWrapping;
+      texture.wrapT = WRAP[source.wrapT] || THREE.ClampToEdgeWrapping;
+      texture.magFilter = THREE.LinearFilter; texture.minFilter = THREE.LinearMipmapLinearFilter; texture.generateMipmaps = true;
+      texture.needsUpdate = true;
+      disposables.push(texture);
+      return texture;
+    });
+    const make = shape => {
+      const geometry = new THREE.BufferGeometry();
+      geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(shape.position.length), 3).setUsage(THREE.DynamicDrawUsage));
+      geometry.setAttribute('normal', new THREE.BufferAttribute(new Float32Array(shape.normal.length), 3).setUsage(THREE.DynamicDrawUsage));
+      geometry.setAttribute('uv', new THREE.BufferAttribute(shape.uv, 2));
+      if (shape.color) geometry.setAttribute('color', new THREE.BufferAttribute(shape.color, 4));
+      geometry.setIndex(new THREE.BufferAttribute(shape.index, 1));
+      const material = new THREE.MeshToonMaterial({ map: shape.texture >= 0 ? textures[shape.texture] : null, vertexColors: Boolean(shape.color),
+        transparent: ghost || shape.translucent, opacity: ghost ? 0.35 : 1, depthWrite: !ghost && !shape.translucent, depthTest: !ghost,
+        side: shape.doubleSided ? THREE.DoubleSide : THREE.FrontSide });
+      const mesh = new THREE.Mesh(geometry, material);
+      mesh.frustumCulled = false;
+      figure.group.add(mesh);
+      disposables.push(geometry, material);
+      return { shape, mesh, geometry };
+    };
+    figure.fludd = { pack: createRig(state.fluddRig.pack, make), nozzle: createRig(state.fluddRig.nozzle, make), place: figure.data.fludd };
+  }
+  const fluddBase = new THREE.Matrix4(), fluddStep = new THREE.Matrix4();
+  function poseFludd(figure) {
+    if (!figure.fludd) return;
+    const { pack, nozzle, place } = figure.fludd, chest = figure.rig.world[figure.data.chest];
+    // the character's place for it (port patch zzzzzz-character-05), then TWaterGun::setBaseTRMtx's roll
+    // (back up to 33.75 degrees, less as the chest leans) and the character's size for it
+    // (the chest joint's frame: x up the spine, y forward, z to the side; the tilt back turns about z, as the roll does)
+    fluddBase.copy(chest).multiply(fluddStep.makeTranslation(...place.offset)).multiply(fluddStep.makeRotationZ(-place.tilt * Math.PI / 180));
+    const roll = (-0x1800 + Math.abs(fluddBase.elements[1]) * 0x1800) * Math.PI / 0x8000;
+    fluddBase.multiply(fluddStep.makeRotationZ(roll)).multiply(fluddStep.makeScale(place.scale, place.scale, place.scale));
+    pack.pose(fluddBase);
+    nozzle.pose(pack.world[nozzle.attach.joint]);
   }
 
   const local = new THREE.Matrix4(), trs = new Float32Array(9);
   function pose(figure, frame) {
     const c = clip(figure.id);
     const jointCount = figure.data.joints.length;
-    if (!c) { figure.rig.pose(null); return; }
+    if (!c) { figure.rig.pose(null); poseFludd(figure); return; }
     const { frames, values } = c, f0 = Math.floor(frame) % frames, f1 = (f0 + 1) % frames, t = frame - Math.floor(frame);
     figure.rig.pose(null, j => {
       for (let k = 0; k < 9; k++) {
@@ -311,6 +359,7 @@ function createViewer(canvas) {
       }
       return jointMatrix(trs.subarray(0, 3), trs.subarray(3, 6), trs.subarray(6, 9), local);
     });
+    poseFludd(figure);
   }
 
   // Framed on the taller of the character and Mario, at rest.

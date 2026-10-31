@@ -187,4 +187,4 @@ function toonBands({ rgba }) {
   return [low / 255, high / 255];
 }
 
-module.exports = { loadMario, partOf, bake, fluddFiles, loadFludd, fluddShapes, loadSunglasses, NOZZLES, FLUDD, SUNGLASSES };
+module.exports = { loadMario, partOf, bake, rig, fluddFiles, loadFludd, fluddShapes, loadSunglasses, NOZZLES, FLUDD, SUNGLASSES };

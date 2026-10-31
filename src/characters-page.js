@@ -69,7 +69,8 @@ async function choose(id) {
   const character = state.characters.find(c => c.id === id);
   if (!character.ready) {
     setStatus(`Making ${character.name} from your disc…`, true);
-    state.characters = await window.sms.characterBuild(id);
+    const stop = window.sms.onCharacterBuildProgress(text => setStatus(`Making ${character.name} from your disc: ${text.toLowerCase()}…`, true));
+    try { state.characters = await window.sms.characterBuild(id); } finally { stop(); }
     if (state.id !== id) return;
     renderList();
   }

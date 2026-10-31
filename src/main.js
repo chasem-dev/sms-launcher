@@ -41,6 +41,7 @@ const displayScale = require('./display-scale');
 const marioModel = require('./mario-model');
 const characterModel = require('./character-model');
 const characterRoster = require('./character-roster');
+const { Worker } = require('node:worker_threads');
 const marioColors = require('./mario-colors');
 const marioPack = require('./mario-pack');
 const { relaunchOptions } = require('./relaunch');
@@ -2242,11 +2243,26 @@ function registerHandlers() {
   };
   ipcMain.handle('characters', () => ({ characters: characterRoster.list(charactersRoot()), selected: config.settings.character || 'mario',
     eclipse: Boolean(config.settings.eclipse), ready: Boolean(charactersRoot() && config.rom) }));
-  ipcMain.handle('character-build', (_event, id) => {
+  ipcMain.handle('character-build', async (event, id) => {
     const root = charactersRoot();
     if (!root) throw new Error('Set up the game first: characters are made into its mods/characters folder.');
-    characterRoster.build(root, port.validateRom(config.rom), String(id));
-    log(`Made ${characterRoster.find(String(id)).name} from your disc.`);
+    const character = characterRoster.find(String(id)), job = { root, rom: port.validateRom(config.rom), id: character.id };
+    const progress = text => { if (!event.sender.isDestroyed()) event.sender.send('character-build-progress', text); };
+    // off the main thread (a worker that can't start, as in some packaged builds, makes it here instead)
+    await new Promise((resolve, reject) => {
+      let started = false;
+      const here = () => { try { characterRoster.build(job.root, job.rom, job.id, progress); resolve(); } catch (error) { reject(error); } };
+      let worker;
+      try { worker = new Worker(path.join(__dirname, 'character-build-worker.js'), { workerData: job }); } catch (_) { here(); return; }
+      worker.on('message', message => {
+        started = true;
+        if (message.progress) progress(message.progress);
+        else if (message.error) reject(new Error(message.error));
+        else resolve();
+      });
+      worker.on('error', error => (started ? reject(error) : here()));
+    });
+    log(`Made ${character.name} from your disc.`);
     return characterRoster.list(root);
   });
   ipcMain.handle('character-model', (_event, id) => characterData(String(id)).model);

@@ -7,6 +7,8 @@ const j3d = require('./j3d');
 const { bake } = require('./mario-model');
 
 const MODEL = 'bmd/ma_mdl1.bmd';
+// A look model, drawn in the body's place (Shadow Mario).
+const LOOK = 'look/default.bmd';
 // The body model's Shine shirt, shown only once Mario has it.
 const ALOHA_SHAPE = 10;
 
@@ -68,13 +70,13 @@ function toonBands({ rgba }) {
 function createCache() {
   const cache = new Map();
   return {
-    // `read` gives the character's { model, look } archives when they aren't held yet
+    // `read` gives the character's archive when it isn't held yet
     get(character, stamp, read) {
       const key = `${character.id}:${stamp}`;
       if (!cache.has(key)) {
         for (const k of cache.keys()) if (k.startsWith(`${character.id}:`)) cache.delete(k);
-        const { model, look } = read(), files = rarc(yaz0(model));
-        cache.set(key, { files, model: loadCharacter(character, files, look) });
+        const files = rarc(yaz0(read()));
+        cache.set(key, { files, model: loadCharacter(character, files, files.get(LOOK) || null) });
       }
       return cache.get(key);
     },

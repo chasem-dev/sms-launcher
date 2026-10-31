@@ -17,6 +17,11 @@ contextBridge.exposeInMainWorld('sms', {
   characterModel: id => ipcRenderer.invoke('character-model', id),
   characterAnimation: (id, name) => ipcRenderer.invoke('character-animation', id, name),
   characterBuild: id => ipcRenderer.invoke('character-build', id),
+  onCharacterBuildProgress: listener => {
+    const handler = (_event, text) => listener(text);
+    ipcRenderer.on('character-build-progress', handler);
+    return () => ipcRenderer.removeListener('character-build-progress', handler);
+  },
   characterPlay: id => ipcRenderer.invoke('character-play', id),
   saveMarioLook: look => ipcRenderer.invoke('save-mario-look', look),
   relaunchLauncher: () => ipcRenderer.invoke('relaunch-launcher'),

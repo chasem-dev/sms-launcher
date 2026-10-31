@@ -30,6 +30,18 @@ test('a made character is ready until its builder changes, and keeps a voice the
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });
 
+test('a made character\'s own voice replaces the one before it', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'roster-'));
+  try {
+    const peach = roster.find('princess-peach'), voice = path.join(roster.packsDirectory(root), 'princess-peach', 'voice');
+    roster.install(root, peach, { 'model.szs': Buffer.from('archive'), 'voice/MV21_JUMP_SMALL_01.wav': Buffer.from('made') });
+    fs.writeFileSync(path.join(voice, 'MV_OLD.wav'), 'old');
+    roster.install(root, peach, { 'model.szs': Buffer.from('again'), 'voice/MV21_JUMP_SMALL_01.wav': Buffer.from('remade') });
+    assert.deepEqual(fs.readdirSync(voice), ['MV21_JUMP_SMALL_01.wav']);
+    assert.equal(fs.readFileSync(path.join(voice, 'MV21_JUMP_SMALL_01.wav'), 'utf8'), 'remade');
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
+});
+
 test('a pack of the player\'s own is never replaced by a made character', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'roster-'));
   try {

@@ -12,6 +12,7 @@ const { rarc, yaz0 } = require('./archive');
 const { withFolder } = require('./rarc-write');
 const { convert, convertSunshine } = require('./character-convert');
 const { writeFluddPlace } = require('./character-model');
+const { AAF, voiceFiles } = require('./character-voice');
 
 // A built character's version: made again when its builder changes.
 const STAMP = '.launcher.json';
@@ -115,20 +116,42 @@ function ownCharacter(file, options = {}) {
 const ROXXY_GOWN = { wide: true, sway: 0.35,
   legs: { jnt_leg_L1: 0.3, jnt_leg_R1: 0.3, jnt_leg_L2: 0.15, jnt_leg_R2: 0.15, jnt_foot_L: 0.5, jnt_foot_R: 0.5 } };
 
+// Their voices: waves of the game's bank 1 (w2ndLoad_0.aw) by id, the ones the game plays for each
+// one's voice sounds (found by playing each sound in the game), by what Mario's cues are said for
+// (character-voice.js). Il Piantissimo has his own jumps, talk and loss (NPC_VA_MTMAN_JUMP*, which the
+// game plays for his race jumps, NPC_VM_MTMAN_*) and a Pianta's voice (NPC_VM_CMNTM_*, NPC_VA_CMNTM_*)
+// for the rest. Shadow Mario talks with Mario's voice, as in the game; Bowser Jr.'s sounds in the game
+// are not a voice.
+const PEACH_VOICE = { moods: {  // NPC_VM_PEACH_*, NPC_VA_PEACH_CRY*, NPC_VA_PEACH_BREATH*
+  hop: [709, 704], cheer: [708, 704], hurt: [699, 700, 698], scream: [698, 707], shock: [705, 709], sad: [706], effort: [702, 703] } };
+const TOAD_VOICE = { moods: {  // NPC_VM_KINOP_*, NPC_VA_KINOP_*
+  hop: [585, 582, 587], cheer: [580, 585], hurt: [583, 578, 579], scream: [584], shock: [588, 581], sad: [586], effort: [578, 579], wet: [575, 576] } };
+const TOADSWORTH_VOICE = { moods: {  // NPC_VM_KINOJ_*, NPC_VA_KINOJ_*
+  hop: [570, 574], cheer: [572], hurt: [566, 567], scream: [566], shock: [573], sad: [573], wet: [568, 569] } };
+const PIANTISSIMO_VOICE = { moods: {
+  hop: [667, 668], cheer: [669, 661], hurt: [655, 654], scream: [656], shock: [656, 659], sad: [670, 660], effort: [647, 648] } };
+
 const ROSTER = [
   { id: 'mario', name: 'Mario', about: 'As on your disc.' },
-  { id: 'princess-peach', name: 'Princess Peach', about: 'Delfino\'s Peach, gown and all, on Mario\'s moves.', version: 2, build: peach },
+  { id: 'princess-peach', name: 'Princess Peach', about: 'Delfino\'s Peach, gown and all, on Mario\'s moves.', version: 3, voice: PEACH_VOICE, build: peach },
   { id: 'shadow-mario', name: 'Shadow Mario', about: 'The paintbrush impostor, see-through and shimmering, as he looks in Delfino Plaza.', version: 2, build: shadowMario },
   { id: 'rivet-cap', name: 'Rivet', about: 'Our own Rivet, in his work cap.', version: 2, build: ownCharacter('rivet.glb') },
   { id: 'roxxy', name: 'Roxxy', about: 'Our own Roxxy, crown and gown.', version: 1, build: ownCharacter('roxxy.glb', { gown: ROXXY_GOWN }) },
-  { id: 'il-piantissimo', name: 'Il Piantissimo', about: 'The racer from Pianta Village, on Mario\'s skeleton as the game moves him.', version: 1, build: piantissimo },
+  { id: 'il-piantissimo', name: 'Il Piantissimo', about: 'The racer from Pianta Village, on Mario\'s skeleton as the game moves him.', version: 2, voice: PIANTISSIMO_VOICE,
+    build: piantissimo },
   { id: 'bowser-jr', name: 'Bowser Jr.', about: 'Bowser\'s son, bandana and all, from Corona Mountain.', version: 1,
     build: sunshineCharacter('coronaBoss', 'koopajr', 'koopajr_model.bmd', BOWSER_JR_LABELS) },
-  { id: 'sunshine-toad', name: 'Toad', about: 'A Toad from Delfino Plaza.', version: 3, fludd: TOAD_FLUDD,
+  { id: 'sunshine-toad', name: 'Toad', about: 'A Toad from Delfino Plaza.', version: 4, fludd: TOAD_FLUDD, voice: TOAD_VOICE,
     build: sunshineCharacter('dolpic0', 'kinopio', 'kinopio_body.bmd', TOAD_LABELS, { tints: TOAD_COLOURS }) },
-  { id: 'toadsworth', name: 'Toadsworth', about: 'The princess\'s steward, from Delfino Plaza.', version: 3, fludd: TOAD_FLUDD,
+  { id: 'toadsworth', name: 'Toadsworth', about: 'The princess\'s steward, from Delfino Plaza.', version: 4, fludd: TOAD_FLUDD, voice: TOADSWORTH_VOICE,
     build: sunshineCharacter('dolpic0', 'kinojii', 'kinoji_body.bmd', TOAD_LABELS) },
 ];
+
+// data/nintendo.szs, which holds the sound setup (mSound.aaf).
+function nintendoArchive(disc) {
+  const data = disc.file('data/nintendo.szs');
+  return rarc(data.toString('ascii', 0, 4) === 'Yaz0' ? yaz0(data) : data);
+}
 
 function packsDirectory(root) { return path.join(root, 'mods', 'characters'); }
 
@@ -155,7 +178,11 @@ function build(root, rom, id, progress = () => {}) {
   if (!character.build) return;
   const disc = new Disc(rom);
   let files;
-  try { files = character.build(disc, progress); } finally { disc.close(); }
+  try {
+    files = character.build(disc, progress);
+    // the character's own voice from the disc (the port's character voices)
+    if (character.voice) Object.assign(files, voiceFiles(nintendoArchive(disc).get(AAF), file => disc.file(`audiores/banks/${file.toLowerCase()}`), character.voice));
+  } finally { disc.close(); }
   // FLUDD at the character's size and place (the port's patch zzzzzz-character-05)
   if (character.fludd) files['model.szs'] = withFolder(files['model.szs'], 'character', { 'fludd.bin': writeFluddPlace(character.fludd) });
   install(root, character, files);
@@ -170,11 +197,14 @@ function install(root, character, files) {
   const staging = path.join(directory, `.staging-${id}-${crypto.randomUUID()}`), old = `${target}.old-${crypto.randomUUID()}`;
   try {
     fs.mkdirSync(staging);
-    for (const [name, data] of Object.entries(files)) fs.writeFileSync(path.join(staging, name), data);
+    for (const [name, data] of Object.entries(files)) {
+      fs.mkdirSync(path.dirname(path.join(staging, name)), { recursive: true });
+      fs.writeFileSync(path.join(staging, name), data);
+    }
     fs.writeFileSync(path.join(staging, 'name.txt'), `${character.name}\n`);
     fs.writeFileSync(path.join(staging, STAMP), JSON.stringify({ version: character.version, builtAt: new Date().toISOString() }));
-    // a voice the player added stays
-    if (fs.existsSync(path.join(target, 'voice'))) fs.cpSync(path.join(target, 'voice'), path.join(staging, 'voice'), { recursive: true });
+    // a voice the player added to a character without one stays
+    if (!fs.existsSync(path.join(staging, 'voice')) && fs.existsSync(path.join(target, 'voice'))) fs.cpSync(path.join(target, 'voice'), path.join(staging, 'voice'), { recursive: true });
     if (fs.existsSync(target)) fs.renameSync(target, old);
     fs.renameSync(staging, target);
     fs.rmSync(old, { recursive: true, force: true });

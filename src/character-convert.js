@@ -253,7 +253,7 @@ class Character {
     }
     this.depth = depth;
     this.missing = ['hips', 'head'].filter(r => this.first(r) === null)
-      .concat(['L', 'R'].flatMap(S => ['upperarm', 'forearm', 'thigh', 'shin'].filter(r => this.first(r, S) === null).map(r => `${r}.${S}`)));
+      .concat(['L', 'R'].flatMap(S => ['upperarm', 'forearm', 'thigh'].filter(r => this.first(r, S) === null).map(r => `${r}.${S}`)));
     if (this.missing.length) throw new Error(`Label these bones first: ${this.missing.join(', ')}.`);
     this.standOnFloor(height);
     this.poseToRest();
@@ -343,9 +343,11 @@ class Character {
       const f = r => this.first(r, S);
       if (f('hand') === null && f('forearm') !== null)
         for (const c of this.children(f('forearm'))) if (!wmap.has(c)) wmap.set(c, `M_hand1_${S}`);
-      const th = f('thigh'), sh = f('shin'), ft = f('foot');
-      P[`jnt_leg_${S}1`] = this.pos(th); P[`jnt_leg_${S}2`] = this.pos(sh);
-      if (ft !== null) for (const n of ['chn_foot_', 'jnt_foot_', 'M_foot_']) P[n + S] = this.pos(ft);
+      const th = f('thigh'), sh = f('shin'), ft = f('foot'), hip = this.pos(th);
+      // a leg of one joint (Toad's): the knee halfway down and the ankle near the floor, under the hip
+      const ankle = ft !== null ? this.pos(ft) : [hip[0], hip[1] * 0.15, hip[2]];
+      P[`jnt_leg_${S}1`] = hip; P[`jnt_leg_${S}2`] = sh !== null ? this.pos(sh) : scale(add(hip, ankle), 0.5);
+      for (const n of ['chn_foot_', 'jnt_foot_', 'M_foot_']) P[n + S] = ankle;
       const a1 = f('upperarm'), a2 = f('forearm'), sl = f('shoulder');
       const p1 = this.pos(a1), p2 = this.pos(a2);
       const ph = this.handPos(S) || add(p2, scale(sub(p2, p1), 0.5));
@@ -1254,7 +1256,9 @@ function convert({ glbData, images, marioSzs, labels, height = 150, curl = 75, p
 
 // A model of the game's own (.bmd) made into a character archive: its body, with part models fixed to its
 // joints ({ data, joint, part: 'open' for an open hand, side }), labels by joint name, at its own size.
-function convertSunshine({ body, parts = [], labels, marioSzs, gown = false, progress = () => {}, inspect = null }) {
+// tints: { material name: [dark, light] }, colours the game puts on a grey texture per character
+// (TColorChangeInfo: a Toad's spots and vest), its dark parts the first and its light parts the second.
+function convertSunshine({ body, parts = [], labels, marioSzs, gown = false, tints = {}, progress = () => {}, inspect = null }) {
   progress('Reading the model');
   const bmd = j3d.parseBmd(body), joints = bmd.joints;
   const world = worlds(joints, joints.map(j => jointLocal(j.scale, j.rotation, j.translation)));
@@ -1264,16 +1268,23 @@ function convertSunshine({ body, parts = [], labels, marioSzs, gown = false, pro
     const texOf = new Map();
     model.shapes.forEach(shape => {
       if (!shape.index.length) return;
-      const material = model.materials[shape.material] || {}, texIndex = material.textures ? material.textures[0] : undefined;
-      const key = `${materials.length}:${texIndex}`;
-      if (!texOf.has(texIndex)) {
+      const material = model.materials[shape.material] || {}, tint = tints[material.name];
+      // a tinted material gets a texture of its own
+      const texIndex = material.textures ? material.textures[0] : undefined, texKey = tint ? `${texIndex}:${material.name}` : texIndex;
+      const key = `${materials.length}:${texKey}`;
+      if (!texOf.has(texKey)) {
         let t = model.textures[texIndex];
         // a part's placeholder texture is the body's, as the game sets it (H_peach_main_dummy: H_peach_main_s3tc)
         if (t && /_dummy$/.test(t.name)) t = bmd.textures.find(b => b.name.startsWith(t.name.replace(/_dummy$/, '_'))) || t;
-        texOf.set(texIndex, materials.length);
+        texOf.set(texKey, materials.length);
         materials.push(key);
-        textures.push(t ? { width: t.width, height: t.height, rgba: Uint8Array.from(t.rgba, (v, i) => (i % 4 === 3 ? 255 : v)) } :
-          { width: 16, height: 16, rgba: new Uint8Array(16 * 16 * 4).fill(255), plain: true });
+        const image = t ? { width: t.width, height: t.height, rgba: Uint8Array.from(t.rgba, (v, i) => (i % 4 === 3 ? 255 : v)) } :
+          { width: 16, height: 16, rgba: new Uint8Array(16 * 16 * 4).fill(255), plain: true };
+        if (tint) for (let i = 0; i < image.rgba.length; i += 4) {
+          const g = (image.rgba[i] + image.rgba[i + 1] + image.rgba[i + 2]) / 765;
+          for (let c = 0; c < 3; c++) image.rgba[i + c] = Math.round(tint[0][c] + (tint[1][c] - tint[0][c]) * g);
+        }
+        textures.push(image);
       }
       const W = worlds(model.joints, model.joints.map(j => jointLocal(j.scale, j.rotation, j.translation)));
       const n = shape.drawIndex.length, pos = new Float64Array(n * 3), nrm = new Float64Array(n * 3), weights = new Array(n);
@@ -1288,7 +1299,7 @@ function convertSunshine({ body, parts = [], labels, marioSzs, gown = false, pro
       }
       const tris = new Int32Array(shape.index.length);
       for (let t = 0; t < shape.index.length; t += 3) { tris[t] = shape.index[t]; tris[t + 1] = shape.index[t + 2]; tris[t + 2] = shape.index[t + 1]; }
-      meshes.push({ name: material.name || 'shape', pos, nrm, st: Float64Array.from(shape.uv), weights, tris, material: texOf.get(texIndex), ...extra });
+      meshes.push({ name: material.name || 'shape', pos, nrm, st: Float64Array.from(shape.uv), weights, tris, material: texOf.get(texKey), ...extra });
     });
   };
   add(bmd, I4(), null);

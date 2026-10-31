@@ -59,10 +59,53 @@ function peach(disc, progress, options = {}) {
   return { 'model.szs': model };
 }
 
+// Characters of the game's own on Mario's skeleton (character-convert.js: convertSunshine), each read
+// from the stage archive that has it; labels name the joints that move each part of the body.
+const sideLabels = (map) => Object.fromEntries(Object.entries(map).flatMap(([role, [l, r]]) => [[l, `${role}.L`], [r, `${role}.R`]]));
+function sunshineCharacter(stage, folder, body, labels, { parts = [], tints = {} } = {}) {
+  return (disc, progress) => {
+    const files = rarc(yaz0(disc.file(`data/scene/${stage}.szs`)));
+    const get = name => {
+      const data = files.get(`${folder}/${name}`);
+      if (!data) throw new Error(`Your disc has no ${folder}/${name} in ${stage}.`);
+      return data;
+    };
+    const { model } = convertSunshine({ body: get(body), labels, marioSzs: disc.file('data/mario.szs'), progress, tints,
+      parts: parts.map(p => ({ ...p, data: get(p.file) })) });
+    return { 'model.szs': model };
+  };
+}
+
+// Toad and Toadsworth share a rig: arms of two joints and a hand with fingers, a leg of one joint.
+const TOAD_LABELS = { jnt_lumber: 'hips', jnt_body: 'spine', kubi: 'head',
+  ...sideLabels({ upperarm: ['jnt_larm_1', 'jnt_rarm_1'], forearm: ['jnt_larm_2', 'jnt_rarm_2'], hand: ['jnt_lhand', 'jnt_rhand'], thigh: ['jnt_lleg', 'jnt_rleg'] }) };
+// The game colours each Toad's spots and vest (NpcInitData.cpp: sKinopio_BodyColor, sKinopio_ClothColor);
+// this is the classic Toad: red spots on white, a blue vest with orange trim.
+const TOAD_COLOURS = { _mat_cap: [[230, 0, 0], [230, 230, 230]], _mat_cloth: [[250, 150, 0], [30, 30, 200]] };
+const BOWSER_JR_LABELS = { bum_jnt: 'hips', chest_jnt: 'spine', head_jnt: 'head',
+  ...sideLabels({ upperarm: ['armupL_jnt', 'armupR_jnt'], forearm: ['armlowL_jnt', 'armlowR_jnt'], hand: ['handL_jnt', 'handR_jnt'],
+    thigh: ['legupL_jnt', 'legupR_jnt'], shin: ['leglowL_jnt', 'leglowR_jnt4'], foot: ['footL_jnt', 'footR_jnt'] }) };
+
+// Il Piantissimo: the game draws him on Mario's own skeleton (TEnemyMario's special model), so he is a
+// look model, as Shadow Mario is.
+function piantissimo(disc) {
+  const course = rarc(yaz0(disc.file('data/scene/monte5.szs')));
+  const look = course.get('map/map/pad/monteman_model.bmd');
+  if (!look) throw new Error('Your disc\'s Pianta Village has no Il Piantissimo.');
+  return { 'model.szs': withFolder(disc.file('data/mario.szs'), 'look', { 'default.bmd': look }) };
+}
+
 const ROSTER = [
   { id: 'mario', name: 'Mario', about: 'As on your disc.' },
   { id: 'princess-peach', name: 'Princess Peach', about: 'Delfino\'s Peach, gown and all, on Mario\'s moves.', version: 2, build: peach },
   { id: 'shadow-mario', name: 'Shadow Mario', about: 'The paintbrush impostor, see-through and shimmering, as he looks in Delfino Plaza.', version: 2, build: shadowMario },
+  { id: 'il-piantissimo', name: 'Il Piantissimo', about: 'The racer from Pianta Village, on Mario\'s skeleton as the game moves him.', version: 1, build: piantissimo },
+  { id: 'bowser-jr', name: 'Bowser Jr.', about: 'Bowser\'s son, bandana and all, from Corona Mountain.', version: 1,
+    build: sunshineCharacter('coronaBoss', 'koopajr', 'koopajr_model.bmd', BOWSER_JR_LABELS) },
+  { id: 'sunshine-toad', name: 'Toad', about: 'A Toad from Delfino Plaza.', version: 1,
+    build: sunshineCharacter('dolpic0', 'kinopio', 'kinopio_body.bmd', TOAD_LABELS, { tints: TOAD_COLOURS }) },
+  { id: 'toadsworth', name: 'Toadsworth', about: 'The princess\'s steward, from Delfino Plaza.', version: 1,
+    build: sunshineCharacter('dolpic0', 'kinojii', 'kinoji_body.bmd', TOAD_LABELS) },
 ];
 
 function packsDirectory(root) { return path.join(root, 'mods', 'characters'); }

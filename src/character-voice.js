@@ -161,8 +161,9 @@ const SILENCE = wav(new Int16Array(16), 32000);
 
 // A character's voice/ folder: { 'voice/<cue>.wav': WAV }. `voice` is { moods: { hop: [wave, ...], ... } },
 // waves of bank 1 by id, a cue's variants taking its mood's waves in turn; { mario: true }, Mario's
-// own waves; or { silent: true }, silence for every cue (snoring too). `pitch` plays them lower (under 1)
-// or higher.
+// own waves for every cue (snoring too), with `swap` { cue: other cue } saying each variant of a cue with
+// another cue's wave (Mario's MV21_JUMP_SMALL as his MV41_JUMP_T_01); or { silent: true }, silence for
+// every cue (snoring too). `pitch` plays them lower (under 1) or higher.
 function voiceFiles(aaf, readArchive, voice) {
   if (voice.silent) return Object.fromEntries(MARIO_CUES.map(([name]) => [`voice/${name}.wav`, SILENCE]));
   const archives = waveSystems(aaf)[1], cache = new Map(), read = new Map();
@@ -176,13 +177,13 @@ function voiceFiles(aaf, readArchive, voice) {
     }
     return cache.get(id);
   };
-  const files = {}, turn = new Map();
+  const files = {}, turn = new Map(), waveOf = new Map(MARIO_CUES);
   for (const [name, marioWave] of MARIO_CUES) {
     const base = cueBase(name), moods = CUE_MOODS[base];
-    if (!moods) continue;
+    if (!moods && !voice.mario) continue;
     const v = turn.get(base) || 0;
     turn.set(base, v + 1);
-    let id = marioWave;
+    let id = voice.mario && voice.swap?.[base] ? waveOf.get(voice.swap[base]) : marioWave;
     if (!voice.mario) {
       const mood = [...moods, ...FALLBACK].find(m => voice.moods[m]?.length);
       if (!mood) continue;

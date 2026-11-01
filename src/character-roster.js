@@ -169,6 +169,13 @@ const TOAD_VOICE = { moods: {  // NPC_VM_KINOP_*, NPC_VA_KINOP_*
   hop: [585, 582, 587], cheer: [580, 585], hurt: [583, 578, 579], scream: [584], shock: [588, 581], sad: [586], effort: [578, 579], wet: [575, 576] } };
 const TOADSWORTH_VOICE = { moods: {  // NPC_VM_KINOJ_*, NPC_VA_KINOJ_*
   hop: [570, 574], cheer: [572], hurt: [566, 567], scream: [566], shock: [573], sad: [573], wet: [568, 569] } };
+// Luigi as Super Mario Eclipse voices him (its player/voice.cpp): Mario's voice from the disc a little
+// lower (setPitch 0.95), his small, special and huge jumps said with Mario's MV41_JUMP_T_01, his small
+// actions and mid jumps with MV34_ACTION_T_01, his efforts and large jumps with MV38_EXERT_INST_T_01.
+const LUIGI_VOICE = { mario: true, pitch: 0.95, swap: {
+  MV21_JUMP_SMALL: 'MV41_JUMP_T_01', MV24_JUMP_SPECIAL: 'MV41_JUMP_T_01', MV25A_JUMP_HUGE: 'MV41_JUMP_T_01',
+  MV13_ACTION_SMALL: 'MV34_ACTION_T_01', MV22_JUMP_MID: 'MV34_ACTION_T_01',
+  MV15_EXERT_INST: 'MV38_EXERT_INST_T_01', MV23_JUMP_LARGE: 'MV38_EXERT_INST_T_01' } };
 const PIANTISSIMO_VOICE = { moods: {
   hop: [667, 668], cheer: [669, 661], hurt: [655, 654], scream: [656], shock: [656, 659], sad: [670, 660], effort: [647, 648] } };
 
@@ -181,9 +188,9 @@ const ROSTER = [
   { id: 'il-piantissimo', name: 'Il Piantissimo', about: 'The racer from Pianta Village, on Mario\'s skeleton as the game moves him.', version: 2, voice: PIANTISSIMO_VOICE,
     build: piantissimo },
   { id: 'luigi', name: 'Luigi', about: 'Super Mario Eclipse\'s Luigi, by the Super Mario Eclipse team, made from the Eclipse you set up. He moves as Mario does.',
-    version: `2-${ECLIPSE_RELEASE}`, from: 'eclipse', build: luigi },
+    version: `3-${ECLIPSE_RELEASE}`, from: 'eclipse', voice: LUIGI_VOICE, build: luigi },
   { id: 'shadow-luigi', name: 'Shadow Luigi', about: 'Luigi as the paintbrush impostor, see-through and shimmering as Shadow Mario is. Made from the Eclipse you set up.',
-    version: `2-${ECLIPSE_RELEASE}`, from: 'eclipse', build: shadowLuigi },
+    version: `3-${ECLIPSE_RELEASE}`, from: 'eclipse', voice: LUIGI_VOICE, build: shadowLuigi },
   { id: 'bowser-jr', name: 'Bowser Jr.', about: 'Bowser\'s son, bandana and all, from Corona Mountain.', version: 1,
     build: sunshineCharacter('coronaBoss', 'koopajr', 'koopajr_model.bmd', BOWSER_JR_LABELS) },
 ];

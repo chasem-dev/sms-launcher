@@ -81,3 +81,19 @@ test('a silent character says nothing for every cue, snoring too', () => {
   for (let i = 44; i < clip.length; i += 2) assert.equal(clip.readInt16LE(i), 0);
   assert.equal(files['voice/MV_IBIKI.wav'], clip);
 });
+
+test('Mario\'s own voice, pitched, with cues said with others\' waves, snoring too', () => {
+  // every wave of Mario's cues, each a sample of its id
+  const ids = [...new Set(voice.MARIO_CUES.map(([, id]) => id))];
+  const waves = ids.map((id, i) => ({ id, format: 3, rate: 32000, offset: i * 2, size: 2, samples: 1 }));
+  const archive = Buffer.alloc(ids.length * 2);
+  ids.forEach((id, i) => archive.writeInt16BE(id, i * 2));
+  const files = voice.voiceFiles(aaf(wsys('w2ndLoad_0.aw', waves)), () => archive,
+    { mario: true, pitch: 0.95, swap: { MV21_JUMP_SMALL: 'MV41_JUMP_T_01' } });
+  const said = name => files[`voice/${name}.wav`]?.readInt16LE(44), cues = new Map(voice.MARIO_CUES);
+  assert.deepEqual(['MV21_JUMP_SMALL_01', 'MV21_JUMP_SMALL_02', 'MV41_JUMP_T_01'].map(said), Array(3).fill(cues.get('MV41_JUMP_T_01')));
+  assert.equal(said('MV01_DAMAGE_BIG_01'), cues.get('MV01_DAMAGE_BIG_01'));
+  assert.equal(said('MV_IBIKI'), cues.get('MV_IBIKI'));
+  assert.equal(Object.keys(files).length, voice.MARIO_CUES.length);
+  assert.equal(files['voice/MV01_DAMAGE_BIG_01.wav'].readUInt32LE(24), 30400);   // 32000 x 0.95
+});

@@ -166,12 +166,32 @@ function shadowScroll(btk, materials, shadowNames) {
   return writeFile(btk, chunks(btk).map(c => (c.type === 'TTK1' ? { type: 'TTK1', data } : c)));
 }
 
-// The body (a .bmd on Mario's skeleton) as Shadow Mario: the files of a character's look/ folder.
-function shadowLook(body, shadowBmd, shadowBtk) {
-  const { bmd, materials } = shadowModel(body, shadowBmd);
+// A copy of a model with these shapes drawing nothing: each of their display lists all GX no-ops (0x00).
+function withoutShapes(model, hidden) {
+  const out = Buffer.from(model);
+  const shp = chunks(out).find(c => c.type === 'SHP1');
+  if (!shp || !hidden.length) return out;
+  const at = shp.data.byteOffset - out.byteOffset, off = k => at + out.readUInt32BE(at + 0x0c + k * 4);
+  const entries = off(0), remap = off(1), dlData = off(5), packets = off(7);
+  for (const s of hidden) {
+    if (s >= out.readUInt16BE(at + 8)) continue;
+    const e = entries + out.readUInt16BE(remap + s * 2) * 0x28;
+    for (let p = 0, count = out.readUInt16BE(e + 2), first = out.readUInt16BE(e + 8); p < count; p++) {
+      const loc = packets + (first + p) * 8, start = dlData + out.readUInt32BE(loc + 4);
+      out.fill(0, start, start + out.readUInt32BE(loc));
+    }
+  }
+  return out;
+}
+
+// The body (a .bmd on Mario's skeleton) as Shadow Mario: the files of a character's look/ folder. `hide`:
+// the body's shapes left out (the game draws a look model whole).
+function shadowLook(body, shadowBmd, shadowBtk, { hide = [] } = {}) {
+  const { bmd: whole, materials } = shadowModel(body, shadowBmd);
+  const bmd = withoutShapes(whole, hide);
   const shadowMat = chunks(shadowBmd).find(c => c.type === 'MAT3').data;
   const shadowNames = readNames(shadowMat, shadowMat.readUInt32BE(0x14));
   return { 'default.bmd': bmd, 'kagemario_scroll.btk': shadowScroll(shadowBtk, materials, shadowNames) };
 }
 
-module.exports = { shadowLook, assign, chunks };
+module.exports = { shadowLook, withoutShapes, assign, chunks };

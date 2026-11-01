@@ -1,7 +1,7 @@
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { shadowLook, assign, chunks } = require('../src/shadow-look');
+const { shadowLook, withoutShapes, assign, chunks } = require('../src/shadow-look');
 
 const names = list => {
   const head = Buffer.alloc(4 + list.length * 4), strings = [];
@@ -83,4 +83,28 @@ test('a body drawn as Shadow Mario: its scene graph and shapes, his materials an
   assert.deepEqual([0, 1, 2].map(i => ttk[table + i * 54]), [0, 1, 1]);
   assert.deepEqual([0, 1, 2].map(i => ttk[ttk.readUInt32BE(0x24) + i * 12]), [0, 1, 1]);
   assert.equal(ttk.length % 32, 0);
+});
+
+// SHP1 with two shapes of one packet each, their display lists 'AAAA' and 'BBBB' (shape 1 first in the data).
+function shp1() {
+  const head = Buffer.alloc(0x30 - 8), entries = Buffer.alloc(2 * 0x28), remap = Buffer.from([0, 0, 0, 1]);   // u16 0, 1
+  const dl = Buffer.from('BBBBAAAA'), packets = Buffer.alloc(16);
+  entries.writeUInt16BE(1, 2); entries.writeUInt16BE(0, 8);            // shape 0: packet 0
+  entries.writeUInt16BE(1, 0x28 + 2); entries.writeUInt16BE(1, 0x28 + 8); // shape 1: packet 1
+  packets.writeUInt32BE(4, 0); packets.writeUInt32BE(4, 4);             // packet 0: 'AAAA'
+  packets.writeUInt32BE(4, 8); packets.writeUInt32BE(0, 12);            // packet 1: 'BBBB'
+  head.writeUInt16BE(2, 0);
+  const at = { entries: 0x30, remap: 0x30 + entries.length, dl: 0x30 + entries.length + remap.length };
+  at.packets = at.dl + dl.length;
+  head.writeUInt32BE(at.entries, 0x0c - 8); head.writeUInt32BE(at.remap, 0x10 - 8);
+  head.writeUInt32BE(at.dl, 0x20 - 8); head.writeUInt32BE(at.packets, 0x28 - 8);
+  return chunk('SHP1', Buffer.concat([head, entries, remap, dl, packets]));
+}
+
+test('a shape left out draws nothing: its display lists are all no-ops, the others as they were', () => {
+  const model = file('J3D2bmd3', [shp1()]);
+  const out = withoutShapes(model, [0]), dl = chunks(out)[0].data.subarray(0x30 + 0x50 + 4, 0x30 + 0x50 + 12);
+  assert.equal(dl.toString('latin1'), 'BBBB\0\0\0\0');
+  assert.equal(out.length, model.length);
+  assert.equal(chunks(model)[0].data.subarray(0x84, 0x8c).toString('latin1'), 'BBBBAAAA');   // the model given is kept
 });

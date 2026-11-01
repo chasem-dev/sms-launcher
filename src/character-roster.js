@@ -125,13 +125,16 @@ function luigi(disc, progress, { eclipse }) {
   return { 'model.szs': withFiles(mario, changed) };
 }
 // Shadow Luigi: Luigi (as above) with a look made of his body and the plaza's Shadow Mario's materials
-// (shadow-look.js), which the game draws as it draws Shadow Mario.
+// (shadow-look.js), which the game draws as it draws Shadow Mario. The game draws a look whole, so the
+// body's Shine shirt (shape 10, which it shows on the body only once Mario has the shirt) is left out of
+// it: he never wears it, as Shadow Mario doesn't.
+const SHIRT_SHAPE = 10;
 function shadowLuigi(disc, progress, options) {
   const { 'model.szs': model } = luigi(disc, progress, options);
   const plaza = rarc(yaz0(disc.file('data/scene/dolpic1.szs')));
   const shadow = plaza.get('kagemario/default.bmd'), scroll = plaza.get('kagemario/kagemario_scroll.btk');
   if (!shadow || !scroll) throw new Error('Your disc\'s Delfino Plaza has no Shadow Mario.');
-  return { 'model.szs': withFolder(model, 'look', shadowLook(rarc(yaz0(model)).get('bmd/ma_mdl1.bmd'), shadow, scroll)) };
+  return { 'model.szs': withFolder(model, 'look', shadowLook(rarc(yaz0(model)).get('bmd/ma_mdl1.bmd'), shadow, scroll, { hide: [SHIRT_SHAPE] })) };
 }
 // The Eclipse release a character comes from (its file's name): one made from another is made again.
 const ECLIPSE_RELEASE = (path.basename(ECLIPSE_ISO).match(/v\d+(?:\.\d+)*/) || ['eclipse'])[0];
@@ -180,7 +183,7 @@ const ROSTER = [
   { id: 'luigi', name: 'Luigi', about: 'Super Mario Eclipse\'s Luigi, by the Super Mario Eclipse team, made from the Eclipse you set up. He moves as Mario does.',
     version: `2-${ECLIPSE_RELEASE}`, from: 'eclipse', build: luigi },
   { id: 'shadow-luigi', name: 'Shadow Luigi', about: 'Luigi as the paintbrush impostor, see-through and shimmering as Shadow Mario is. Made from the Eclipse you set up.',
-    version: `1-${ECLIPSE_RELEASE}`, from: 'eclipse', build: shadowLuigi },
+    version: `2-${ECLIPSE_RELEASE}`, from: 'eclipse', build: shadowLuigi },
   { id: 'bowser-jr', name: 'Bowser Jr.', about: 'Bowser\'s son, bandana and all, from Corona Mountain.', version: 1,
     build: sunshineCharacter('coronaBoss', 'koopajr', 'koopajr_model.bmd', BOWSER_JR_LABELS) },
 ];

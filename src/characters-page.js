@@ -135,7 +135,7 @@ function renderList() {
     button.className = 'characters-item';
     button.innerHTML = '<span></span><small></small>';
     button.querySelector('span').textContent = name;
-    button.querySelector('small').textContent = id === state.playing ? 'Playing' : ready ? '' : 'Made from your disc when chosen';
+    button.querySelector('small').textContent = id === state.playing ? 'Playing' : ready ? '' : 'Not made yet';
     button.classList.toggle('playing', id === state.playing);
     button.setAttribute('aria-pressed', String(id === state.id));
     button.addEventListener('click', () => { if (id !== state.id) choose(id).catch(error => setStatus(error.message)); });

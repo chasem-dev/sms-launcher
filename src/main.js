@@ -1464,9 +1464,9 @@ function makeCharacter(root, rom, id, progress = () => {}) {
 
 // Online, each game draws the other players as the characters they play, from its own copy of each: every
 // character not made yet is made from the disc before the game starts (once; the Character tab makes them too).
-// One that can't be made is drawn as Mario; never in the way of playing.
+// One that can't be made (Luigi without Eclipse set up) is drawn as Mario; never in the way of playing.
 async function makeCharactersForOnline(root, rom) {
-  const missing = characterRoster.list(root).filter(character => character.id !== 'mario' && !character.ready);
+  const missing = characterRoster.list(root).filter(character => character.id !== 'mario' && !character.ready && character.makeable);
   if (!missing.length) return;
   log(`Making ${missing.length === 1 ? missing[0].name : `${missing.length} characters`} from your disc, so you see the others as who they play.`);
   for (const character of missing) {

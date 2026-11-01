@@ -114,12 +114,15 @@ async function makeAll() {
   if (makingAll || !state.setUp) return;
   makingAll = true;
   try {
-    for (let next; (next = state.characters.find(c => !c.ready && !failed.has(c.id)));) {
+    for (let next; (next = state.characters.find(c => !c.ready && c.makeable !== false && !failed.has(c.id)));) {
       try { await make(next.id); } catch (_) { failed.add(next.id); renderList(); }
     }
   } finally { makingAll = false; }
 }
 const failed = new Set();
+// One that can't be made yet: Luigi before Eclipse is set up (the only one from elsewhere than the disc).
+const needsEclipse = name => `${name} comes from Super Mario Eclipse. Turn on Super Mario Eclipse in Settings, Gameplay, and set it up once (it needs the North American disc): ${name} stays when you turn Eclipse off.`;
+const waiting = character => Boolean(character && !character.ready && character.makeable === false);
 
 async function refresh() {
   const { characters, selected, eclipse, ready } = await window.sms.characters();
@@ -144,6 +147,14 @@ async function choose(id) {
   renderList();
   if (colouring()) return;
   const character = state.characters.find(c => c.id === id);
+  if (waiting(character)) {
+    viewer?.dispose();
+    viewer = null;
+    state.model = null;
+    state.modelId = null;
+    setStatus(needsEclipse(character.name));
+    return;
+  }
   if (!character.ready) {
     setStatus(`Making ${character.name} from your disc…`, true);
     const stop = window.sms.onCharacterBuildProgress(text => setStatus(`Making ${character.name} from your disc: ${text.toLowerCase()}…`, true));
@@ -205,13 +216,13 @@ function rebuild() {
 
 function renderList() {
   const list = $('characters-list');
-  list.replaceChildren(...state.characters.map(({ id, name, ready }) => {
+  list.replaceChildren(...state.characters.map(({ id, name, ready, makeable }) => {
     const button = document.createElement('button');
     button.className = 'characters-item';
     button.innerHTML = '<span></span><small></small>';
     button.querySelector('span').textContent = name;
     button.querySelector('small').textContent = id === state.playing ? 'Playing' : building.has(id) ? 'Making…'
-      : !ready && failed.has(id) ? 'Couldn\'t be made' : '';
+      : !ready && failed.has(id) ? 'Couldn\'t be made' : !ready && makeable === false ? 'Needs Eclipse' : '';
     button.classList.toggle('playing', id === state.playing);
     button.setAttribute('aria-pressed', String(id === state.id));
     button.addEventListener('click', () => { if (id !== state.id) choose(id).catch(error => setStatus(error.message)); });
@@ -220,7 +231,7 @@ function renderList() {
   const character = state.characters.find(c => c.id === state.id);
   const play = $('characters-play-as');
   play.hidden = !character;
-  play.disabled = !character || character.id === state.playing || state.eclipse;
+  play.disabled = !character || character.id === state.playing || state.eclipse || waiting(character);
   play.textContent = !character ? '' : character.id === state.playing ? `Playing as ${character.name}` : `Play as ${character.name}`;
   $('characters-about').textContent = state.eclipse ? 'With Super Mario Eclipse on, the game plays as its own characters.' : character?.about || '';
 }

@@ -962,6 +962,8 @@ const PIROUETTE_DAMP = { jnt_waist: 0.3, jnt_leg_L1: 0.25, jnt_leg_R1: 0.25, jnt
 const NO_PIROUETTE = ['swim', 'sand'];
 // the gown's axis pointing down this much (cosine from up): upside down
 const GOWN_INVERTED = -0.2;
+// how far round (degrees) the body turns in a somersault, as against lying down
+const SOMERSAULT = 270;
 const DEG = 180 / Math.PI;
 const wrap180 = a => ((a + 180) % 360 + 360) % 360 - 180;
 
@@ -1063,6 +1065,8 @@ function pirouette(clip, anim, ch, joints) {
   };
   let m = measure();
   if (!m || Math.min(...m.ups.map(u => u[1])) > GOWN_INVERTED || Math.abs(m.k[1]) > 0.5) return false;
+  // only a turn right over (a flip); a body laid down (a belly slide, a fall on the back) stays down
+  if (Math.max(...m.th) - Math.min(...m.th) < SOMERSAULT) return false;
   dampLegs(anim, ch, PIROUETTE_DAMP);
   m = measure() || m;
   const sampled = axis => frames.map(t => j3d.sampleTrack(anim.joints[c][axis].rotation, t));
@@ -1107,9 +1111,38 @@ function clampGown(clip, anim, ch, joints) {
   return true;
 }
 
-function gownAnimation(ch, body, clip, data, counts, legs = GOWN_LEGS) {
+// Each upper arm brought in toward the body by `degrees`: on a slim character Mario's arms, held out
+// round his round middle, look raised. Less as the arm rises (none from ARM_LEVEL up: hanging, climbing,
+// jumping keep theirs), and never closer to the body than ARM_GAP.
+const ARM_LEVEL = 110, ARM_FADE = 40, ARM_GAP = 15;
+// and not where the hands hold on or hold something (ledges, fences, ladders, ropes, poles, what is
+// carried, FLUDD's handles, Yoshi, doors, a seat): there the hands stay where Mario's are
+const GRIP = /hang|hg|hold|hmov|fence|fepmp|ladder|laend|rope|tree|carry|raise|put|throw|push|door|pmp|pump|sq|spin_p|paddle|yo_|shell|belt|draw|sit|monteman|gate|bottle|shine/;
+function lowerArms(anim, ch, joints, degrees) {
+  const chest = ch.jidx.jnt_chest, L = lastKey(anim), frames = Array.from({ length: L + 1 }, (_, i) => i);
+  // a world matrix's turn, without scale
+  const turnOf = W => { const R = rot3(W), c = [0, 1, 2].map(k => norm([R[k], R[3 + k], R[6 + k]]) || 1); return R.map((x, i) => x / c[i % 3]); };
+  const turned = frames.map(t => {
+    const W = worlds(joints, animLocalsDeg(anim, joints, t)), down = scale(unit(r3apply(turnOf(W[chest]), [1, 0, 0])), -1);
+    return ['jnt_arm_L1', 'jnt_arm_R1'].map(name => {
+      const a = ch.jidx[name], P = turnOf(W[joints[a].parent]), A = turnOf(W[a]), along = unit(r3apply(A, [1, 0, 0]));
+      const angle = Math.acos(Math.max(-1, Math.min(1, dot(along, down)))) * DEG;
+      const by = Math.min(degrees * Math.max(0, Math.min(1, (ARM_LEVEL - angle) / ARM_FADE)), Math.max(0, angle - ARM_GAP));
+      const k = cross(along, down);
+      return r3mul(r3T(P), by > 0.01 && norm(k) > 1e-6 ? r3mul(axisAngle(k, by), A) : A);
+    });
+  });
+  ['jnt_arm_L1', 'jnt_arm_R1'].forEach((name, side) => {
+    let prev = null;
+    const out = turned.map(locals => (prev = euler(locals[side], prev)));
+    for (let axis = 0; axis < 3; axis++) setTrack(anim, ch.jidx[name], axis, 'rotation', frames, out.map(e => e[axis]));
+  });
+}
+
+function gownAnimation(ch, body, clip, data, counts, legs = GOWN_LEGS, arms = 0) {
   const anim = write.decodeBck(data);
   dampLegs(anim, ch, legs);
+  if (arms && !GRIP.test(clip)) lowerArms(anim, ch, body.joints, arms);
   if (pirouette(clip, anim, ch, body.joints)) counts.pirouettes++;
   if (clampGown(clip, anim, ch, body.joints)) counts.clamped++;
   return write.encodeBck(anim);
@@ -1220,7 +1253,7 @@ function convertModel({ model, textures, marioSzs, labels, height = 150, unitSca
   const retargeted = new Map(), gowned = { pirouettes: 0, clamped: 0 };
   for (const n of names) {
     let r = retargetBck(ch, files.get(n));
-    if (r && gown) r = gownAnimation(ch, body, n.slice(4, -4), r, gowned, gown.legs);
+    if (r && gown) r = gownAnimation(ch, body, n.slice(4, -4), r, gowned, gown.legs, gown.arms);
     if (r) retargeted.set(n, r);
   }
   // for checks (tools): the character, its posable body and the fitted animations

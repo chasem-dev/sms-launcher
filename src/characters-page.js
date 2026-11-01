@@ -16,7 +16,7 @@ const NAMES = {
   ma_wait: 'Standing', ma_run1: 'Running', ma_run2: 'Running (fast)', ma_jump: 'Jump', ma_2jmp1: 'Double jump',
   ma_tjmp1: 'Triple jump (rise)', ma_tjmp2: 'Triple jump (flip)', ma_hipat: 'Ground pound', ma_hang: 'Hanging from a ledge',
   ma_swim: 'Swimming', ma_swim_wait: 'Treading water', ma_sleep: 'Sleeping', ma_die: 'Losing a life', ma_roll: 'Roll',
-  ma_slip: 'Slipping', ma_dive_wait: 'Belly slide', ma_sit_wait: 'Sitting', ma_tree_climb: 'Climbing a pole',
+  ma_slip: 'Slipping', ma_sldct: 'Belly slide', ma_sit_wait: 'Sitting', ma_tree_climb: 'Climbing a pole',
   ma_fence_wait: 'On a fence', ma_rope_wait: 'On a tightrope', ma_demo_shine_get: 'Shine get', ma_pump: 'Spraying',
   ma_turn: 'Turning round', ma_brake: 'Skidding', ma_land: 'Landing', ma_jkick: 'Jump kick',
 };

@@ -167,9 +167,12 @@ test('new source snapshots share optional downloads and keep user settings in th
   fs.writeFileSync(path.join(root, 'mods', 'textures', 'tex1_test.png'), 'textures');
   fs.mkdirSync(path.join(root, 'mods', 'hd-cutscenes', 'files', 'data'), { recursive: true });
   fs.writeFileSync(path.join(root, 'mods', 'hd-cutscenes', 'files', 'data', 'openingA.thp'), 'installed HD movie');
+  fs.mkdirSync(path.join(root, 'mods', 'characters', 'my-own'), { recursive: true });
+  fs.writeFileSync(path.join(root, 'mods', 'characters', 'my-own', 'model.szs'), 'a character pack of the player\'s');
   fs.writeFileSync(path.join(root, 'settings.txt'), 'save_dir=./custom-saves');
   game.carryUserFiles(root, next);
   assert.equal(fs.readFileSync(path.join(next, 'settings.txt'), 'utf8'), 'save_dir=./custom-saves');
+  assert.equal(fs.readFileSync(path.join(next, 'mods', 'characters', 'my-own', 'model.szs'), 'utf8'), 'a character pack of the player\'s');
   assert.equal(fs.realpathSync(path.join(next, 'mods', 'textures')), fs.realpathSync(path.join(root, 'mods', 'textures')));
   assert.equal(fs.realpathSync(path.join(next, 'mods', 'hd-cutscenes')), fs.realpathSync(path.join(root, 'mods', 'hd-cutscenes')));
   assert.equal(fs.readFileSync(path.join(next, 'mods', 'hd-cutscenes', 'files', 'data', 'openingA.thp'), 'utf8'), 'installed HD movie');

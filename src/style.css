@@ -782,7 +782,7 @@ pre { height: 120px; margin: 0; padding: 12px; overflow: auto; border-radius: 8p
 .characters-transport button:not(.solid) { padding: 2px 9px; font-size: 16px; }
 .characters-transport select { flex: none; width: auto; }
 .characters-frame-label { min-width: 70px; color: #4d6a71; font-size: 12px; font-variant-numeric: tabular-nums; text-align: right; }
-.dark .characters-panel { border-color: #2f5468; background: #0d2231; }
+.dark :is(.characters-list, .characters-panel) { border-color: #2f5468; background: #0d2231; }
 .dark :is(.characters-item, .characters-anim, .characters-compare) { color: #cfe3e8; }
 .dark :is(.characters-item, .characters-anim):hover { background: #16354a; }
 

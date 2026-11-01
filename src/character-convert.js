@@ -1114,7 +1114,7 @@ function clampGown(clip, anim, ch, joints) {
 // Each upper arm brought in toward the body by `degrees`: on a slim character Mario's arms, held out
 // round his round middle, look raised. Less as the arm rises (none from ARM_LEVEL up: hanging, climbing,
 // jumping keep theirs), and never closer to the body than ARM_GAP.
-const ARM_LEVEL = 110, ARM_FADE = 40, ARM_GAP = 15;
+const ARM_LEVEL = 110, ARM_FADE = 40, ARM_GAP = 35;
 // and not where the hands hold on or hold something (ledges, fences, ladders, ropes, poles, what is
 // carried, FLUDD's handles, Yoshi, doors, a seat): there the hands stay where Mario's are
 const GRIP = /hang|hg|hold|hmov|fence|fepmp|ladder|laend|rope|tree|carry|raise|put|throw|push|door|pmp|pump|sq|spin_p|paddle|yo_|shell|belt|draw|sit|monteman|gate|bottle|shine/;

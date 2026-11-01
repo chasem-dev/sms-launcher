@@ -751,6 +751,11 @@ pre { height: 120px; margin: 0; padding: 12px; overflow: auto; border-radius: 8p
 
 /* Characters */
 .characters-body { flex: 1; min-height: 0; display: grid; grid-template-columns: 230px minmax(0, 1fr) 280px; }
+/* By default the tab is the character list and the character; Mario brings his colours. Animations adds the rest. */
+.characters-page:not(.animations) .characters-body { grid-template-columns: 230px minmax(0, 1fr); }
+.characters-page:not(.animations) :is(.characters-panel, .characters-views, .characters-transport) { display: none; }
+.characters-body > .mario-look-body { min-width: 0; }
+.characters-body > [hidden] { display: none; }
 .characters-list, .characters-panel { min-height: 0; overflow: auto; padding: 12px; background: #f8faf9; }
 .characters-side { display: flex; flex-direction: column; min-height: 0; border-right: 1px solid #dce7e6; background: #f8faf9; }
 .characters-list { flex: 1; display: flex; flex-direction: column; gap: 3px; }

@@ -111,25 +111,21 @@
         <p class="helper mp-rules">Shines, blue coins, red coins, coins and lives are shared, and everyone sees the host's enemies and each other's water. Only the host can take everyone to another area. A Shine collected by anyone takes everyone back out together. Out of lives, you watch the others until everyone is out, then the level starts again. Save states are off while playing together.</p>
       </div>
       </section>
-      <section id="mario-look" class="page sheet mario-look-page" aria-label="Customize Mario" hidden>
-      <div class="modal-head"><div><h1>Customize Mario</h1><p>Mario as he is on your disc. Drag to turn him around, scroll to zoom.</p></div><button id="mario-characters" class="subtle">‹ All characters</button></div>
-      <div class="mario-look-body">
-        <div class="mario-stage-wrap"><canvas id="mario-stage" class="mario-stage" tabindex="0" aria-label="Mario, drag or use the arrow keys to turn him"></canvas><div id="mario-status" class="mario-status" role="status" hidden><span class="mario-loader" aria-hidden="true"></span><span id="mario-status-text"></span><span id="mario-status-actions" class="actions mario-status-actions" hidden><button id="mario-retry" class="solid">Try again</button><button id="mario-relaunch" class="subtle">Restart launcher</button></span></div><p id="mario-preview-note" class="mario-preview-note">Your colours show in the game the next time it starts.</p></div>
-        <div class="mario-panel"><label class="switch mario-in-game"><span><strong>Use in the game</strong><small>Off: the game shows Mario as usual. Your colours stay here.</small></span><input id="mario-in-game" type="checkbox" checked><i></i></label><div id="mario-presets" class="mario-presets" role="group" aria-label="Presets"></div><div id="mario-regions"></div></div>
-      </div>
-      </section>
       <section id="page-characters" class="page sheet characters-page" aria-label="Characters" hidden>
-      <div class="modal-head"><div><h1>Character</h1><p>Who you play as. Each is made on your computer, from your own disc, the first time you choose it. In the game, F4 switches between them. Drag to turn, scroll to zoom.</p></div></div>
+      <div class="modal-head"><div><h1 id="characters-title">Character</h1><p id="characters-intro"></p></div><button id="characters-mode" class="subtle">Animations</button></div>
       <div class="characters-body">
         <div class="characters-side">
           <div id="characters-list" class="characters-list" aria-label="Characters"></div>
           <div class="characters-actions">
             <button id="characters-play-as" class="solid" hidden></button>
-            <button id="characters-colours" hidden>Customize Mario's colours</button>
             <p id="characters-about" class="characters-about"></p>
           </div>
         </div>
-        <div class="characters-stage-wrap">
+        <div id="mario-look" class="mario-look-body" aria-label="Mario's colours" hidden>
+          <div class="mario-stage-wrap"><canvas id="mario-stage" class="mario-stage" tabindex="0" aria-label="Mario, drag or use the arrow keys to turn him"></canvas><div id="mario-status" class="mario-status" role="status" hidden><span class="mario-loader" aria-hidden="true"></span><span id="mario-status-text"></span><span id="mario-status-actions" class="actions mario-status-actions" hidden><button id="mario-retry" class="solid">Try again</button><button id="mario-relaunch" class="subtle">Restart launcher</button></span></div><p id="mario-preview-note" class="mario-preview-note">Your colours show in the game the next time it starts.</p></div>
+          <div class="mario-panel"><label class="switch mario-in-game"><span><strong>Use in the game</strong><small>Off: the game shows Mario as usual. Your colours stay here.</small></span><input id="mario-in-game" type="checkbox" checked><i></i></label><div id="mario-presets" class="mario-presets" role="group" aria-label="Presets"></div><div id="mario-regions"></div></div>
+        </div>
+        <div id="characters-stage-wrap" class="characters-stage-wrap">
           <canvas id="characters-stage" class="characters-stage" tabindex="0" aria-label="The character, drag or use the arrow keys to turn it"></canvas>
           <div id="characters-status" class="mario-status" role="status" hidden><span class="mario-loader" aria-hidden="true"></span><span id="characters-status-text"></span></div>
           <div class="characters-views" role="group" aria-label="Views"><button id="characters-view-front">Front</button><button id="characters-view-side">Side</button><button id="characters-view-back">Back</button><button id="characters-view-above">Above</button></div>

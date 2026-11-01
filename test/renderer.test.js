@@ -669,7 +669,7 @@ test('the Customize Mario banner shows once a disc is chosen', async () => {
 
 test('the tabs show one page at a time and mark it', async () => {
   const ui = await renderer();
-  const sections = ['page-home', 'multiplayer', 'page-characters', 'mario-look', 'page-saves', 'changelog', 'page-settings'];
+  const sections = ['page-home', 'multiplayer', 'page-characters', 'page-saves', 'changelog', 'page-settings'];
   const visible = () => sections.filter(id => !ui.elements.get(id).hidden);
   assert.deepEqual(visible(), ['page-home']);
   for (const [nav, section] of [['nav-saves', 'page-saves'], ['open-multiplayer', 'multiplayer'], ['customize-mario', 'page-characters'],
@@ -680,10 +680,6 @@ test('the tabs show one page at a time and mark it', async () => {
     assert.equal(ui.elements.get(nav)['aria-current'], 'page');
   }
   assert.equal(ui.elements.get('settings-cog').classList.contains('active'), false);
-  // Mario's colours are a page of the Character tab, which stays marked
-  ui.window.smsShowPage('mario');
-  assert.deepEqual(visible(), ['mario-look']);
-  assert.equal(ui.elements.get('customize-mario').classList.contains('active'), true);
 });
 
 test('a hosted room shows under Play and on Multiplayer, and goes when the game ends', async () => {

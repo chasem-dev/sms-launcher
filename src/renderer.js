@@ -16,12 +16,12 @@ function closeModal() {
 }
 
 // --- Pages: the tabs along the top pick one; Play is the home page. Each page can run code as it
-// shows and hides (Customize Mario's module registers through window.smsOnPage), and an `open` hook
+// shows and hides (the Character tab's module registers through window.smsOnPage), and an `open` hook
 // returning false keeps the page closed (Achievements asks for its icons first).
 const pages = {
   play: { section: 'page-home', nav: 'nav-play' }, multiplayer: { section: 'multiplayer', nav: 'open-multiplayer' },
-  // the Character tab opens the character picker; Mario's colours are a page of it
-  characters: { section: 'page-characters', nav: 'customize-mario' }, mario: { section: 'mario-look', nav: 'customize-mario', sub: true },
+  // the Character tab: who you play as, and Mario's colours beside Mario
+  characters: { section: 'page-characters', nav: 'customize-mario' },
   achievements: { section: 'page-achievements', nav: 'nav-achievements' }, saves: { section: 'page-saves', nav: 'nav-saves' },
   changelog: { section: 'changelog', nav: 'open-changelog' }, settings: { section: 'page-settings', nav: 'settings-cog' }
 };

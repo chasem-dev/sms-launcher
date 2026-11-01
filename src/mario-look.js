@@ -17,10 +17,11 @@ const WRAP = [THREE.ClampToEdgeWrapping, THREE.RepeatWrapping, THREE.MirroredRep
 
 let viewer = null, model = null, look = Colors.normalizeLook(), saveTimer = null, loading = null;
 
-// The page is one of the launcher's tabs (renderer.js: showPage). Nothing of Mario's
-// view stays on the GPU while another page shows: the launcher keeps no WebGL
-// context while the game or a build runs.
-window.smsOnPage('mario', {
+// Mario's colours are part of the Character tab (characters-page.js), which
+// shows them while Mario is chosen. Nothing of Mario's view stays on the GPU
+// while they're hidden: the launcher keeps no WebGL context while the game or
+// a build runs.
+window.smsMarioLook = {
   show() {
     if (model) show();
     else loading ||= load();
@@ -30,7 +31,7 @@ window.smsOnPage('mario', {
     viewer = null;
     if (saveTimer) { clearTimeout(saveTimer); save(); }
   }
-});
+};
 
 async function load() {
   setStatus('Reading Mario from your disc…', true);
@@ -39,7 +40,7 @@ async function load() {
     model = result.model;
     look = Colors.normalizeLook(result.look);
     renderControls();
-    if (!page.hidden) show();
+    if (!page.hidden && !page.closest('.page').hidden) show();
     else setStatus('');
   } catch (error) {
     setStatus(error.message || String(error));

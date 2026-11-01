@@ -42,6 +42,8 @@ const PEACH_LABELS = {
 // stay inside it (more and the gown split at the front with a leg through it).
 const PEACH_GOWN = { wide: true, sway: 0.35, arms: 15,
   legs: { jnt_leg_L1: 0.3, jnt_leg_R1: 0.3, jnt_leg_L2: 0.15, jnt_leg_R2: 0.15, jnt_foot_L: 0.5, jnt_foot_R: 0.5 } };
+// Mario's FLUDD on Roxxy sat low, its nozzle in her head and crown: 12 higher.
+const ROXXY_FLUDD = { up: 12 };
 function peach(disc, progress, options = {}) {
   const plaza = rarc(yaz0(disc.file('data/scene/dolpic1.szs')));
   const get = name => {
@@ -112,6 +114,9 @@ function ownCharacter(file, options = {}) {
     return { 'model.szs': model };
   };
 }
+// Rivet's and Roxxy's fingers curled into a full fist (75 degrees) pointed forward as they stood, the
+// hands held out flat: theirs are curled as little as Mario's own hand at rest, and hang as his do.
+const OWN_CURL = 30;
 // Roxxy's bell skirt, as Peach's gown
 const ROXXY_GOWN = { wide: true, sway: 0.35, arms: 15,
   legs: { jnt_leg_L1: 0.3, jnt_leg_R1: 0.3, jnt_leg_L2: 0.15, jnt_leg_R2: 0.15, jnt_foot_L: 0.5, jnt_foot_R: 0.5 } };
@@ -135,8 +140,8 @@ const ROSTER = [
   { id: 'mario', name: 'Mario', about: 'As on your disc.' },
   { id: 'princess-peach', name: 'Princess Peach', about: 'Delfino\'s Peach, gown and all, on Mario\'s moves.', version: 5, voice: PEACH_VOICE, build: peach },
   { id: 'shadow-mario', name: 'Shadow Mario', about: 'The paintbrush impostor, see-through and shimmering, as he looks in Delfino Plaza.', version: 2, build: shadowMario },
-  { id: 'rivet-cap', name: 'Rivet', about: 'Our own Rivet, in his work cap.', version: 2, build: ownCharacter('rivet.glb') },
-  { id: 'roxxy', name: 'Roxxy', about: 'Our own Roxxy, crown and gown.', version: 3, build: ownCharacter('roxxy.glb', { gown: ROXXY_GOWN }) },
+  { id: 'rivet-cap', name: 'Rivet', about: 'Our own Rivet, in his work cap.', version: 4, build: ownCharacter('rivet.glb', { curl: OWN_CURL }) },
+  { id: 'roxxy', name: 'Roxxy', about: 'Our own Roxxy, crown and gown.', version: 7, fludd: ROXXY_FLUDD, build: ownCharacter('roxxy.glb', { gown: ROXXY_GOWN, curl: OWN_CURL }) },
   { id: 'il-piantissimo', name: 'Il Piantissimo', about: 'The racer from Pianta Village, on Mario\'s skeleton as the game moves him.', version: 2, voice: PIANTISSIMO_VOICE,
     build: piantissimo },
   { id: 'bowser-jr', name: 'Bowser Jr.', about: 'Bowser\'s son, bandana and all, from Corona Mountain.', version: 1,

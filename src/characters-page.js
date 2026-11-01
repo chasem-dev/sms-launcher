@@ -1,8 +1,9 @@
 // Characters: who the game starts as. Each of the launcher's characters
-// (character-roster.js) is made from the player's own disc the first time it
-// is chosen, then shown as the game draws it, in any of its animations, with
-// the floor under it and Mario beside it or over it. Play as sets who the game
-// starts as (F4 in the game switches between them).
+// (character-roster.js) is made from the player's own disc, then shown as the
+// game draws it, standing; Mario is shown with his colours beside him
+// (mario-look.js). Animations shows any character in any of its animations,
+// with the floor under it and Mario beside it or over it. Play as sets who the
+// game starts as (F4 in the game switches between them).
 import * as THREE from '../node_modules/three/build/three.module.js';
 import { createRig, jointMatrix } from './model-rig.js';
 
@@ -27,17 +28,61 @@ const VIEWS = { front: [0, 0.1], side: [Math.PI / 2, 0.1], back: [Math.PI, 0.1],
 
 const state = {
   characters: [], id: null, playing: 'mario', eclipse: false, showFludd: true, fluddRig: null, model: null, animation: 'ma_wait', clips: new Map(), mario: null, compare: 'off',
-  frame: 0, running: true, speed: 1, filter: '',
+  frame: 0, running: true, speed: 1, filter: '', animations: false, modelId: null,
+};
+// Mario, outside Animations, is shown with his colours.
+const colouring = () => state.id === 'mario' && !state.animations;
+const comparing = () => state.animations && state.compare !== 'off';
+const INTRO = {
+  basic: 'Who you play as. Each is made on your computer, from your own disc. In the game, F4 switches between them. Drag to turn, scroll to zoom.',
+  animations: 'Each character in any of its animations, with FLUDD, and Mario beside it or over it to compare. Drag to turn, scroll to zoom.',
 };
 let viewer = null, loading = null;
 
 window.smsOnPage('characters', {
-  show() { loading ||= start(); },
+  show() {
+    // the tab opens on the list and the character, not Animations
+    setMode(false);
+    loading ||= start();
+  },
   hide() {
     viewer?.dispose();
     viewer = null;
+    window.smsMarioLook.hide();
   },
 });
+
+// Animations, or back to the list and the character; it plays standing again on the way back.
+function setMode(animations) {
+  if (!animations && state.animations) {
+    state.animation = 'ma_wait';
+    state.frame = 0;
+    state.running = true;
+    state.speed = 1;
+    $('characters-speed').value = '1';
+  }
+  state.animations = animations;
+  page.classList.toggle('animations', animations);
+  $('characters-title').textContent = animations ? 'Animations' : 'Character';
+  $('characters-intro').textContent = INTRO[animations ? 'animations' : 'basic'];
+  $('characters-mode').textContent = animations ? '‹ Characters' : 'Animations';
+}
+$('characters-mode').addEventListener('click', () => {
+  setMode(!state.animations);
+  if (state.id && !loading) choose(state.id).catch(error => setStatus(error.message || String(error)));
+});
+
+// Mario's colours, or the character's own view.
+function showStage() {
+  const colours = colouring();
+  $('mario-look').hidden = !colours;
+  $('characters-stage-wrap').hidden = colours;
+  if (colours) {
+    viewer?.dispose();
+    viewer = null;
+    window.smsMarioLook.show();
+  } else window.smsMarioLook.hide();
+}
 
 async function start() {
   try {
@@ -92,10 +137,12 @@ async function refresh() {
 async function choose(id) {
   state.id = id;
   renderList();
+  showStage();
   // what is made now, not when the list was read (a character's builder may have changed since)
   state.characters = (await window.sms.characters()).characters;
   if (state.id !== id) return;
   renderList();
+  if (colouring()) return;
   const character = state.characters.find(c => c.id === id);
   if (!character.ready) {
     setStatus(`Making ${character.name} from your disc…`, true);
@@ -105,14 +152,19 @@ async function choose(id) {
     if (state.id !== id) return;
     renderList();
   }
-  setStatus('Reading the character…', true);
-  if (!state.fluddRig) state.fluddRig = await window.sms.characterFludd().catch(() => null);
-  const model = await window.sms.characterModel(id);
-  if (state.id !== id) return;
-  state.model = model;
-  state.clips = new Map();
+  if (state.modelId !== id || !character.ready) {
+    setStatus('Reading the character…', true);
+    if (!state.fluddRig) state.fluddRig = await window.sms.characterFludd().catch(() => null);
+    const model = await window.sms.characterModel(id);
+    if (state.id !== id) return;
+    state.model = model;
+    state.modelId = id;
+    state.clips = new Map();
+  }
+  const { model } = state;
   if (!model.animations.includes(state.animation)) state.animation = model.animations.includes('ma_wait') ? 'ma_wait' : model.animations[0];
-  if (state.compare !== 'off' && !state.mario) state.mario = await window.sms.characterModel('mario');
+  if (comparing() && !state.mario) state.mario = await window.sms.characterModel('mario');
+  if (state.id !== id) return;
   await loadClip();
   renderAnimations();
   rebuild();
@@ -121,7 +173,7 @@ async function choose(id) {
 async function loadClip() {
   const key = `${state.id}:${state.animation}`;
   if (!state.clips.has(key)) state.clips.set(key, await window.sms.characterAnimation(state.id, state.animation));
-  if (state.compare !== 'off' && state.mario?.animations.includes(state.animation)) {
+  if (comparing() && state.mario?.animations.includes(state.animation)) {
     const marioKey = `mario:${state.animation}`;
     if (!state.clips.has(marioKey)) state.clips.set(marioKey, await window.sms.characterAnimation('mario', state.animation));
   }
@@ -135,7 +187,7 @@ const clip = (id = state.id) => state.clips.get(`${id}:${state.animation}`);
 
 // A fresh canvas for each model (a canvas whose context was let go can't make another).
 function rebuild() {
-  if (page.hidden || !state.model) return;
+  if (page.hidden || !state.model || colouring()) return;
   viewer?.dispose();
   viewer = null;
   const canvas = $('characters-stage').cloneNode(false);
@@ -170,13 +222,9 @@ function renderList() {
   play.hidden = !character;
   play.disabled = !character || character.id === state.playing || state.eclipse;
   play.textContent = !character ? '' : character.id === state.playing ? `Playing as ${character.name}` : `Play as ${character.name}`;
-  // colours are Mario's alone
-  $('characters-colours').hidden = !character || character.id !== 'mario';
   $('characters-about').textContent = state.eclipse ? 'With Super Mario Eclipse on, the game plays as its own characters.' : character?.about || '';
 }
 
-$('characters-colours').addEventListener('click', () => window.smsShowPage('mario'));
-$('mario-characters').addEventListener('click', () => window.smsShowPage('characters'));
 
 $('characters-play-as').addEventListener('click', async () => {
   try {
@@ -284,7 +332,7 @@ function createViewer(canvas) {
 
   const figures = [];
   const character = addFigure(state.model, { id: state.id, x: 0 });
-  if (state.compare !== 'off' && state.mario && state.id !== 'mario')
+  if (comparing() && state.mario && state.id !== 'mario')
     figures.push(addFigure(state.mario, { id: 'mario', x: state.compare === 'beside' ? -90 : 0, ghost: state.compare === 'over' }));
   figures.unshift(character);
   if (state.compare === 'beside' && figures.length > 1) character.group.position.x = 90;
@@ -333,7 +381,7 @@ function createViewer(canvas) {
       return { shape, mesh, geometry };
     });
     const figure = { id, data, rig, group };
-    if (state.showFludd && state.fluddRig && data.chest >= 0) addFludd(figure, ghost);
+    if ((state.showFludd || !state.animations) && state.fluddRig && data.chest >= 0) addFludd(figure, ghost);
     return figure;
   }
 

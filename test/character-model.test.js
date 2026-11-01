@@ -122,7 +122,7 @@ test('Luigi is made from the Super Mario Eclipse set up once, on the disc\'s own
     assert.deepEqual(Object.fromEntries([...made].map(([name, data]) => [name, data.toString()])), {
       'bmd/ma_mdl1.bmd': 'Luigi', 'bmd/ma_cap1.bmd': 'cap', 'bck/ma_wait.bck': 'wait', 'bck/ma_jump.bck': 'Luigi\'s jump', 'watergun2/wg.bmd': 'FLUDD' });
     assert.equal(fs.readFileSync(path.join(folder, 'name.txt'), 'utf8'), 'Luigi\n');
-    assert.equal(JSON.parse(fs.readFileSync(path.join(folder, '.launcher.json'), 'utf8')).version, '1-v1.1.0');
+    assert.equal(JSON.parse(fs.readFileSync(path.join(folder, '.launcher.json'), 'utf8')).version, '2-v1.1.0');
     fs.rmSync(path.join(root, ECLIPSE_ISO));
     assert.deepEqual([luigi().ready, luigi().makeable], [true, false]);
   } finally { fs.rmSync(root, { recursive: true, force: true }); }

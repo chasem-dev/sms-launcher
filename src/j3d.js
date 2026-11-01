@@ -409,4 +409,25 @@ function mat3x4(r) {
   return [r[0], r[4], r[8], 0, r[1], r[5], r[9], 0, r[2], r[6], r[10], 0, r[3], r[7], r[11], 1];
 }
 
-module.exports = { parseBmd, parseBck, sampleTrack, decodeTexture, decodeBti };
+// Each joint's kind (the first field of its JNT1 entry), by name: { name: kind }. The game's shadow
+// (TMBindShadowParts) takes a joint of kind 1 as a part and reads its child.
+function jointKinds(data) {
+  const at = sections(data).JNT1;
+  if (at === undefined) return {};
+  const entries = at + data.readUInt32BE(at + 0x0c), remap = at + data.readUInt32BE(at + 0x10);
+  const names = nameTable(data, at + data.readUInt32BE(at + 0x14));
+  return Object.fromEntries(names.map((name, i) => [name, data.readUInt16BE(entries + data.readUInt16BE(remap + i * 2) * 0x40)]));
+}
+
+// A copy of a model with its joints' kinds set by name ({ name: kind }); joints not named keep theirs.
+function withJointKinds(data, kinds) {
+  const out = Buffer.from(data), at = sections(out).JNT1;
+  if (at === undefined) return out;
+  const entries = at + out.readUInt32BE(at + 0x0c), remap = at + out.readUInt32BE(at + 0x10);
+  nameTable(out, at + out.readUInt32BE(at + 0x14)).forEach((name, i) => {
+    if (kinds[name] !== undefined) out.writeUInt16BE(kinds[name], entries + out.readUInt16BE(remap + i * 2) * 0x40);
+  });
+  return out;
+}
+
+module.exports = { parseBmd, parseBck, sampleTrack, decodeTexture, decodeBti, jointKinds, withJointKinds };

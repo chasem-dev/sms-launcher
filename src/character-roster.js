@@ -10,6 +10,7 @@ const path = require('node:path');
 const crypto = require('node:crypto');
 const { Disc } = require('./disc');
 const { rarc, yaz0 } = require('./archive');
+const { jointKinds, withJointKinds } = require('./j3d');
 const { withFolder, withFiles } = require('./rarc-write');
 const { convert, convertSunshine } = require('./character-convert');
 const { writeFluddPlace } = require('./character-model');
@@ -111,10 +112,16 @@ function piantissimo(disc) {
 // pack is the disc's own mario.szs with what is Luigi's in place: each file of luigi.szs that Eclipse's mario.szs
 // hasn't the same (his model, caps, hands, glasses and jump). Not its movement files (*.prm), which only
 // Eclipse's own code reads: he moves as Mario does.
+// His models were made with every joint of kind 1, where Mario's ends (feet, hands, head) are 0: the game's
+// shadow reads the child of each joint of kind 1, so a stage crashed loading him (Eclipse's code guards it,
+// Sunshine's doesn't). Each joint takes the kind of Mario's of its name.
+const isModel = data => Boolean(data) && data.toString('ascii', 0, 4) === 'J3D2';
 function luigi(disc, progress, { eclipse }) {
+  const mario = disc.file('data/mario.szs'), marioFiles = rarc(yaz0(mario));
   const own = rarc(yaz0(eclipse.file('data/luigi.szs'))), eclipseMario = rarc(yaz0(eclipse.file('data/mario.szs')));
-  const changed = Object.fromEntries([...own].filter(([name, data]) => !name.endsWith('.prm') && !eclipseMario.get(name)?.equals(data)));
-  return { 'model.szs': withFiles(disc.file('data/mario.szs'), changed) };
+  const changed = Object.fromEntries([...own].filter(([name, data]) => !name.endsWith('.prm') && !eclipseMario.get(name)?.equals(data))
+    .map(([name, data]) => [name, isModel(data) && isModel(marioFiles.get(name)) ? withJointKinds(data, jointKinds(marioFiles.get(name))) : data]));
+  return { 'model.szs': withFiles(mario, changed) };
 }
 // The Eclipse release a character comes from (its file's name): one made from another is made again.
 const ECLIPSE_RELEASE = (path.basename(ECLIPSE_ISO).match(/v\d+(?:\.\d+)*/) || ['eclipse'])[0];
@@ -161,7 +168,7 @@ const ROSTER = [
   { id: 'il-piantissimo', name: 'Il Piantissimo', about: 'The racer from Pianta Village, on Mario\'s skeleton as the game moves him.', version: 2, voice: PIANTISSIMO_VOICE,
     build: piantissimo },
   { id: 'luigi', name: 'Luigi', about: 'Super Mario Eclipse\'s Luigi, by the Super Mario Eclipse team, made from the Eclipse you set up. He moves as Mario does.',
-    version: `1-${ECLIPSE_RELEASE}`, from: 'eclipse', build: luigi },
+    version: `2-${ECLIPSE_RELEASE}`, from: 'eclipse', build: luigi },
   { id: 'bowser-jr', name: 'Bowser Jr.', about: 'Bowser\'s son, bandana and all, from Corona Mountain.', version: 1,
     build: sunshineCharacter('coronaBoss', 'koopajr', 'koopajr_model.bmd', BOWSER_JR_LABELS) },
 ];

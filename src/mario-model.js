@@ -47,10 +47,24 @@ function fluddFiles(disc, files) {
   return common.has(FLUDD) ? common : files;
 }
 
+// FLUDD as it is worn when not spraying: TWaterGun::calcAnimation holds wg_house at its end (the
+// handles folded in), and brings them out to Mario's hands only while he sprays.
+const FLUDD_STOWED = 'watergun2/body/wg_house.bck';
+function stowed(joints, data) {
+  if (!data) return joints;
+  const animation = j3d.parseBck(data);
+  return joints.map((joint, j) => {
+    const track = animation.joints[j];
+    if (!track) return joint;
+    const at = key => [0, 1, 2].map(axis => j3d.sampleTrack(track[key][axis], animation.frames));
+    return { ...joint, scale: at('scale'), rotation: at('rotation'), translation: at('translation') };
+  });
+}
+
 // FLUDD's pack and its nozzles, parsed. The nozzles' dummy texture is the
 // pack's, which TWaterGun swaps in for H_watergun_main_dummy.
 function loadFludd(files) {
-  const pack = j3d.parseBmd(files.get(FLUDD));
+  const loose = j3d.parseBmd(files.get(FLUDD)), pack = { ...loose, joints: stowed(loose.joints, files.get(FLUDD_STOWED)) };
   return {
     pack, packTexture: pack.textures.find(texture => /watergun_main/i.test(texture.name) && !/dummy/i.test(texture.name)) || pack.textures[1],
     nozzles: Object.fromEntries(Object.entries(NOZZLES).map(([id, file]) => [id, j3d.parseBmd(files.get(file))])),
@@ -187,4 +201,4 @@ function toonBands({ rgba }) {
   return [low / 255, high / 255];
 }
 
-module.exports = { loadMario, partOf, bake, fluddFiles, loadFludd, fluddShapes, loadSunglasses, NOZZLES, FLUDD, SUNGLASSES };
+module.exports = { loadMario, partOf, bake, rig, fluddFiles, loadFludd, fluddShapes, loadSunglasses, NOZZLES, FLUDD, SUNGLASSES };

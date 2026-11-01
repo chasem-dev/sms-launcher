@@ -39,6 +39,9 @@ const { observeProcess, exitDescription, failureMessage } = require('./process-o
 const { createSessionLog } = require('./session-log');
 const displayScale = require('./display-scale');
 const marioModel = require('./mario-model');
+const characterModel = require('./character-model');
+const characterRoster = require('./character-roster');
+const { Worker } = require('node:worker_threads');
 const marioColors = require('./mario-colors');
 const marioPack = require('./mario-pack');
 const { relaunchOptions } = require('./relaunch');
@@ -1367,6 +1370,9 @@ async function play(installation = null, session = null) {
   Object.assign(env, marioPack.outfitEnvironment(config.marioLook));
   // Together, each game paints the others in their own colours (theirs come over the network).
   if (session && session.mode !== 'coop') Object.assign(env, marioPaintEnvironment(rom, disc, root, settings));
+  // and draws them as the characters they play (Eclipse plays as its own)
+  if (session && session.mode !== 'coop' && !settings.eclipse && port.gameFeatures(root).onlineCharacters)
+    await makeCharactersForOnline(root, rom);
   // The game puts its version in the window title: the launcher's name for the build being played.
   const gameVersion = game.installed(root, settings)?.gameVersion;
   if (gameVersion) env.SMS_GAME_VERSION = String(gameVersion);
@@ -1403,6 +1409,7 @@ async function play(installation = null, session = null) {
 
 // Mario's model from the chosen disc, read once per disc while the launcher runs.
 let marioCache = null;
+const characterCache = characterModel.createCache();
 function marioFrom(rom) {
   if (marioCache?.rom !== rom) marioCache = { rom, model: marioModel.loadMario(rom) };
   return marioCache.model;
@@ -1433,6 +1440,42 @@ function marioLookPack(rom, disc, root, settings) {
   } catch (error) {
     log(`Mario keeps his usual colours: ${error.message}`);
     return null;
+  }
+}
+
+// A character of the launcher's (character-roster.js) made from the disc into the game's mods/characters, off the
+// main thread (a worker that can't start, as in some packaged builds, makes it here instead).
+function makeCharacter(root, rom, id, progress = () => {}) {
+  const job = { root, rom, id };
+  return new Promise((resolve, reject) => {
+    let started = false;
+    const here = () => { try { characterRoster.build(job.root, job.rom, job.id, progress); resolve(); } catch (error) { reject(error); } };
+    let worker;
+    try { worker = new Worker(path.join(__dirname, 'character-build-worker.js'), { workerData: job }); } catch (_) { here(); return; }
+    worker.on('message', message => {
+      started = true;
+      if (message.progress) progress(message.progress);
+      else if (message.error) reject(new Error(message.error));
+      else resolve();
+    });
+    worker.on('error', error => (started ? reject(error) : here()));
+  });
+}
+
+// Online, each game draws the other players as the characters they play, from its own copy of each: every
+// character not made yet is made from the disc before the game starts (once; the Character tab makes them too).
+// One that can't be made is drawn as Mario; never in the way of playing.
+async function makeCharactersForOnline(root, rom) {
+  const missing = characterRoster.list(root).filter(character => character.id !== 'mario' && !character.ready);
+  if (!missing.length) return;
+  log(`Making ${missing.length === 1 ? missing[0].name : `${missing.length} characters`} from your disc, so you see the others as who they play.`);
+  for (const character of missing) {
+    try {
+      await makeCharacter(root, rom, character.id);
+      log(`Made ${character.name} from your disc.`);
+    } catch (error) {
+      log(`${character.name} couldn't be made (${error.message}): anyone playing as them shows as Mario.`);
+    }
   }
 }
 
@@ -2228,6 +2271,49 @@ function registerHandlers() {
     return state();
   });
   ipcMain.handle('mario-model', () => ({ model: marioFrom(port.validateRom(config.rom)), look: config.marioLook }));
+  // The Characters page: the launcher's characters (character-roster.js), each made from the player's disc
+  // the first time it is chosen, posed by its animations; Play as sets who the game starts as.
+  const charactersRoot = () => (config.repo && fs.existsSync(config.repo) ? config.repo : null);
+  const characterData = id => {
+    const character = characterRoster.find(String(id)), root = charactersRoot(), rom = port.validateRom(config.rom);
+    if (id !== 'mario' && !characterRoster.list(root).find(c => c.id === id).ready) throw new Error(`${character.name} isn't made yet.`);
+    const stamp = id === 'mario' ? rom : fs.statSync(path.join(characterRoster.packsDirectory(root), id, 'model.szs')).mtimeMs;
+    return characterCache.get(character, stamp, () => characterRoster.archive(root, rom, id));
+  };
+  ipcMain.handle('characters', () => {
+    // a character no longer offered, played as: Mario again (its pack is gone)
+    const removed = charactersRoot() ? characterRoster.removeRetired(charactersRoot()) : [];
+    if (removed.includes(config.settings.character)) {
+      config.settings.character = 'mario';
+      saveConfig();
+    }
+    return { characters: characterRoster.list(charactersRoot()), selected: config.settings.character || 'mario',
+      eclipse: Boolean(config.settings.eclipse), ready: Boolean(charactersRoot() && config.rom) };
+  });
+  ipcMain.handle('character-build', async (event, id) => {
+    const root = charactersRoot();
+    if (!root) throw new Error('Set up the game first: characters are made into its mods/characters folder.');
+    const character = characterRoster.find(String(id));
+    const progress = text => { if (!event.sender.isDestroyed()) event.sender.send('character-build-progress', text); };
+    await makeCharacter(root, port.validateRom(config.rom), character.id, progress);
+    log(`Made ${character.name} from your disc.`);
+    return characterRoster.list(root);
+  });
+  ipcMain.handle('character-model', (_event, id) => characterData(String(id)).model);
+  let fluddRig = null;
+  ipcMain.handle('character-fludd', () => (fluddRig ||= { rom: config.rom, rig: characterModel.loadFluddRig(port.validateRom(config.rom)) }).rig);
+  ipcMain.handle('character-animation', (_event, id, name) => {
+    const { files, model } = characterData(String(id));
+    if (!model.animations.includes(name)) throw new Error(`There is no animation ${name}.`);
+    return characterModel.loadAnimation(files, model.joints, name);
+  });
+  ipcMain.handle('character-play', (_event, id) => {
+    const character = characterRoster.find(String(id));
+    config.settings = port.normalizeSettings({ ...config.settings, character: character.id === 'mario' ? '' : character.id });
+    saveConfig();
+    log(`The game starts as ${character.name}.`);
+    return config.settings.character || 'mario';
+  });
   // Customize Mario's way out when its 3D view can't start: a new launcher
   // gets a new GPU process. Not while the game or a task runs.
   ipcMain.handle('relaunch-launcher', () => {

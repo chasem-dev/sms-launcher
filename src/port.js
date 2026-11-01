@@ -113,6 +113,9 @@ function normalizeSettings(input = {}, platform = process.platform, hostArch = p
     vsync: choiceSetting(input.vsync, ['off', 'on', 'adaptive'], 'off'),
     // Straight to the title screen, and the game's frame-time overlay at start.
     skipMovies: Boolean(input.skipMovies),
+    // Who the game starts as: a character's id (mods/characters/<id>), or the name the game's own menu
+    // keeps; empty for Mario.
+    character: typeof input.character === 'string' && /^[\w .()'-]{1,48}$/.test(input.character) && input.character.toLowerCase() !== 'mario' ? input.character : '',
     // Straight to the title: no Nintendo and Dolby logos or opening movie; off unless turned on.
     skipIntro: Boolean(input.skipIntro),
     // The game's language: the disc's own English, or a language pack (French, German, Spanish, Italian).
@@ -471,7 +474,9 @@ function gameFeatures(root) {
     // split-screen co-op (SMS_COOP): a second player on this computer
     coop: has(path.join('ext', 'coop', 'game', 'coop.cpp')),
     // Eclipse's other characters keep their own textures, out of Customize Mario's look (ext/look)
-    characterLook: has(path.join('ext', 'look', 'game', 'look_game.cpp')) };
+    characterLook: has(path.join('ext', 'look', 'game', 'look_game.cpp')),
+    // online, the others drawn as the characters they play (each game's own mods/characters)
+    onlineCharacters: has(path.join('decomp-patches', 'zzzzzz-character-06-multiplayer.patch')) };
 }
 
 function hdVisualsInstalled(root, settings) {
@@ -581,6 +586,7 @@ function buildEnvironment(settings, disc, root, { customTextures = null, customC
     SMS_FULLSCREEN: settings.fullscreen ? (settings.fullscreenMode === 'exclusive' ? 'exclusive' : '1') : '0',
     SMS_VSYNC: settings.vsync === 'adaptive' ? 'adaptive' : settings.vsync === 'on' ? '1' : '0',
     SMS_SKIP_MOVIES: settings.skipMovies ? '1' : '0',
+    SMS_CHARACTER: settings.character || 'mario',
     SMS_SKIP_INTRO: settings.skipIntro ? '1' : '0',
     SMS_LANGUAGE: root && !languageAvailable(root, gameLanguage(settings)) ? 'en' : gameLanguage(settings),
     SMS_SOFT_TRIGGER: String(settings.softTrigger ?? 95),

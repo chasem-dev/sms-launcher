@@ -13,6 +13,17 @@ contextBridge.exposeInMainWorld('sms', {
   openHdrCalibration: () => ipcRenderer.invoke('open-hdr-calibration'),
   chooseRom: () => ipcRenderer.invoke('choose-rom'),
   marioModel: () => ipcRenderer.invoke('mario-model'),
+  characters: () => ipcRenderer.invoke('characters'),
+  characterModel: id => ipcRenderer.invoke('character-model', id),
+  characterAnimation: (id, name) => ipcRenderer.invoke('character-animation', id, name),
+  characterBuild: id => ipcRenderer.invoke('character-build', id),
+  onCharacterBuildProgress: listener => {
+    const handler = (_event, text) => listener(text);
+    ipcRenderer.on('character-build-progress', handler);
+    return () => ipcRenderer.removeListener('character-build-progress', handler);
+  },
+  characterPlay: id => ipcRenderer.invoke('character-play', id),
+  characterFludd: () => ipcRenderer.invoke('character-fludd'),
   saveMarioLook: look => ipcRenderer.invoke('save-mario-look', look),
   relaunchLauncher: () => ipcRenderer.invoke('relaunch-launcher'),
   chooseRepo: () => ipcRenderer.invoke('choose-repo'),

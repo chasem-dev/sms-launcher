@@ -5,7 +5,8 @@
       "Achievements are off in online games by default, since the others can earn them for you. Earn achievements online, on the Online page, turns them back on. Playing alone or split-screen still unlocks them.",
       "Achievements in dark mode: the page now goes dark with the rest of the launcher, instead of staying white. Unlocked achievements glow gold, locked ones sit back, and the filters, stage list and progress ring match.",
       "Character tab: choose who you play as, made on your computer from your own disc. It shows the characters and the one you pick; choosing Mario puts his colours beside him to customize, and Animations shows any character in any of Mario's moves.",
-      "Online, the launcher makes any character you haven't made yet before the game starts, so you see the other players as the characters they play."
+      "Online, the launcher makes any character you haven't made yet before the game starts, so you see the other players as the characters they play.",
+      "Character packs in mods/characters, your own included, now stay when the game updates. Before, an update left them in the old version's folder, so the game no longer listed them."
     ],
     "game": [
       "Fixed Goop sometimes not cleaning",

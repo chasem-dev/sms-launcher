@@ -113,7 +113,7 @@ function ownCharacter(file, options = {}) {
   };
 }
 // Roxxy's bell skirt, as Peach's gown
-const ROXXY_GOWN = { wide: true, sway: 0.35,
+const ROXXY_GOWN = { wide: true, sway: 0.35, arms: 15,
   legs: { jnt_leg_L1: 0.3, jnt_leg_R1: 0.3, jnt_leg_L2: 0.15, jnt_leg_R2: 0.15, jnt_foot_L: 0.5, jnt_foot_R: 0.5 } };
 
 // Their voices: waves of the game's bank 1 (w2ndLoad_0.aw) by id, the ones the game plays for each
@@ -136,7 +136,7 @@ const ROSTER = [
   { id: 'princess-peach', name: 'Princess Peach', about: 'Delfino\'s Peach, gown and all, on Mario\'s moves.', version: 5, voice: PEACH_VOICE, build: peach },
   { id: 'shadow-mario', name: 'Shadow Mario', about: 'The paintbrush impostor, see-through and shimmering, as he looks in Delfino Plaza.', version: 2, build: shadowMario },
   { id: 'rivet-cap', name: 'Rivet', about: 'Our own Rivet, in his work cap.', version: 2, build: ownCharacter('rivet.glb') },
-  { id: 'roxxy', name: 'Roxxy', about: 'Our own Roxxy, crown and gown.', version: 2, build: ownCharacter('roxxy.glb', { gown: ROXXY_GOWN }) },
+  { id: 'roxxy', name: 'Roxxy', about: 'Our own Roxxy, crown and gown.', version: 3, build: ownCharacter('roxxy.glb', { gown: ROXXY_GOWN }) },
   { id: 'il-piantissimo', name: 'Il Piantissimo', about: 'The racer from Pianta Village, on Mario\'s skeleton as the game moves him.', version: 2, voice: PIANTISSIMO_VOICE,
     build: piantissimo },
   { id: 'bowser-jr', name: 'Bowser Jr.', about: 'Bowser\'s son, bandana and all, from Corona Mountain.', version: 1,

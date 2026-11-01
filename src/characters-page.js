@@ -63,14 +63,22 @@ async function refresh() {
 
 // --- Loading -------------------------------------------------------------------
 
+// Characters being made: a second choice of one waits for it rather than making it again.
+const building = new Map();
+
 async function choose(id) {
   state.id = id;
+  renderList();
+  // what is made now, not when the list was read (a character's builder may have changed since)
+  state.characters = (await window.sms.characters()).characters;
+  if (state.id !== id) return;
   renderList();
   const character = state.characters.find(c => c.id === id);
   if (!character.ready) {
     setStatus(`Making ${character.name} from your disc…`, true);
     const stop = window.sms.onCharacterBuildProgress(text => setStatus(`Making ${character.name} from your disc: ${text.toLowerCase()}…`, true));
-    try { state.characters = await window.sms.characterBuild(id); } finally { stop(); }
+    if (!building.has(id)) building.set(id, window.sms.characterBuild(id).finally(() => building.delete(id)));
+    try { state.characters = await building.get(id); } finally { stop(); }
     if (state.id !== id) return;
     renderList();
   }

@@ -141,10 +141,6 @@ const ROSTER = [
     build: piantissimo },
   { id: 'bowser-jr', name: 'Bowser Jr.', about: 'Bowser\'s son, bandana and all, from Corona Mountain.', version: 1,
     build: sunshineCharacter('coronaBoss', 'koopajr', 'koopajr_model.bmd', BOWSER_JR_LABELS) },
-  { id: 'sunshine-toad', name: 'Toad', about: 'A Toad from Delfino Plaza.', version: 4, fludd: TOAD_FLUDD, voice: TOAD_VOICE,
-    build: sunshineCharacter('dolpic0', 'kinopio', 'kinopio_body.bmd', TOAD_LABELS, { tints: TOAD_COLOURS }) },
-  { id: 'toadsworth', name: 'Toadsworth', about: 'The princess\'s steward, from Delfino Plaza.', version: 4, fludd: TOAD_FLUDD, voice: TOADSWORTH_VOICE,
-    build: sunshineCharacter('dolpic0', 'kinojii', 'kinoji_body.bmd', TOAD_LABELS) },
 ];
 
 // data/nintendo.szs, which holds the sound setup (mSound.aaf).
@@ -152,6 +148,14 @@ function nintendoArchive(disc) {
   const data = disc.file('data/nintendo.szs');
   return rarc(data.toString('ascii', 0, 4) === 'Yaz0' ? yaz0(data) : data);
 }
+
+// Made and checked in the game, kept off the roster for now (their FLUDD and voice included).
+const SET_ASIDE = [
+  { id: 'sunshine-toad', name: 'Toad', about: 'A Toad from Delfino Plaza.', version: 4, fludd: TOAD_FLUDD, voice: TOAD_VOICE,
+    build: sunshineCharacter('dolpic0', 'kinopio', 'kinopio_body.bmd', TOAD_LABELS, { tints: TOAD_COLOURS }) },
+  { id: 'toadsworth', name: 'Toadsworth', about: 'The princess\'s steward, from Delfino Plaza.', version: 4, fludd: TOAD_FLUDD, voice: TOADSWORTH_VOICE,
+    build: sunshineCharacter('dolpic0', 'kinojii', 'kinoji_body.bmd', TOAD_LABELS) },
+];
 
 function packsDirectory(root) { return path.join(root, 'mods', 'characters'); }
 
@@ -163,6 +167,19 @@ function builtVersion(root, id) {
 function list(root) {
   return ROSTER.map(({ id, name, about, version }) => ({ id, name, about,
     ready: id === 'mario' || Boolean(root && builtVersion(root, id) === version && fs.existsSync(path.join(packsDirectory(root), id, 'model.szs'))) }));
+}
+
+// The packs the launcher made (its stamp) of characters it no longer offers, removed: the game would
+// still play them (F4 goes through every pack). A player's own packs have no stamp and stay.
+function removeRetired(root) {
+  const directory = packsDirectory(root);
+  let entries;
+  try { entries = fs.readdirSync(directory, { withFileTypes: true }); } catch (_) { return; }
+  for (const entry of entries) {
+    // not one being made (.staging-*) or put aside while it is replaced (*.old-*)
+    if (!entry.isDirectory() || !/^[a-z0-9-]+$/.test(entry.name) || ROSTER.some(c => c.id === entry.name)) continue;
+    if (fs.existsSync(path.join(directory, entry.name, STAMP))) fs.rmSync(path.join(directory, entry.name), { recursive: true, force: true });
+  }
 }
 
 function find(id) {
@@ -226,4 +243,4 @@ function archive(root, rom, id) {
 
 const ID = /^[a-z0-9][a-z0-9_-]{0,47}$/;
 
-module.exports = { ROSTER, list, build, install, archive, find, packsDirectory, ID };
+module.exports = { ROSTER, list, build, install, archive, find, packsDirectory, ID, removeRetired, SET_ASIDE };

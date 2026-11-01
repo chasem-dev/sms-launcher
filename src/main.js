@@ -2241,8 +2241,11 @@ function registerHandlers() {
     const stamp = id === 'mario' ? rom : fs.statSync(path.join(characterRoster.packsDirectory(root), id, 'model.szs')).mtimeMs;
     return characterCache.get(character, stamp, () => characterRoster.archive(root, rom, id));
   };
-  ipcMain.handle('characters', () => ({ characters: characterRoster.list(charactersRoot()), selected: config.settings.character || 'mario',
-    eclipse: Boolean(config.settings.eclipse), ready: Boolean(charactersRoot() && config.rom) }));
+  ipcMain.handle('characters', () => {
+    if (charactersRoot()) characterRoster.removeRetired(charactersRoot());
+    return { characters: characterRoster.list(charactersRoot()), selected: config.settings.character || 'mario',
+      eclipse: Boolean(config.settings.eclipse), ready: Boolean(charactersRoot() && config.rom) };
+  });
   ipcMain.handle('character-build', async (event, id) => {
     const root = charactersRoot();
     if (!root) throw new Error('Set up the game first: characters are made into its mods/characters folder.');

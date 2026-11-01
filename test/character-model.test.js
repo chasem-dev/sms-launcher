@@ -42,6 +42,23 @@ test('a made character\'s own voice replaces the one before it', () => {
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });
 
+test('packs the launcher made of characters it no longer offers are removed, and no others', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'roster-'));
+  try {
+    const directory = roster.packsDirectory(root), pack = (id, stamped) => {
+      fs.mkdirSync(path.join(directory, id), { recursive: true });
+      fs.writeFileSync(path.join(directory, id, 'model.szs'), 'x');
+      if (stamped) fs.writeFileSync(path.join(directory, id, '.launcher.json'), '{"version":4}');
+    };
+    pack('sunshine-toad', true);
+    pack('luigi', false);
+    pack('shadow-mario', true);
+    pack('.staging-roxxy-1', true);
+    roster.removeRetired(root);
+    assert.deepEqual(fs.readdirSync(directory).sort(), ['.staging-roxxy-1', 'luigi', 'shadow-mario']);
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
+});
+
 test('a pack of the player\'s own is never replaced by a made character', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'roster-'));
   try {

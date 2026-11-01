@@ -27,7 +27,7 @@ const VIEWS = { front: [0, 0.1], side: [Math.PI / 2, 0.1], back: [Math.PI, 0.1],
 
 const state = {
   characters: [], id: null, playing: 'mario', eclipse: false, showFludd: true, fluddRig: null, model: null, animation: 'ma_wait', clips: new Map(), mario: null, compare: 'off',
-  frame: 0, playing: true, speed: 1, filter: '',
+  frame: 0, running: true, speed: 1, filter: '',
 };
 let viewer = null, loading = null;
 
@@ -45,15 +45,41 @@ async function start() {
       setStatus('Looking for characters…', true);
       await refresh();
     }
+    makeAll();
     await choose(state.id || state.playing);
   } catch (error) {
     setStatus(error.message || String(error));
   } finally { loading = null; }
 }
 
+// Characters being made: choosing one waits for it rather than making it again.
+const building = new Map();
+function make(id) {
+  if (!building.has(id)) {
+    building.set(id, window.sms.characterBuild(id).then(characters => { state.characters = characters; return characters; })
+      .finally(() => { building.delete(id); renderList(); }));
+    renderList();
+  }
+  return building.get(id);
+}
+
+// Every character not made yet, made from the disc one after another while the page is open.
+let makingAll = false;
+async function makeAll() {
+  if (makingAll || !state.setUp) return;
+  makingAll = true;
+  try {
+    for (let next; (next = state.characters.find(c => !c.ready && !failed.has(c.id)));) {
+      try { await make(next.id); } catch (_) { failed.add(next.id); renderList(); }
+    }
+  } finally { makingAll = false; }
+}
+const failed = new Set();
+
 async function refresh() {
-  const { characters, selected, eclipse } = await window.sms.characters();
+  const { characters, selected, eclipse, ready } = await window.sms.characters();
   state.characters = characters;
+  state.setUp = ready !== false;
   // the game's own menu keeps a character by its name
   const playing = characters.find(c => c.id === selected || c.name.toLowerCase() === String(selected).toLowerCase());
   state.playing = playing ? playing.id : 'mario';
@@ -62,9 +88,6 @@ async function refresh() {
 }
 
 // --- Loading -------------------------------------------------------------------
-
-// Characters being made: a second choice of one waits for it rather than making it again.
-const building = new Map();
 
 async function choose(id) {
   state.id = id;
@@ -77,8 +100,8 @@ async function choose(id) {
   if (!character.ready) {
     setStatus(`Making ${character.name} from your disc…`, true);
     const stop = window.sms.onCharacterBuildProgress(text => setStatus(`Making ${character.name} from your disc: ${text.toLowerCase()}…`, true));
-    if (!building.has(id)) building.set(id, window.sms.characterBuild(id).finally(() => building.delete(id)));
-    try { state.characters = await building.get(id); } finally { stop(); }
+    failed.delete(id);
+    try { await make(id); } finally { stop(); }
     if (state.id !== id) return;
     renderList();
   }
@@ -135,7 +158,8 @@ function renderList() {
     button.className = 'characters-item';
     button.innerHTML = '<span></span><small></small>';
     button.querySelector('span').textContent = name;
-    button.querySelector('small').textContent = id === state.playing ? 'Playing' : ready ? '' : 'Not made yet';
+    button.querySelector('small').textContent = id === state.playing ? 'Playing' : building.has(id) ? 'Making…'
+      : !ready && failed.has(id) ? 'Couldn\'t be made' : '';
     button.classList.toggle('playing', id === state.playing);
     button.setAttribute('aria-pressed', String(id === state.id));
     button.addEventListener('click', () => { if (id !== state.id) choose(id).catch(error => setStatus(error.message)); });
@@ -187,14 +211,14 @@ function renderAnimations() {
 
 function syncTransport() {
   const c = clip();
-  $('characters-play').textContent = state.playing ? 'Pause' : 'Play';
+  $('characters-play').textContent = state.running ? 'Pause' : 'Play';
   $('characters-frame').value = String(state.frame);
   $('characters-frame-label').textContent = c ? `${Math.floor(state.frame) + 1} / ${c.frames}` : '';
 }
 
-$('characters-play').addEventListener('click', () => { state.playing = !state.playing; syncTransport(); viewer?.wake(); });
+$('characters-play').addEventListener('click', () => { state.running = !state.running; syncTransport(); viewer?.wake(); });
 $('characters-frame').addEventListener('input', event => {
-  state.playing = false;
+  state.running = false;
   state.frame = Number(event.target.value);
   syncTransport();
   viewer?.redraw();
@@ -204,7 +228,7 @@ $('characters-step-ahead').addEventListener('click', () => step(1));
 function step(by) {
   const c = clip();
   if (!c) return;
-  state.playing = false;
+  state.running = false;
   state.frame = ((Math.round(state.frame) + by) % c.frames + c.frames) % c.frames;
   syncTransport();
   viewer?.redraw();
@@ -467,7 +491,7 @@ function createViewer(canvas) {
   let last = 0, background = document.hidden;
   function tick(now) {
     if (!running) return;
-    if (background || !state.playing) { running = false; draw(); return; }
+    if (background || !state.running) { running = false; draw(); return; }
     const c = clip();
     if (c && last) {
       state.frame = (state.frame + (now - last) / 1000 * 30 * state.speed) % c.frames;
@@ -486,7 +510,7 @@ function createViewer(canvas) {
   let queued = false;
   function redraw() {
     if (disposed) return;
-    if (state.playing && !background) { wake(); return; }
+    if (state.running && !background) { wake(); return; }
     if (queued) return;
     queued = true;
     requestAnimationFrame(() => { queued = false; if (!disposed) draw(); });

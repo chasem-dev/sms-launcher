@@ -156,10 +156,15 @@ const CUE_MOODS = {
 const FALLBACK = ['hop', 'cheer', 'hurt', 'shock', 'sad', 'effort', 'scream', 'wet'];
 const cueBase = name => name.replace(/_\d\d[A-C]?$/, '');
 
+// A moment of silence (the game needs a sample at least, and keeps identical clips once).
+const SILENCE = wav(new Int16Array(16), 32000);
+
 // A character's voice/ folder: { 'voice/<cue>.wav': WAV }. `voice` is { moods: { hop: [wave, ...], ... } },
-// waves of bank 1 by id, a cue's variants taking its mood's waves in turn; or { mario: true }, Mario's
-// own waves. `pitch` plays them lower (under 1) or higher.
+// waves of bank 1 by id, a cue's variants taking its mood's waves in turn; { mario: true }, Mario's
+// own waves; or { silent: true }, silence for every cue (snoring too). `pitch` plays them lower (under 1)
+// or higher.
 function voiceFiles(aaf, readArchive, voice) {
+  if (voice.silent) return Object.fromEntries(MARIO_CUES.map(([name]) => [`voice/${name}.wav`, SILENCE]));
   const archives = waveSystems(aaf)[1], cache = new Map(), read = new Map();
   const archive = file => { if (!read.has(file)) read.set(file, readArchive(file)); return read.get(file); };
   const clip = id => {

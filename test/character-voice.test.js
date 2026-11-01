@@ -72,3 +72,12 @@ test('each cue is said with a wave of its mood, variants in turn, and snoring st
   assert.equal(said('MV_IBIKI'), undefined);
   assert.equal(Object.keys(files).length, voice.MARIO_CUES.length - 2);
 });
+
+test('a silent character says nothing for every cue, snoring too', () => {
+  const files = voice.voiceFiles(null, () => { throw new Error('no wave is read'); }, { silent: true });
+  assert.equal(Object.keys(files).length, voice.MARIO_CUES.length);
+  const clip = files['voice/MV21_JUMP_SMALL_01.wav'];
+  assert.equal(clip.readUInt32LE(40), 32);  // 16 samples
+  for (let i = 44; i < clip.length; i += 2) assert.equal(clip.readInt16LE(i), 0);
+  assert.equal(files['voice/MV_IBIKI.wav'], clip);
+});

@@ -127,8 +127,9 @@ const ROXXY_GOWN = { wide: true, sway: 0.35, arms: 15,
 // game plays for his race jumps, NPC_VM_MTMAN_*) and a Pianta's voice (NPC_VM_CMNTM_*, NPC_VA_CMNTM_*)
 // for the rest. Shadow Mario talks with Mario's voice, as in the game; Bowser Jr.'s sounds in the game
 // are not a voice.
-const PEACH_VOICE = { moods: {  // NPC_VM_PEACH_*, NPC_VA_PEACH_CRY*, NPC_VA_PEACH_BREATH*
-  hop: [709, 704], cheer: [708, 704], hurt: [699, 700, 698], scream: [698, 707], shock: [705, 709], sad: [706], effort: [702, 703] } };
+// Peach is silent: the game has too few of her clips (a call of Mario's name, a few cries and breaths) to
+// stand in for all of Mario's cues, so the same few played over and over.
+const PEACH_VOICE = { silent: true };
 const TOAD_VOICE = { moods: {  // NPC_VM_KINOP_*, NPC_VA_KINOP_*
   hop: [585, 582, 587], cheer: [580, 585], hurt: [583, 578, 579], scream: [584], shock: [588, 581], sad: [586], effort: [578, 579], wet: [575, 576] } };
 const TOADSWORTH_VOICE = { moods: {  // NPC_VM_KINOJ_*, NPC_VA_KINOJ_*
@@ -138,7 +139,7 @@ const PIANTISSIMO_VOICE = { moods: {
 
 const ROSTER = [
   { id: 'mario', name: 'Mario', about: 'As on your disc.' },
-  { id: 'princess-peach', name: 'Princess Peach', about: 'Delfino\'s Peach, gown and all, on Mario\'s moves.', version: 5, voice: PEACH_VOICE, build: peach },
+  { id: 'princess-peach', name: 'Princess Peach', about: 'Delfino\'s Peach, gown and all, on Mario\'s moves.', version: 6, voice: PEACH_VOICE, build: peach },
   { id: 'shadow-mario', name: 'Shadow Mario', about: 'The paintbrush impostor, see-through and shimmering, as he looks in Delfino Plaza.', version: 2, build: shadowMario },
   { id: 'rivet-cap', name: 'Rivet', about: 'Our own Rivet, in his work cap.', version: 4, build: ownCharacter('rivet.glb', { curl: OWN_CURL }) },
   { id: 'roxxy', name: 'Roxxy', about: 'Our own Roxxy, crown and gown.', version: 7, fludd: ROXXY_FLUDD, build: ownCharacter('roxxy.glb', { gown: ROXXY_GOWN, curl: OWN_CURL }) },

@@ -391,6 +391,33 @@ function parseBck(data) {
   return { loop, frames, joints };
 }
 
+// A texture animation (.btk): each material's texture matrix moved over time, by the material's name:
+// { loop, frames, materials: [{ name, texMtx, u, v, w }] }, each of u, v, w { scale, rotation, translation }
+// tracks for sampleTrack.
+function parseBtk(data) {
+  if (data.toString('ascii', 0, 8) !== 'J3D1btk1') throw new Error('This is not a texture animation.');
+  const a = sections(data).TTK1;
+  const loop = data[a + 8], frames = data.readUInt16BE(a + 0x0a), count = data.readUInt16BE(a + 0x0c) / 3;
+  const rotScale = Math.pow(2, data[a + 9]) * ANGLE;
+  const off = k => a + data.readUInt32BE(a + k);
+  const table = off(0x14), remap = off(0x18), texMtx = off(0x20);
+  const names = nameTable(data, off(0x1c));
+  const f32 = base => i => data.readFloatBE(base + i * 4), s16 = i => data.readInt16BE(off(0x2c) + i * 2);
+  const track = (o, read, scale = 1) => {
+    const n = data.readUInt16BE(o), index = data.readUInt16BE(o + 2), stride = data.readUInt16BE(o + 4) ? 4 : 3;
+    if (n <= 1) return [{ time: 0, value: read(index) * scale, in: 0, out: 0 }];
+    return Array.from({ length: n }, (_, k) => {
+      const b = index + k * stride;
+      return { time: read(b), value: read(b + 1) * scale, in: read(b + 2) * scale, out: read(b + stride - 1) * scale };
+    });
+  };
+  const axis = o => ({ scale: track(o, f32(off(0x28))), rotation: track(o + 6, s16, rotScale), translation: track(o + 12, f32(off(0x30))) });
+  return { loop, frames, materials: Array.from({ length: count }, (_, i) => {
+    const o = table + data.readUInt16BE(remap + i * 2) * 54;
+    return { name: names[i], texMtx: data[texMtx + i], u: axis(o), v: axis(o + 18), w: axis(o + 36) };
+  }) };
+}
+
 // Hermite between keys, as the game's J3D animation player does.
 function sampleTrack(keys, frame) {
   if (keys.length === 1 || frame <= keys[0].time) return keys[0].value;
@@ -430,4 +457,4 @@ function withJointKinds(data, kinds) {
   return out;
 }
 
-module.exports = { parseBmd, parseBck, sampleTrack, decodeTexture, decodeBti, jointKinds, withJointKinds };
+module.exports = { parseBmd, parseBck, parseBtk, sampleTrack, decodeTexture, decodeBti, jointKinds, withJointKinds };

@@ -341,6 +341,15 @@ function createViewer(canvas) {
   scene.add(grid);
   const disposables = [grid.geometry, grid.material];
 
+  // Shadow Mario's shimmer (character-model.js): his warp texture's scale and place, at the game's 30 frames a second
+  const shimmer = { warpST: { value: new THREE.Vector4(1, 1, 0, 0) } };
+  function stepShimmer(now) {
+    const s = state.model?.shimmer;
+    if (!s) return;
+    const f = Math.floor(now / 1000 * 30) % s.frames;
+    shimmer.warpST.value.fromArray(s.st, f * 4);
+  }
+
   const figures = [];
   const character = addFigure(state.model, { id: state.id, x: 0 });
   if (comparing() && state.mario && state.id !== 'mario')
@@ -384,6 +393,7 @@ function createViewer(canvas) {
           vertexColors: Boolean(shape.color), transparent: ghost || shape.translucent, opacity: ghost ? 0.35 : 1,
           // see-through Mario is drawn over the character, never hidden behind it
           depthWrite: !ghost && !shape.translucent, depthTest: !ghost, alphaTest: shape.alphaTest || 0, gradientMap: gradient, side });
+      if (shape.shine && !ghost && data.shimmer && shape.warp >= 0) bendByWarp(material, textures[shape.warp]);
       const mesh = new THREE.Mesh(geometry, material);
       mesh.frustumCulled = false;
       if (ghost) mesh.renderOrder = 1;
@@ -394,6 +404,24 @@ function createViewer(canvas) {
     const figure = { id, data, rig, group };
     if ((state.showFludd || !state.animations) && state.fluddRig && data.chest >= 0) addFludd(figure, ghost);
     return figure;
+  }
+
+  // His colour seen through his moving warp texture, as the game bends the screen behind him with it: the
+  // colour looked up a little aside, and his light blue (his second colour) running over him where the warp
+  // is brightest.
+  function bendByWarp(material, warp) {
+    if (!warp) return;
+    warp.wrapS = warp.wrapT = THREE.RepeatWrapping;
+    warp.colorSpace = THREE.NoColorSpace;
+    material.onBeforeCompile = shader => {
+      shader.uniforms.warpMap = { value: warp };
+      shader.uniforms.warpST = shimmer.warpST;
+      shader.fragmentShader = `uniform sampler2D warpMap;\nuniform vec4 warpST;\n${shader.fragmentShader}`.replace(
+        'vec4 emissiveColor = texture2D( emissiveMap, vEmissiveMapUv );',
+        `vec4 warpTexel = texture2D( warpMap, vEmissiveMapUv * 3.0 * warpST.xy + warpST.zw );
+        vec4 emissiveColor = texture2D( emissiveMap, vEmissiveMapUv + ( warpTexel.ra - 0.5 ) * 0.1 );
+        emissiveColor.rgb = mix( emissiveColor.rgb * 0.8, vec3( 0.62, 0.76, 1.0 ), smoothstep( 0.55, 1.0, warpTexel.r ) * 0.55 );`);
+    };
   }
 
   // FLUDD on a figure, as the game hangs it from the chest joint, at the character's own size and place.
@@ -541,6 +569,7 @@ function createViewer(canvas) {
   observer.observe(canvas.parentElement);
 
   function draw() {
+    stepShimmer(performance.now());
     for (const figure of figures) pose(figure, state.frame);
     place();
     renderer.render(scene, camera);

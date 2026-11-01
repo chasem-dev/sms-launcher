@@ -11,6 +11,7 @@ const crypto = require('node:crypto');
 const { Disc } = require('./disc');
 const { rarc, yaz0 } = require('./archive');
 const { jointKinds, withJointKinds } = require('./j3d');
+const { shadowLook } = require('./shadow-look');
 const { withFolder, withFiles } = require('./rarc-write');
 const { convert, convertSunshine } = require('./character-convert');
 const { writeFluddPlace } = require('./character-model');
@@ -123,6 +124,18 @@ function luigi(disc, progress, { eclipse }) {
     .map(([name, data]) => [name, isModel(data) && isModel(marioFiles.get(name)) ? withJointKinds(data, jointKinds(marioFiles.get(name))) : data]));
   return { 'model.szs': withFiles(mario, changed) };
 }
+// Shadow Luigi: Luigi (as above) with a look made of his body and the plaza's Shadow Mario's materials
+// (shadow-look.js), which the game draws as it draws Shadow Mario. The game draws a look whole, so the
+// body's Shine shirt (shape 10, which it shows on the body only once Mario has the shirt) is left out of
+// it: he never wears it, as Shadow Mario doesn't.
+const SHIRT_SHAPE = 10;
+function shadowLuigi(disc, progress, options) {
+  const { 'model.szs': model } = luigi(disc, progress, options);
+  const plaza = rarc(yaz0(disc.file('data/scene/dolpic1.szs')));
+  const shadow = plaza.get('kagemario/default.bmd'), scroll = plaza.get('kagemario/kagemario_scroll.btk');
+  if (!shadow || !scroll) throw new Error('Your disc\'s Delfino Plaza has no Shadow Mario.');
+  return { 'model.szs': withFolder(model, 'look', shadowLook(rarc(yaz0(model)).get('bmd/ma_mdl1.bmd'), shadow, scroll, { hide: [SHIRT_SHAPE] })) };
+}
 // The Eclipse release a character comes from (its file's name): one made from another is made again.
 const ECLIPSE_RELEASE = (path.basename(ECLIPSE_ISO).match(/v\d+(?:\.\d+)*/) || ['eclipse'])[0];
 
@@ -156,6 +169,13 @@ const TOAD_VOICE = { moods: {  // NPC_VM_KINOP_*, NPC_VA_KINOP_*
   hop: [585, 582, 587], cheer: [580, 585], hurt: [583, 578, 579], scream: [584], shock: [588, 581], sad: [586], effort: [578, 579], wet: [575, 576] } };
 const TOADSWORTH_VOICE = { moods: {  // NPC_VM_KINOJ_*, NPC_VA_KINOJ_*
   hop: [570, 574], cheer: [572], hurt: [566, 567], scream: [566], shock: [573], sad: [573], wet: [568, 569] } };
+// Luigi as Super Mario Eclipse voices him (its player/voice.cpp): Mario's voice from the disc a little
+// lower (setPitch 0.95), his small, special and huge jumps said with Mario's MV41_JUMP_T_01, his small
+// actions and mid jumps with MV34_ACTION_T_01, his efforts and large jumps with MV38_EXERT_INST_T_01.
+const LUIGI_VOICE = { mario: true, pitch: 0.95, swap: {
+  MV21_JUMP_SMALL: 'MV41_JUMP_T_01', MV24_JUMP_SPECIAL: 'MV41_JUMP_T_01', MV25A_JUMP_HUGE: 'MV41_JUMP_T_01',
+  MV13_ACTION_SMALL: 'MV34_ACTION_T_01', MV22_JUMP_MID: 'MV34_ACTION_T_01',
+  MV15_EXERT_INST: 'MV38_EXERT_INST_T_01', MV23_JUMP_LARGE: 'MV38_EXERT_INST_T_01' } };
 const PIANTISSIMO_VOICE = { moods: {
   hop: [667, 668], cheer: [669, 661], hurt: [655, 654], scream: [656], shock: [656, 659], sad: [670, 660], effort: [647, 648] } };
 
@@ -168,7 +188,9 @@ const ROSTER = [
   { id: 'il-piantissimo', name: 'Il Piantissimo', about: 'The racer from Pianta Village, on Mario\'s skeleton as the game moves him.', version: 2, voice: PIANTISSIMO_VOICE,
     build: piantissimo },
   { id: 'luigi', name: 'Luigi', about: 'Super Mario Eclipse\'s Luigi, by the Super Mario Eclipse team, made from the Eclipse you set up. He moves as Mario does.',
-    version: `2-${ECLIPSE_RELEASE}`, from: 'eclipse', build: luigi },
+    version: `3-${ECLIPSE_RELEASE}`, from: 'eclipse', voice: LUIGI_VOICE, build: luigi },
+  { id: 'shadow-luigi', name: 'Shadow Luigi', about: 'Luigi as the paintbrush impostor, see-through and shimmering as Shadow Mario is. Made from the Eclipse you set up.',
+    version: `3-${ECLIPSE_RELEASE}`, from: 'eclipse', voice: LUIGI_VOICE, build: shadowLuigi },
   { id: 'bowser-jr', name: 'Bowser Jr.', about: 'Bowser\'s son, bandana and all, from Corona Mountain.', version: 1,
     build: sunshineCharacter('coronaBoss', 'koopajr', 'koopajr_model.bmd', BOWSER_JR_LABELS) },
 ];

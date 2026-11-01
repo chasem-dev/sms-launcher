@@ -116,13 +116,17 @@ test('Luigi is made from the Super Mario Eclipse set up once, on the disc\'s own
       'luigi.szs': archive({ bmd: { 'ma_mdl1.bmd': 'Luigi', 'ma_cap1.bmd': 'cap' }, bck: { 'ma_jump.bck': 'Luigi\'s jump' } }),
     }));
     assert.equal(luigi().makeable, true);
-    roster.build(root, rom, 'luigi');
+    // his voice (Mario's, as Eclipse voices him: character-voice.test.js) set aside: these discs have no sound
+    const character = roster.find('luigi'), { voice } = character;
+    assert.deepEqual([voice.mario, voice.pitch, voice.swap.MV21_JUMP_SMALL], [true, 0.95, 'MV41_JUMP_T_01']);
+    delete character.voice;
+    try { roster.build(root, rom, 'luigi'); } finally { character.voice = voice; }
     const folder = path.join(roster.packsDirectory(root), 'luigi');
     const made = rarc(fs.readFileSync(path.join(folder, 'model.szs')));
     assert.deepEqual(Object.fromEntries([...made].map(([name, data]) => [name, data.toString()])), {
       'bmd/ma_mdl1.bmd': 'Luigi', 'bmd/ma_cap1.bmd': 'cap', 'bck/ma_wait.bck': 'wait', 'bck/ma_jump.bck': 'Luigi\'s jump', 'watergun2/wg.bmd': 'FLUDD' });
     assert.equal(fs.readFileSync(path.join(folder, 'name.txt'), 'utf8'), 'Luigi\n');
-    assert.equal(JSON.parse(fs.readFileSync(path.join(folder, '.launcher.json'), 'utf8')).version, '2-v1.1.0');
+    assert.equal(JSON.parse(fs.readFileSync(path.join(folder, '.launcher.json'), 'utf8')).version, '3-v1.1.0');
     fs.rmSync(path.join(root, ECLIPSE_ISO));
     assert.deepEqual([luigi().ready, luigi().makeable], [true, false]);
   } finally { fs.rmSync(root, { recursive: true, force: true }); }

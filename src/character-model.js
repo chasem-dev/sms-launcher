@@ -9,8 +9,9 @@ const { bake } = mm;
 const { Disc } = require('./disc');
 
 const MODEL = 'bmd/ma_mdl1.bmd';
-// A look model, drawn in the body's place (Shadow Mario).
+// A look model, drawn in the body's place (Shadow Mario), and the texture animation the game plays on it.
 const LOOK = 'look/default.bmd';
+const LOOK_SCROLL = /^look\/[^/]+\.btk$/;
 // A character's FLUDD size and place (the port's patch zzzzzz-character-05): big-endian floats scale,
 // x y z offset in the chest joint's frame, tilt back in degrees.
 const FLUDD_PLACE = 'character/fludd.bin';
@@ -61,6 +62,22 @@ function loadCharacter(character, files, look = null) {
     return byIndex.get(index);
   };
   const shapes = [], shadow = Boolean(look) && model.textures.some(t => /kagemario/i.test(t.name));
+  // Shadow Mario's shimmer: his third texture (an indirect warp the game bends the screen behind him with),
+  // moved by his texture animation; the viewer bends and lights his colour with it.
+  const scrollName = shadow ? [...files.keys()].find(name => LOOK_SCROLL.test(name)) : null;
+  let shimmer = null;
+  if (scrollName) {
+    try {
+      // sampled at each of its frames: scale u, scale v, move u, move v
+      const scroll = j3d.parseBtk(files.get(scrollName)), anim = scroll.materials[0];
+      if (anim && scroll.frames > 0) {
+        const st = new Float32Array(scroll.frames * 4);
+        for (let f = 0; f < scroll.frames; f++)
+          st.set([anim.u.scale, anim.v.scale, anim.u.translation, anim.v.translation].map(t => j3d.sampleTrack(t, f)), f * 4);
+        shimmer = { frames: scroll.frames, st };
+      }
+    } catch (_) { shimmer = null; }
+  }
   const shadowFor = material => {
     const key = `shadow ${model.materials.indexOf(material)}`;
     if (!byIndex.has(key)) {
@@ -73,7 +90,8 @@ function loadCharacter(character, files, look = null) {
     if ((!look && i === ALOHA_SHAPE) || !shape.index.length) return;
     const material = model.materials[shape.material] || {};
     const texture = !material.textures ? -1 : shadow ? shadowFor(material) : textureFor(material.textures[0]);
-    shapes.push({ position: shape.position, normal: shape.normal, uv: shape.uv, color: texture < 0 && shape.hasColor ? shape.color : null,
+    const warp = shimmer && material.textures && material.textures[2] >= 0 ? textureFor(material.textures[2]) : -1;
+    shapes.push({ position: shape.position, normal: shape.normal, uv: shape.uv, color: texture < 0 && shape.hasColor ? shape.color : null, warp,
       drawIndex: shape.drawIndex, index: shape.index, texture, doubleSided: material.cull === 0, translucent: !shadow && material.mode === 4,
       // Shadow Mario is lit only by his shine (his colours are his texture's, unlit)
       shine: shadow,
@@ -87,7 +105,7 @@ function loadCharacter(character, files, look = null) {
     fludd: fluddPlace(files.get(FLUDD_PLACE)), chest: model.joints.findIndex(j => j.name === 'jnt_chest'),
     id: character.id, name: character.name,
     joints: model.joints, draw: model.draw, envelopes: model.envelopes, inverseBind: model.inverseBind, shapes, textures,
-    toon: toon ? toonBands(toon) : [0.72, 1], animations,
+    toon: toon ? toonBands(toon) : [0.72, 1], animations, shimmer,
   };
 }
 

@@ -3,16 +3,19 @@
 // is made from the player's own disc, the first time it is chosen, into the
 // game's mods/characters/<id>/ (model.szs, name.txt, and for some a look
 // model the game draws in place of the body). Nothing of the game ships with
-// the launcher: every file comes from the player's disc.
+// the launcher: every file comes from the player's disc, or, for Luigi, from
+// the Super Mario Eclipse the launcher made from it once (port.ECLIPSE_ISO).
 const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
 const { Disc } = require('./disc');
 const { rarc, yaz0 } = require('./archive');
-const { withFolder } = require('./rarc-write');
+const { jointKinds, withJointKinds } = require('./j3d');
+const { withFolder, withFiles } = require('./rarc-write');
 const { convert, convertSunshine } = require('./character-convert');
 const { writeFluddPlace } = require('./character-model');
 const { AAF, voiceFiles } = require('./character-voice');
+const { ECLIPSE_ISO } = require('./port');
 
 // A built character's version: made again when its builder changes.
 const STAMP = '.launcher.json';
@@ -104,6 +107,25 @@ function piantissimo(disc) {
   return { 'model.szs': withFolder(disc.file('data/mario.szs'), 'look', { 'default.bmd': look }) };
 }
 
+// Luigi: Super Mario Eclipse's, from the Eclipse the player set up once (even with Eclipse off now), on Mario's
+// skeleton. Eclipse keeps Mario's animations, FLUDD and effects in its common archive, not in luigi.szs, so his
+// pack is the disc's own mario.szs with what is Luigi's in place: each file of luigi.szs that Eclipse's mario.szs
+// hasn't the same (his model, caps, hands, glasses and jump). Not its movement files (*.prm), which only
+// Eclipse's own code reads: he moves as Mario does.
+// His models were made with every joint of kind 1, where Mario's ends (feet, hands, head) are 0: the game's
+// shadow reads the child of each joint of kind 1, so a stage crashed loading him (Eclipse's code guards it,
+// Sunshine's doesn't). Each joint takes the kind of Mario's of its name.
+const isModel = data => Boolean(data) && data.toString('ascii', 0, 4) === 'J3D2';
+function luigi(disc, progress, { eclipse }) {
+  const mario = disc.file('data/mario.szs'), marioFiles = rarc(yaz0(mario));
+  const own = rarc(yaz0(eclipse.file('data/luigi.szs'))), eclipseMario = rarc(yaz0(eclipse.file('data/mario.szs')));
+  const changed = Object.fromEntries([...own].filter(([name, data]) => !name.endsWith('.prm') && !eclipseMario.get(name)?.equals(data))
+    .map(([name, data]) => [name, isModel(data) && isModel(marioFiles.get(name)) ? withJointKinds(data, jointKinds(marioFiles.get(name))) : data]));
+  return { 'model.szs': withFiles(mario, changed) };
+}
+// The Eclipse release a character comes from (its file's name): one made from another is made again.
+const ECLIPSE_RELEASE = (path.basename(ECLIPSE_ISO).match(/v\d+(?:\.\d+)*/) || ['eclipse'])[0];
+
 // Characters of our own, shipped as their models (characters/*.glb, from their .blend sources; no game
 // data in them) and made on Mario's skeleton like a model the player brings. Their rig is built at 50
 // game units to a Blender unit.
@@ -145,6 +167,8 @@ const ROSTER = [
   { id: 'roxxy', name: 'Roxxy', about: 'Our own Roxxy, crown and gown.', version: 7, fludd: ROXXY_FLUDD, build: ownCharacter('roxxy.glb', { gown: ROXXY_GOWN, curl: OWN_CURL }) },
   { id: 'il-piantissimo', name: 'Il Piantissimo', about: 'The racer from Pianta Village, on Mario\'s skeleton as the game moves him.', version: 2, voice: PIANTISSIMO_VOICE,
     build: piantissimo },
+  { id: 'luigi', name: 'Luigi', about: 'Super Mario Eclipse\'s Luigi, by the Super Mario Eclipse team, made from the Eclipse you set up. He moves as Mario does.',
+    version: `2-${ECLIPSE_RELEASE}`, from: 'eclipse', build: luigi },
   { id: 'bowser-jr', name: 'Bowser Jr.', about: 'Bowser\'s son, bandana and all, from Corona Mountain.', version: 1,
     build: sunshineCharacter('coronaBoss', 'koopajr', 'koopajr_model.bmd', BOWSER_JR_LABELS) },
 ];
@@ -169,10 +193,16 @@ function builtVersion(root, id) {
   try { return JSON.parse(fs.readFileSync(path.join(packsDirectory(root), id, STAMP), 'utf8')).version; } catch (_) { return null; }
 }
 
-// The roster with what is built: [{ id, name, about, ready }].
+// The roster with what is built: [{ id, name, about, ready, makeable }]. One made from Eclipse can be made
+// only once Eclipse is set up; one made stays made without it.
 function list(root) {
-  return ROSTER.map(({ id, name, about, version }) => ({ id, name, about,
-    ready: id === 'mario' || Boolean(root && builtVersion(root, id) === version && fs.existsSync(path.join(packsDirectory(root), id, 'model.szs'))) }));
+  return ROSTER.map(character => {
+    const { id, name, about, version } = character;
+    const ready = id === 'mario' || Boolean(root && builtVersion(root, id) === version && fs.existsSync(path.join(packsDirectory(root), id, 'model.szs')));
+    // Eclipse's, which stays when Eclipse is turned off (every game version shares it)
+    const makeable = character.from !== 'eclipse' || Boolean(root && fs.existsSync(path.join(root, ECLIPSE_ISO)));
+    return { id, name, about, ready, makeable };
+  });
 }
 
 // The packs the launcher made (its stamp) of characters it no longer offers, removed: the game would
@@ -198,18 +228,21 @@ function find(id) {
   return character;
 }
 
-// Makes a character from the disc into mods/characters/<id>/, all at once (a failed build leaves
-// what was there).
+// Makes a character from the disc (or Eclipse, for one from it) into mods/characters/<id>/, all at once
+// (a failed build leaves what was there).
 function build(root, rom, id, progress = () => {}) {
   const character = find(id);
   if (!character.build) return;
-  const disc = new Disc(rom);
+  const eclipseIso = character.from === 'eclipse' ? root && path.join(root, ECLIPSE_ISO) : null;
+  if (character.from === 'eclipse' && !(eclipseIso && fs.existsSync(eclipseIso)))
+    throw new Error(`${character.name} comes from Super Mario Eclipse: turn on Super Mario Eclipse in Settings, Gameplay, and set it up once to make him. He stays when you turn Eclipse off.`);
+  const disc = new Disc(rom), eclipse = eclipseIso ? new Disc(eclipseIso) : null;
   let files;
   try {
-    files = character.build(disc, progress);
+    files = character.build(disc, progress, { eclipse });
     // the character's own voice from the disc (the port's character voices)
     if (character.voice) Object.assign(files, voiceFiles(nintendoArchive(disc).get(AAF), file => disc.file(`audiores/banks/${file.toLowerCase()}`), character.voice));
-  } finally { disc.close(); }
+  } finally { disc.close(); eclipse?.close(); }
   // FLUDD at the character's size and place (the port's patch zzzzzz-character-05)
   if (character.fludd) files['model.szs'] = withFolder(files['model.szs'], 'character', { 'fludd.bin': writeFluddPlace(character.fludd) });
   install(root, character, files);

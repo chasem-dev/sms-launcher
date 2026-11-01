@@ -5,10 +5,39 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const roster = require('../src/character-roster');
+const { ECLIPSE_ISO } = require('../src/port');
+
+const { writeRarc } = require('../src/rarc-write');
+const { rarc } = require('../src/archive');
+
+// A disc whose data/ folder holds these files ({ 'mario.szs': data }).
+function discWith(files) {
+  const entries = Object.entries(files), table = Buffer.alloc((2 + entries.length) * 12);
+  const names = Buffer.from(['data', ...entries.map(([name]) => name)].map(n => `${n}\0`).join(''), 'latin1');
+  table.writeUInt32BE(0x01000000, 0); table.writeUInt32BE(2 + entries.length, 8);
+  table.writeUInt32BE(0x01000000, 12); table.writeUInt32BE(2 + entries.length, 20);
+  let at = 0x2000, name = 5;
+  const data = [];
+  entries.forEach(([file, bytes], i) => {
+    table.writeUInt32BE(name, 24 + i * 12); table.writeUInt32BE(at, 28 + i * 12); table.writeUInt32BE(bytes.length, 32 + i * 12);
+    data.push([at, bytes]);
+    name += file.length + 1;
+    at += (bytes.length + 0x7ff) & ~0x7ff;
+  });
+  const fst = Buffer.concat([table, names]), disc = Buffer.alloc(at);
+  disc.write('GMSE01', 0, 'ascii');
+  disc.writeUInt32BE(0x1000, 0x424); disc.writeUInt32BE(fst.length, 0x428);
+  fst.copy(disc, 0x1000);
+  for (const [offset, bytes] of data) bytes.copy(disc, offset);
+  return disc;
+}
+// A Mario archive: { folder: { file: text } }.
+const archive = folders => writeRarc({ name: 'mario', files: [],
+  dirs: Object.entries(folders).map(([name, files]) => ({ name, dirs: [], files: Object.entries(files).map(([n, text]) => ({ name: n, data: Buffer.from(text), flags: 0x11 })) })) });
 
 test('the roster is Mario, ready from the disc, then the characters made from it', () => {
   assert.deepEqual(roster.list(null).map(({ id, ready }) => [id, ready]), roster.ROSTER.map(c => [c.id, c.id === 'mario']));
-  assert.throws(() => roster.find('luigi'), /no character luigi/);
+  assert.throws(() => roster.find('waluigi'), /no character waluigi/);
 });
 
 test('a made character is ready until its builder changes, and keeps a voice the player added', () => {
@@ -68,5 +97,33 @@ test('a pack of the player\'s own is never replaced by a made character', () => 
     assert.throws(() => roster.install(root, roster.find('shadow-mario'), { 'model.szs': Buffer.from('made') }), /of your own/);
     assert.equal(fs.readFileSync(path.join(own, 'model.szs'), 'utf8'), 'mine');
     assert.equal(roster.list(root).find(c => c.id === 'shadow-mario').ready, false);
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
+});
+
+test('Luigi is made from the Super Mario Eclipse set up once, on the disc\'s own Mario, and stays made without it', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'roster-'));
+  try {
+    const luigi = () => roster.list(root).find(c => c.id === 'luigi');
+    const rom = path.join(root, 'sunshine.iso');
+    fs.writeFileSync(rom, discWith({ 'mario.szs': archive({ bmd: { 'ma_mdl1.bmd': 'Mario', 'ma_cap1.bmd': 'cap' }, bck: { 'ma_wait.bck': 'wait', 'ma_jump.bck': 'jump' }, watergun2: { 'wg.bmd': 'FLUDD' } }) }));
+    assert.deepEqual([luigi().ready, luigi().makeable], [false, false]);
+    assert.equal(roster.list(root).find(c => c.id === 'princess-peach').makeable, true);
+    assert.throws(() => roster.build(root, rom, 'luigi'), /comes from Super Mario Eclipse/);
+    // Eclipse's Mario and Luigi without the animations and FLUDD (in its common archive), Luigi with his own model and jump
+    fs.mkdirSync(path.dirname(path.join(root, ECLIPSE_ISO)), { recursive: true });
+    fs.writeFileSync(path.join(root, ECLIPSE_ISO), discWith({
+      'mario.szs': archive({ bmd: { 'ma_mdl1.bmd': 'Mario', 'ma_cap1.bmd': 'cap' } }),
+      'luigi.szs': archive({ bmd: { 'ma_mdl1.bmd': 'Luigi', 'ma_cap1.bmd': 'cap' }, bck: { 'ma_jump.bck': 'Luigi\'s jump' } }),
+    }));
+    assert.equal(luigi().makeable, true);
+    roster.build(root, rom, 'luigi');
+    const folder = path.join(roster.packsDirectory(root), 'luigi');
+    const made = rarc(fs.readFileSync(path.join(folder, 'model.szs')));
+    assert.deepEqual(Object.fromEntries([...made].map(([name, data]) => [name, data.toString()])), {
+      'bmd/ma_mdl1.bmd': 'Luigi', 'bmd/ma_cap1.bmd': 'cap', 'bck/ma_wait.bck': 'wait', 'bck/ma_jump.bck': 'Luigi\'s jump', 'watergun2/wg.bmd': 'FLUDD' });
+    assert.equal(fs.readFileSync(path.join(folder, 'name.txt'), 'utf8'), 'Luigi\n');
+    assert.equal(JSON.parse(fs.readFileSync(path.join(folder, '.launcher.json'), 'utf8')).version, '2-v1.1.0');
+    fs.rmSync(path.join(root, ECLIPSE_ISO));
+    assert.deepEqual([luigi().ready, luigi().makeable], [true, false]);
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });

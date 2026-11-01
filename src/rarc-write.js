@@ -3,7 +3,8 @@
 // tools lay them out: folders breadth first, each folder's entries together
 // with "." and ".." last, file data in entry order on 32-byte boundaries,
 // file IDs matching entry indices. Used to add a folder to a copy of the
-// player's own Mario archive (a character's look model).
+// player's own Mario archive (a character's look model), or put another
+// character's files in it (Luigi).
 const { yaz0 } = require('./archive');
 
 const align = (n, a = 32) => (n + a - 1) & ~(a - 1);
@@ -113,4 +114,23 @@ function withFolder(source, folderName, files) {
   return writeRarc(tree);
 }
 
-module.exports = { readTree, writeRarc, withFolder, hash };
+// A copy of an archive with files put in place by path ('bmd/ma_mdl1.bmd', any case): each replaces the file
+// of that path, or is added to its folder (made if missing).
+function withFiles(source, files) {
+  const tree = readTree(source);
+  for (const [file, data] of Object.entries(files)) {
+    const parts = file.split('/'), name = parts.pop();
+    let folder = tree;
+    for (const part of parts) {
+      let next = folder.dirs.find(d => d.name.toLowerCase() === part.toLowerCase());
+      if (!next) folder.dirs.push(next = { name: part, dirs: [], files: [] });
+      folder = next;
+    }
+    const existing = folder.files.find(f => f.name.toLowerCase() === name.toLowerCase());
+    if (existing) existing.data = data;
+    else folder.files.push({ name, data, flags: 0x11 });
+  }
+  return writeRarc(tree);
+}
+
+module.exports = { readTree, writeRarc, withFolder, withFiles, hash };

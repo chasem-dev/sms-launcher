@@ -974,7 +974,7 @@ test('game features come from the game version on disk', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'sms-features-'));
   try {
     const none = { vulkan: false, appleSilicon: false, mouseKeys: false, eclipseAppleSilicon: false, eclipseSunshineMovies: false,
-      cutscenesWithoutTextures: false, coop: false, characterLook: false };
+      cutscenesWithoutTextures: false, coop: false, characterLook: false, onlineCharacters: false };
     assert.deepEqual(port.gameFeatures(root), none);
     assert.deepEqual(port.gameFeatures(null), none);
     fs.mkdirSync(path.join(root, 'platform', 'gx', 'src', 'vk'), { recursive: true });
@@ -998,6 +998,9 @@ test('game features come from the game version on disk', () => {
     fs.mkdirSync(path.join(root, 'ext', 'look', 'game'), { recursive: true });
     fs.writeFileSync(path.join(root, 'ext', 'look', 'game', 'look_game.cpp'), '// ext/look\n');
     assert.equal(port.gameFeatures(root).characterLook, true);
+    fs.mkdirSync(path.join(root, 'decomp-patches'), { recursive: true });
+    fs.writeFileSync(path.join(root, 'decomp-patches', 'zzzzzz-character-06-multiplayer.patch'), 'Reason: online characters\n');
+    assert.equal(port.gameFeatures(root).onlineCharacters, true);
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });
 

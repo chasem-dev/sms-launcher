@@ -474,7 +474,9 @@ function gameFeatures(root) {
     // split-screen co-op (SMS_COOP): a second player on this computer
     coop: has(path.join('ext', 'coop', 'game', 'coop.cpp')),
     // Eclipse's other characters keep their own textures, out of Customize Mario's look (ext/look)
-    characterLook: has(path.join('ext', 'look', 'game', 'look_game.cpp')) };
+    characterLook: has(path.join('ext', 'look', 'game', 'look_game.cpp')),
+    // online, the others drawn as the characters they play (each game's own mods/characters)
+    onlineCharacters: has(path.join('decomp-patches', 'zzzzzz-character-06-multiplayer.patch')) };
 }
 
 function hdVisualsInstalled(root, settings) {

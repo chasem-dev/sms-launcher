@@ -54,7 +54,7 @@ test('packs the launcher made of characters it no longer offers are removed, and
     pack('luigi', false);
     pack('shadow-mario', true);
     pack('.staging-roxxy-1', true);
-    roster.removeRetired(root);
+    assert.deepEqual(roster.removeRetired(root), ['sunshine-toad']);
     assert.deepEqual(fs.readdirSync(directory).sort(), ['.staging-roxxy-1', 'luigi', 'shadow-mario']);
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });

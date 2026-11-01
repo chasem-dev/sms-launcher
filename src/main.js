@@ -2242,7 +2242,12 @@ function registerHandlers() {
     return characterCache.get(character, stamp, () => characterRoster.archive(root, rom, id));
   };
   ipcMain.handle('characters', () => {
-    if (charactersRoot()) characterRoster.removeRetired(charactersRoot());
+    // a character no longer offered, played as: Mario again (its pack is gone)
+    const removed = charactersRoot() ? characterRoster.removeRetired(charactersRoot()) : [];
+    if (removed.includes(config.settings.character)) {
+      config.settings.character = 'mario';
+      saveConfig();
+    }
     return { characters: characterRoster.list(charactersRoot()), selected: config.settings.character || 'mario',
       eclipse: Boolean(config.settings.eclipse), ready: Boolean(charactersRoot() && config.rom) };
   });

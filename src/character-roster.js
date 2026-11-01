@@ -171,15 +171,19 @@ function list(root) {
 
 // The packs the launcher made (its stamp) of characters it no longer offers, removed: the game would
 // still play them (F4 goes through every pack). A player's own packs have no stamp and stay.
+// Returns the ids removed.
 function removeRetired(root) {
-  const directory = packsDirectory(root);
+  const directory = packsDirectory(root), removed = [];
   let entries;
-  try { entries = fs.readdirSync(directory, { withFileTypes: true }); } catch (_) { return; }
+  try { entries = fs.readdirSync(directory, { withFileTypes: true }); } catch (_) { return removed; }
   for (const entry of entries) {
     // not one being made (.staging-*) or put aside while it is replaced (*.old-*)
     if (!entry.isDirectory() || !/^[a-z0-9-]+$/.test(entry.name) || ROSTER.some(c => c.id === entry.name)) continue;
-    if (fs.existsSync(path.join(directory, entry.name, STAMP))) fs.rmSync(path.join(directory, entry.name), { recursive: true, force: true });
+    if (!fs.existsSync(path.join(directory, entry.name, STAMP))) continue;
+    fs.rmSync(path.join(directory, entry.name), { recursive: true, force: true });
+    removed.push(entry.name);
   }
+  return removed;
 }
 
 function find(id) {

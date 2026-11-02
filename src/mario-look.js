@@ -16,8 +16,9 @@ const only = (colors, fludd) => Object.fromEntries(Object.entries(colors).filter
 const WRAP = [THREE.ClampToEdgeWrapping, THREE.RepeatWrapping, THREE.MirroredRepeatWrapping];
 
 let viewer = null, model = null, look = Colors.normalizeLook(), saveTimer = null, loading = null;
-// My looks: the player's saved looks, and the place picked to save into or rename.
-let slots = Colors.normalizeSlots(), slot = 0, clearArmed = null, slotNameTimer = null;
+// Outfits: the player's named looks (up to six) and the one Mario wears; `renaming` is the outfit whose
+// name is being typed, `deleting` a Delete waiting for its second press.
+let outfits = Colors.normalizeOutfits(null, look), renaming = -1, deleting = null;
 
 // Mario's colours are part of the Character tab (characters-page.js), which
 // shows them while Mario is chosen. Nothing of Mario's view stays on the GPU
@@ -32,7 +33,6 @@ window.smsMarioLook = {
     viewer?.dispose();
     viewer = null;
     if (saveTimer) { clearTimeout(saveTimer); save(); }
-    if (slotNameTimer) { clearTimeout(slotNameTimer); slotNameTimer = null; saveSlots(); }
   }
 };
 
@@ -42,9 +42,7 @@ async function load() {
     const result = await window.sms.marioModel();
     model = result.model;
     look = Colors.normalizeLook(result.look);
-    slots = Colors.normalizeSlots(result.slots);
-    const wearing = slots.findIndex(saved => saved && Colors.sameLook(look, saved.look));
-    slot = wearing >= 0 ? wearing : Math.max(0, slots.indexOf(null));
+    outfits = Colors.normalizeOutfits(result.outfits, look);
     renderControls();
     if (!page.hidden && !page.closest('.page').hidden) show();
     else setStatus('');
@@ -103,6 +101,7 @@ $('mario-relaunch').addEventListener('click', () => {
 let paintQueued = false;
 function change(update) {
   update();
+  keepInOutfit();
   if (!paintQueued) {
     paintQueued = true;
     requestAnimationFrame(() => {
@@ -121,11 +120,14 @@ function save() {
   saveTimer = null;
   window.sms.saveMarioLook(look).catch(() => {});
 }
+// The look goes into the outfit Mario wears as it changes (main.js does the same with what it saves).
+function keepInOutfit() {
+  const { slots, active } = outfits;
+  slots[active] = { ...slots[active], look: Colors.slotLook(look) };
+}
 
 // --- Panel -------------------------------------------------------------------
 
-// The colours a saved look's place shows, and a region's colour on the disc.
-const SLOT_COLORS = ['hat', 'shirt', 'overalls', 'shoes'];
 const originalColor = id => model?.references[Colors.REGIONS.findIndex(region => region.id === id)]?.color;
 
 function swatch(id, onChange = () => {}) {
@@ -148,90 +150,159 @@ function swatch(id, onChange = () => {}) {
 
 $('mario-in-game').addEventListener('change', event => change(() => { look.inGame = event.target.checked; }));
 
-// --- My looks ----------------------------------------------------------------
-// Six places to keep a look in and put it back on later. Picking a saved look
-// wears it; picking an empty place gets it ready for Save here.
+// --- Outfits -------------------------------------------------------------------
+// Tabs over Mario and his colours, one per outfit. Mario wears the open one and
+// every change is saved into it, so there's nothing to save or load.
 
-function saveSlots() {
-  slotNameTimer = null;
-  window.sms.saveMarioLookSlots(slots).catch(() => {});
+// The outfits already hold Mario's newest look (keepInOutfit), so a look save still waiting isn't needed.
+function saveOutfits() {
+  clearTimeout(saveTimer);
+  saveTimer = null;
+  window.sms.saveMarioOutfits({ ...outfits, inGame: look.inGame }).catch(() => {});
 }
 
-// A saved look's place: four of its colours and its name.
-function slotButton(index) {
-  const button = document.createElement('button');
-  button.type = 'button';
-  button.className = 'mario-slot';
-  button.dataset.slot = String(index);
-  button.innerHTML = '<span class="mario-slot-colors" aria-hidden="true"></span><span class="mario-slot-name"></span>';
-  button.addEventListener('click', () => {
-    slot = index;
-    disarmClear();
-    const saved = slots[index];
-    if (saved) change(() => { look = { ...look, ...Colors.slotLook(saved.look) }; });
-    else syncControls();
-  });
-  return button;
+function wear(index) {
+  if (index === outfits.active) return;
+  outfits.active = index;
+  renaming = -1;
+  disarmDelete();
+  change(() => { look = { ...look, ...Colors.slotLook(outfits.slots[index].look) }; });
+  saveOutfits();
+  renderOutfits();
 }
 
-function disarmClear() {
-  if (!clearArmed) return;
-  clearTimeout(clearArmed);
-  clearArmed = null;
-}
-
-$('mario-slot-save').addEventListener('click', () => {
-  disarmClear();
-  slots[slot] = { name: $('mario-slot-name').value.trim() || slots[slot]?.name || `Look ${slot + 1}`, look: Colors.slotLook(look) };
-  slots = Colors.normalizeSlots(slots);
-  saveSlots();
+// A new outfit starts as a copy of the one Mario wears, ready to be named.
+function addOutfit() {
+  const index = outfits.slots.indexOf(null);
+  if (index < 0) return;
+  outfits.slots[index] = { name: Colors.outfitName(index), look: Colors.slotLook(look) };
+  outfits.active = index;
+  renaming = index;
+  disarmDelete();
+  saveOutfits();
+  renderOutfits();
   syncControls();
-});
-// Clear asks once more first: a saved look can't come back.
-$('mario-slot-clear').addEventListener('click', () => {
-  if (!slots[slot]) return;
-  if (!clearArmed) {
-    clearArmed = setTimeout(() => { clearArmed = null; syncControls(); }, 3000);
+}
+
+function rename(index, name) {
+  renaming = -1;
+  const trimmed = name.trim().slice(0, Colors.SLOT_NAME_LENGTH);
+  if (trimmed && outfits.slots[index]) {
+    outfits.slots[index] = { ...outfits.slots[index], name: trimmed };
+    saveOutfits();
+  }
+  renderOutfits();
+}
+
+// Delete asks once more first; the last outfit can't be deleted.
+function disarmDelete() {
+  if (!deleting) return;
+  clearTimeout(deleting);
+  deleting = null;
+}
+$('mario-outfit-delete').addEventListener('click', () => {
+  if (outfits.slots.filter(Boolean).length < 2) return;
+  if (!deleting) {
+    deleting = setTimeout(() => { deleting = null; syncControls(); }, 3000);
     syncControls();
     return;
   }
-  disarmClear();
-  slots[slot] = null;
-  saveSlots();
-  syncControls();
-});
-$('mario-slot-name').addEventListener('input', event => {
-  if (!slots[slot]) return;
-  const name = event.target.value.trim();
-  if (name) slots[slot] = { ...slots[slot], name: name.slice(0, Colors.SLOT_NAME_LENGTH) };
-  syncSlots();
-  clearTimeout(slotNameTimer);
-  slotNameTimer = setTimeout(saveSlots, 400);
-});
-// An emptied name goes back to the saved one.
-$('mario-slot-name').addEventListener('change', event => {
-  if (slots[slot] && !event.target.value.trim()) event.target.value = slots[slot].name;
-});
-$('mario-slot-name').addEventListener('keydown', event => {
-  if (event.key === 'Enter') { event.preventDefault(); $('mario-slot-save').click(); }
+  disarmDelete();
+  const gone = outfits.active;
+  outfits.slots[gone] = null;
+  // Mario puts on the outfit beside it
+  const next = outfits.slots.findIndex((slot, index) => slot && index > gone);
+  outfits.active = next >= 0 ? next : outfits.slots.map(Boolean).lastIndexOf(true);
+  change(() => { look = { ...look, ...Colors.slotLook(outfits.slots[outfits.active].look) }; });
+  saveOutfits();
+  renderOutfits();
 });
 
-function syncSlots() {
-  for (const button of document.querySelectorAll('.mario-slot')) {
-    const index = Number(button.dataset.slot), saved = slots[index];
-    button.classList.toggle('empty', !saved);
-    button.classList.toggle('picked', index === slot);
-    const wearing = Boolean(saved && Colors.sameLook(look, saved.look));
-    button.classList.toggle('active', wearing);
-    button.setAttribute('aria-pressed', String(wearing));
-    button.querySelector('.mario-slot-name').textContent = saved ? saved.name : 'Empty';
-    button.title = saved ? `Wear ${saved.name}` : `Place ${index + 1}: empty`;
-    button.querySelector('.mario-slot-colors').replaceChildren(...(saved ? SLOT_COLORS.map(id => {
-      const dot = document.createElement('i');
-      dot.style.background = saved.look.colors[id] || originalColor(id) || '#ccc';
-      return dot;
-    }) : []));
+// A little Mario in an outfit's colours, for its tab.
+function bust(outfitLook) {
+  const c = id => outfitLook.colors[id] || originalColor(id) || '#ccc';
+  const aloha = outfitLook.aloha ? `<path d="M9 40Q9 30 16 28.5L18 40ZM31 40Q31 30 24 28.5L22 40Z" fill="${c('alohaShirt')}"/>` : '';
+  const eyes = outfitLook.sunglasses
+    ? '<rect x="13.2" y="16.2" width="5.6" height="3.6" rx="1.4" fill="#3c4fd8"/><rect x="21.2" y="16.2" width="5.6" height="3.6" rx="1.4" fill="#3c4fd8"/>'
+    : `<ellipse cx="17" cy="17.4" rx="1.3" ry="1.9" fill="${c('eyes')}"/><ellipse cx="23" cy="17.4" rx="1.3" ry="1.9" fill="${c('eyes')}"/>`;
+  return `<svg class="mario-outfit-bust" viewBox="0 0 40 40" aria-hidden="true">
+    <path d="M5 40Q5 28.5 20 27.5Q35 28.5 35 40Z" fill="${c('shirt')}"/>${aloha}
+    <path d="M12.5 40L13.5 31H26.5L27.5 40Z" fill="${c('overalls')}"/>
+    <path d="M13.8 31.5L11.5 27.8M26.2 31.5L28.5 27.8" stroke="${c('overalls')}" stroke-width="2.6" stroke-linecap="round"/>
+    <circle cx="16" cy="32.6" r="1.5" fill="${c('buttons')}"/><circle cx="24" cy="32.6" r="1.5" fill="${c('buttons')}"/>
+    <circle cx="20" cy="18.5" r="8.2" fill="${c('skin')}"/>
+    <path d="M11.8 17Q11 21 13 22.5M28.2 17Q29 21 27 22.5" stroke="${c('hair')}" stroke-width="2" fill="none" stroke-linecap="round"/>${eyes}
+    <path d="M14.5 22.6Q17 20.6 20 21.8Q23 20.6 25.5 22.6Q23 24.4 20 23.3Q17 24.4 14.5 22.6Z" fill="${c('mustache')}"/>
+    <circle cx="20" cy="20.6" r="2.3" fill="${c('skin')}" stroke="#0002" stroke-width=".6"/>
+    <path d="M10.5 15.2Q10.5 5.6 20 5.6Q29.5 5.6 29.5 15.2Z" fill="${c('hat')}"/>
+    <path d="M8.6 15.6Q20 12.6 31.4 15.6Q20 17.6 8.6 15.6Z" fill="${c('hat')}" stroke="#0002" stroke-width=".6"/>
+    <circle cx="20" cy="10.4" r="3" fill="${c('emblem')}"/>
+  </svg>`;
+}
+
+function renderOutfits() {
+  const strip = $('mario-outfits');
+  const tabs = outfits.slots.map((slot, index) => {
+    if (!slot) return null;
+    const open = index === outfits.active;
+    const tab = document.createElement('div');
+    tab.className = 'mario-outfit';
+    tab.classList.toggle('open', open);
+    tab.dataset.outfit = String(index);
+    tab.innerHTML = `<button type="button" class="mario-outfit-wear" role="tab" aria-selected="${open}">${bust(slot.look)}<span class="mario-outfit-name"></span></button>`;
+    tab.querySelector('.mario-outfit-name').textContent = slot.name;
+    tab.querySelector('.mario-outfit-wear').title = open ? `${slot.name}: double-click to rename` : `Wear ${slot.name}`;
+    tab.querySelector('.mario-outfit-wear').addEventListener('click', () => wear(index));
+    tab.querySelector('.mario-outfit-wear').addEventListener('dblclick', () => { renaming = index; renderOutfits(); });
+    if (open && renaming !== index) {
+      const edit = document.createElement('button');
+      edit.type = 'button';
+      edit.className = 'mario-outfit-rename';
+      edit.textContent = '✎';
+      edit.title = edit.ariaLabel = `Rename ${slot.name}`;
+      edit.addEventListener('click', () => { renaming = index; renderOutfits(); });
+      tab.append(edit);
+    }
+    if (renaming === index) {
+      const input = document.createElement('input');
+      input.className = 'mario-outfit-input';
+      input.maxLength = Colors.SLOT_NAME_LENGTH;
+      input.value = slot.name;
+      input.spellcheck = false;
+      input.ariaLabel = 'Outfit name';
+      let done = false;
+      const finish = keep => { if (done) return; done = true; rename(index, keep ? input.value : ''); };
+      input.addEventListener('keydown', event => {
+        if (event.key === 'Enter') { event.preventDefault(); finish(true); }
+        if (event.key === 'Escape') { event.preventDefault(); finish(false); }
+      });
+      input.addEventListener('blur', () => finish(true));
+      tab.querySelector('.mario-outfit-name').replaceWith(input);
+      requestAnimationFrame(() => { input.focus(); input.select(); });
+    }
+    return tab;
+  }).filter(Boolean);
+  if (outfits.slots.includes(null)) {
+    const add = document.createElement('button');
+    add.type = 'button';
+    add.className = 'mario-outfit-add';
+    add.innerHTML = '<span aria-hidden="true">+</span>New outfit';
+    add.title = 'A new outfit, starting as a copy of this one';
+    add.addEventListener('click', addOutfit);
+    tabs.push(add);
   }
+  strip.replaceChildren(...tabs);
+}
+
+// Keeps the open tab's picture in step with Mario as he changes.
+function syncOutfits() {
+  const tab = document.querySelector(`.mario-outfit[data-outfit="${outfits.active}"]`);
+  if (tab) tab.querySelector('.mario-outfit-bust').outerHTML = bust(outfits.slots[outfits.active].look);
+  const name = outfits.slots[outfits.active].name, only = outfits.slots.filter(Boolean).length < 2;
+  $('mario-outfit-note-name').textContent = name;
+  $('mario-outfit-delete').hidden = only;
+  $('mario-outfit-delete').textContent = deleting ? `Delete ${name}?` : 'Delete';
+  $('mario-outfit-delete').classList.toggle('armed', Boolean(deleting));
 }
 
 // A row of preset buttons; `fludd` presets replace FLUDD's colours, the others Mario's.
@@ -249,7 +320,7 @@ function presetButtons(presets, fludd, onChange = () => {}) {
 }
 
 function renderControls() {
-  $('mario-slots').replaceChildren(...Array.from({ length: Colors.SLOTS }, (_, index) => slotButton(index)));
+  renderOutfits();
   $('mario-presets').replaceChildren(...presetButtons(Colors.PRESETS, false));
   const list = $('mario-regions');
   list.replaceChildren();
@@ -331,21 +402,7 @@ function syncControls() {
     button.classList.toggle('active', active);
     button.setAttribute('aria-pressed', String(active));
   }
-  syncSlots();
-  const saved = slots[slot], name = $('mario-slot-name');
-  // A name typed for an empty place stays until it is saved or another place is picked.
-  if (document.activeElement !== name && (saved || name.dataset.slot !== String(slot))) name.value = saved ? saved.name : '';
-  name.dataset.slot = String(slot);
-  name.placeholder = `Look ${slot + 1}`;
-  const wearing = Boolean(saved && Colors.sameLook(look, saved.look));
-  $('mario-slot-save').textContent = saved ? (wearing ? 'Saved' : 'Save over') : 'Save here';
-  $('mario-slot-save').disabled = wearing;
-  $('mario-slot-clear').hidden = !saved;
-  $('mario-slot-clear').textContent = clearArmed ? 'Clear it?' : 'Clear';
-  $('mario-slot-clear').classList.toggle('armed', Boolean(clearArmed));
-  $('mario-slot-note').textContent = !saved ? `Save here keeps Mario's look as he is now in place ${slot + 1}.`
-    : wearing ? `Mario wears ${saved.name}. Change anything, then Save over to update it.`
-    : `Save over replaces ${saved.name} with Mario's look as he is now.`;
+  syncOutfits();
   $('mario-in-game').checked = look.inGame;
   $('mario-preview-note').textContent = look.inGame ? 'Your colours show in the game the next time it starts.'
     : 'The game shows Mario as usual: Use in the game is off.';

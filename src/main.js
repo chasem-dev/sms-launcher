@@ -229,6 +229,12 @@ function saveConfig() {
   fs.renameSync(temporary, file);
 }
 
+// Mario wears his chosen outfit: marioLook is that outfit with Use in the game.
+function wearOutfit() {
+  const { slots, active } = config.marioOutfits;
+  config.marioLook = marioColors.normalizeLook({ ...slots[active].look, inGame: config.marioLook.inGame });
+}
+
 function savedMultiplayer(saved) {
   const value = saved && typeof saved === 'object' ? saved : {};
   const portOr = text => { try { return multiplayer.parsePort(text); } catch (_) { return multiplayer.DEFAULT_PORT; } };
@@ -276,11 +282,12 @@ function loadConfig() {
     vulkanFailed: typeof saved.vulkanFailed === 'string' ? saved.vulkanFailed.slice(0, 300) : null,
     // Customize Mario: the colours the player chose and the Shine shirt.
     marioLook: marioColors.normalizeLook(saved.marioLook),
-    // Customize Mario's saved looks, to load again later (six places, each empty or named).
-    marioLookSlots: marioColors.normalizeSlots(saved.marioLookSlots),
+    // Customize Mario's outfits (up to six named looks) and the one he wears, which marioLook follows.
+    marioOutfits: marioColors.normalizeOutfits(saved.marioOutfits, saved.marioLook),
     // The Multiplayer window's fields, as last used.
     multiplayer: savedMultiplayer(saved.multiplayer)
   };
+  wearOutfit();
   if (config.installId !== saved.installId) {
     try { saveConfig(); } catch (error) { log(`Could not save preferences: ${error.message}`); }
   }
@@ -2272,7 +2279,7 @@ function registerHandlers() {
     saveConfig();
     return state();
   });
-  ipcMain.handle('mario-model', () => ({ model: marioFrom(port.validateRom(config.rom)), look: config.marioLook, slots: config.marioLookSlots }));
+  ipcMain.handle('mario-model', () => ({ model: marioFrom(port.validateRom(config.rom)), look: config.marioLook, outfits: config.marioOutfits }));
   // The Characters page: the launcher's characters (character-roster.js), each made from the player's disc
   // the first time it is chosen, posed by its animations; Play as sets who the game starts as.
   const charactersRoot = () => (config.repo && fs.existsSync(config.repo) ? config.repo : null);
@@ -2326,13 +2333,19 @@ function registerHandlers() {
     app.quit();
   });
   ipcMain.handle('save-mario-look', (_event, look) => {
+    // a change to Mario's look is a change to the outfit he wears
     config.marioLook = marioColors.normalizeLook(look);
+    const { slots, active } = config.marioOutfits;
+    slots[active] = { ...slots[active], look: marioColors.slotLook(config.marioLook) };
     saveConfig();
   });
-  ipcMain.handle('save-mario-look-slots', (_event, slots) => {
-    config.marioLookSlots = marioColors.normalizeSlots(slots);
+  // Outfits added, renamed, deleted or put on.
+  ipcMain.handle('save-mario-outfits', (_event, outfits) => {
+    config.marioLook.inGame = outfits?.inGame !== false;
+    config.marioOutfits = marioColors.normalizeOutfits(outfits, config.marioLook);
+    wearOutfit();
     saveConfig();
-    return config.marioLookSlots;
+    return config.marioOutfits;
   });
   ipcMain.handle('choose-repo', async () => {
     if (portableRoot) throw new Error('The portable launcher keeps its setup files in its own folder.');

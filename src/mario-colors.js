@@ -318,29 +318,30 @@
     };
   }
 
-  // The player's own saved looks: SLOTS places, each empty (null) or a name
-  // and a look. A saved look is everything but Use in the game, which stays
-  // one switch for whichever look Mario wears.
+  // Outfits: up to SLOTS looks of the player's own, each with a name, one of
+  // them worn. An outfit is everything but Use in the game, which stays one
+  // switch for whichever outfit Mario wears. There is always at least one: a
+  // player from before outfits gets their look as the first.
   const SLOTS = 6, SLOT_NAME_LENGTH = 24;
+  const outfitName = index => `Outfit ${index + 1}`;
   function slotLook(look) {
     const { inGame: _, ...rest } = normalizeLook(look);
     return rest;
   }
-  function normalizeSlots(slots) {
-    return Array.from({ length: SLOTS }, (_, index) => {
-      const slot = Array.isArray(slots) ? slots[index] : null;
+  function normalizeOutfits(saved, look) {
+    const slots = Array.from({ length: SLOTS }, (_, index) => {
+      const slot = Array.isArray(saved?.slots) ? saved.slots[index] : null;
       if (!slot || typeof slot !== 'object' || !slot.look || typeof slot.look !== 'object') return null;
       const name = typeof slot.name === 'string' ? slot.name.trim().slice(0, SLOT_NAME_LENGTH) : '';
-      return { name: name || `Look ${index + 1}`, look: slotLook(slot.look) };
+      return { name: name || outfitName(index), look: slotLook(slot.look) };
     });
-  }
-  // Whether `look` is the saved look `saved` (its colours, outfit and FLUDD).
-  function sameLook(look, saved) {
-    const a = slotLook(look), b = slotLook(saved);
-    const keys = Object.keys(a.colors);
-    return keys.length === Object.keys(b.colors).length && keys.every(id => a.colors[id] === b.colors[id])
-      && ['aloha', 'sunglasses', 'fludd', 'nozzle'].every(key => a[key] === b[key]);
+    let active = Number.isInteger(saved?.active) && slots[saved.active] ? saved.active : slots.findIndex(Boolean);
+    if (active < 0) {
+      active = 0;
+      slots[0] = { name: outfitName(0), look: slotLook(look) };
+    }
+    return { slots, active };
   }
 
-  return { REGIONS, PARTS, PRESETS, FLUDD_REGIONS, FLUDD_PRESETS, NOZZLES, SLOTS, SLOT_NAME_LENGTH, coverage, classify, lightness, references, blendEdges, ramp, recolor, normalize, normalizeLook, normalizeSlots, slotLook, sameLook, hex };
+  return { REGIONS, PARTS, PRESETS, FLUDD_REGIONS, FLUDD_PRESETS, NOZZLES, SLOTS, SLOT_NAME_LENGTH, outfitName, coverage, classify, lightness, references, blendEdges, ramp, recolor, normalize, normalizeLook, normalizeOutfits, slotLook, hex };
 });

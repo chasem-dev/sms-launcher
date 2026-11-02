@@ -334,10 +334,21 @@ async function removeTree(folder, shouldStop) {
   return gone;
 }
 
+// The first install, <base> itself, once the versions `kept` are all updates
+// in <base>.releases: it is then no longer the current or previous version.
+// Only a folder the launcher downloaded (launcher-source.json), never one the
+// player chose as their own setup folder.
+function supersededBase(base, kept) {
+  const releases = `${path.resolve(base)}.releases`;
+  return kept.length > 0 && kept.every(root => root !== path.resolve(base) && contains(releases, root)) &&
+    fs.existsSync(path.join(base, 'launcher-source.json')) && fs.lstatSync(base).isDirectory();
+}
+
 // Each update checks the new game out beside the last one in <base>.releases.
-// Remove the versions `keep` doesn't name, unless one holds a `protect` path
-// (a memory card or disc file). A kept version's HD packs may be linked from
-// an old one (carryUserFiles), so move those into the kept version first.
+// Remove the versions `keep` doesn't name, and the first install once updates
+// replaced it (supersededBase), unless one holds a `protect` path (a memory
+// card or disc file). A kept version's HD packs may be linked from an old one
+// (carryUserFiles), so move those into the kept version first.
 // `shouldStop` ends it early, leaving the rest for next time.
 async function pruneSnapshots(base, keep, protect = [], onError = () => {}, shouldStop = () => false) {
   const releases = `${base}.releases`;
@@ -347,9 +358,10 @@ async function pruneSnapshots(base, keep, protect = [], onError = () => {}, shou
   const guarded = [...kept, ...protect.filter(Boolean).map(item => path.resolve(item))];
   const moved = new Map();
   const removed = [];
-  for (const name of names) {
+  const candidates = names.map(name => path.join(releases, name));
+  try { if (supersededBase(base, kept)) candidates.push(path.resolve(base)); } catch (_) { /* gone, or unreadable: leave it */ }
+  for (const candidate of candidates) {
     if (shouldStop()) break;
-    const candidate = path.join(releases, name);
     try {
       if (!fs.lstatSync(candidate).isDirectory()) continue;
       const real = fs.realpathSync(candidate);
@@ -373,6 +385,33 @@ async function pruneSnapshots(base, keep, protect = [], onError = () => {}, shou
         const link = path.join(candidate, 'mods', folder);
         if (fs.lstatSync(link, { throwIfNoEntry: false })?.isSymbolicLink()) fs.unlinkSync(link);
       }
+      if (await removeTree(candidate, shouldStop)) removed.push(candidate);
+    } catch (error) { onError(error, candidate); }
+  }
+  return removed;
+}
+
+// What buildSafely leaves in <root>/build: the build an in-place rebuild
+// replaced (.previous-, once it succeeded) and the output of a failed or
+// interrupted one (.failed-, .interrupted-). Removed, unless a build of that
+// folder is under way (its journal is there) or one holds a `protect` path.
+// Returns the folders removed.
+const BUILD_LEFTOVER = /^(.+)\.(?:previous|failed|interrupted)-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+async function pruneBuildLeftovers(root, protect = [], onError = () => {}, shouldStop = () => false) {
+  const build = path.join(root, 'build');
+  let names;
+  try { names = fs.readdirSync(build); } catch (_) { return []; }
+  const guarded = protect.filter(Boolean).map(item => path.resolve(item));
+  const removed = [];
+  for (const name of names) {
+    if (shouldStop()) break;
+    const match = name.match(BUILD_LEFTOVER);
+    if (!match) continue;
+    const candidate = path.join(build, name);
+    try {
+      if (fs.existsSync(path.join(build, `${match[1]}.launcher-transaction.json`))) continue;
+      const stats = fs.lstatSync(candidate);
+      if (!stats.isDirectory() || stats.isSymbolicLink() || guarded.some(item => contains(candidate, item))) continue;
       if (await removeTree(candidate, shouldStop)) removed.push(candidate);
     } catch (error) { onError(error, candidate); }
   }
@@ -426,4 +465,4 @@ function recoverBuild(root, settings) {
   return true;
 }
 
-module.exports = { release, gitRevision, matchesSource, identity, installed, compilerToolRoot, toolRoot, playsWithoutTools, vulkanBuiltIn, needsVulkanBuild, vulkanMissing, isCurrent, snapshotPath, eclipseSourcesPath, checkout, carryUserFiles, relinkUserFolders, pruneSnapshots, buildSafely, recoverBuild };
+module.exports = { release, gitRevision, matchesSource, identity, installed, compilerToolRoot, toolRoot, playsWithoutTools, vulkanBuiltIn, needsVulkanBuild, vulkanMissing, isCurrent, snapshotPath, eclipseSourcesPath, checkout, carryUserFiles, relinkUserFolders, pruneSnapshots, pruneBuildLeftovers, buildSafely, recoverBuild };

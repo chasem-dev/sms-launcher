@@ -1189,16 +1189,25 @@ async function removeOldBuildTools() {
     'that no game version uses any more, to free up disk space.');
 }
 
-// Keep the current and previous game versions; older ones only take up space.
+// Keep the current and previous game versions; older ones, the first install
+// once two updates replaced it, and the builds a rebuild replaced or left
+// unfinished only take up space.
 async function removeOldVersions(shouldStop) {
   if (!config.installRoot || !binaryReady()) return;
+  const protect = [currentSaveDirectory(), config.previousInstall?.saveDirectory, config.rom, config.previousInstall?.rom];
+  const failed = what => (error, folder) => log(['EBUSY', 'EPERM', 'EACCES'].includes(error.code) && error.path
+    ? `Could not remove all of ${what} ${folder}: another program has ` +
+      `${path.basename(error.path)} open. The launcher tries again the next time it starts.`
+    : `Could not remove ${what} ${folder}: ${error.message}`);
   const removed = await game.pruneSnapshots(config.installRoot, [config.repo, config.previousInstall?.repo],
-    [currentSaveDirectory(), config.previousInstall?.saveDirectory, config.rom, config.previousInstall?.rom],
-    (error, folder) => log(['EBUSY', 'EPERM', 'EACCES'].includes(error.code) && error.path
-      ? `Could not remove all of old game version ${folder}: another program has ` +
-        `${path.basename(error.path)} open. The launcher tries again the next time it starts.`
-      : `Could not remove old game version ${folder}: ${error.message}`), shouldStop);
+    protect, failed('old game version'), shouldStop);
   if (removed.length) log(`Removed ${removed.length} old game version${removed.length === 1 ? '' : 's'} to free up disk space.`);
+  let builds = 0;
+  for (const root of [config.repo, config.previousInstall?.repo].filter(Boolean)) {
+    if (shouldStop?.()) break;
+    builds += (await game.pruneBuildLeftovers(root, protect, failed('old game build'), shouldStop)).length;
+  }
+  if (builds) log(`Removed ${builds} replaced or unfinished game build${builds === 1 ? '' : 's'} to free up disk space.`);
 }
 
 // At startup old game versions are removed beside the window rather than as a

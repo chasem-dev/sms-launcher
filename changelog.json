@@ -20,7 +20,8 @@
       "Online, each player is drawn as the character they chose in the launcher, in its own colours and with its own moves and FLUDD. Switching characters with F4 stays single player only. Players as Mario keep their own colours or their slot's, as before.",
       "Save states with a character from the Character tab: loading a state no longer switches you to another character by itself, and keeps you as the character you play as now, whoever the state was saved as. Saving no longer fails with \"the game is busy\" when the game is only briefly reading the disc or mixing sound: it waits a moment and saves, and if it still cannot, the message says what was busy.",
       "Customize Mario's colours stay on Mario when you play as another character from the Character tab: Luigi no longer has Mario's custom skin colour around his mouth.",
-      "Character voices: every voice clip of a character from the Character tab now fits in the game's sound memory. Before, a character with many clips, such as Luigi, could have one cut short and another left in Mario's voice."
+      "Character voices: every voice clip of a character from the Character tab now fits in the game's sound memory. Before, a character with many clips, such as Luigi, could have one cut short and another left in Mario's voice.",
+      "Online: having an NPC's text box (or a sign) open when another player gets a Shine no longer crashes your game. The text box now closes and you join their Shine Get, and the same goes for the host leaving for another world or starting a cutscene: your text box closes and you go along."
     ]
   },
   "releases": [

@@ -41,6 +41,7 @@ const displayScale = require('./display-scale');
 const marioModel = require('./mario-model');
 const characterModel = require('./character-model');
 const characterRoster = require('./character-roster');
+const outfitPortraits = require('./outfit-portraits');
 const { Worker } = require('node:worker_threads');
 const marioColors = require('./mario-colors');
 const marioPack = require('./mario-pack');
@@ -2319,9 +2320,21 @@ function registerHandlers() {
       if (removed.includes(config.settings.character)) wearOutfit();
       saveConfig();
     }
-    return { characters: characterRoster.list(charactersRoot()), outfits: config.marioOutfits,
+    return { characters: characterRoster.list(charactersRoot()).map(character => ({ ...character, stamp: characterStamp(character) })), outfits: config.marioOutfits,
       eclipse: Boolean(config.settings.eclipse), ready: Boolean(charactersRoot() && config.rom) };
   });
+  // What a character's model is made from, so its outfit portraits are drawn again when it changes: the
+  // disc for Mario, the made pack for the others.
+  const characterStamp = character => {
+    try {
+      if (character.id === 'mario') { const stat = fs.statSync(config.rom); return `${stat.size}-${Math.round(stat.mtimeMs)}`; }
+      if (!character.ready) return null;
+      return String(Math.round(fs.statSync(path.join(characterRoster.packsDirectory(charactersRoot()), character.id, 'model.szs')).mtimeMs));
+    } catch (_) { return null; }
+  };
+  const portraitsDirectory = () => path.join(app.getPath('userData'), 'outfit-portraits');
+  ipcMain.handle('outfit-portraits', (_event, keys) => outfitPortraits.read(portraitsDirectory(), keys));
+  ipcMain.handle('outfit-portrait-save', (_event, key, url) => outfitPortraits.save(portraitsDirectory(), key, url));
   ipcMain.handle('character-build', async (event, id) => {
     const root = charactersRoot();
     if (!root) throw new Error('Set up the game first: characters are made into its mods/characters folder.');
@@ -2329,7 +2342,7 @@ function registerHandlers() {
     const progress = text => { if (!event.sender.isDestroyed()) event.sender.send('character-build-progress', text); };
     await makeCharacter(root, port.validateRom(config.rom), character.id, progress);
     log(`Made ${character.name} from your disc.`);
-    return characterRoster.list(root);
+    return characterRoster.list(root).map(made => ({ ...made, stamp: characterStamp(made) }));
   });
   ipcMain.handle('character-model', (_event, id) => characterData(String(id)).model);
   let fluddRig = null;

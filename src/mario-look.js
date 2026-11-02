@@ -2,6 +2,7 @@
 // as the player picks colours. Drag to turn him, scroll to zoom.
 import * as THREE from '../node_modules/three/build/three.module.js';
 import { createRig, jointMatrix } from './model-rig.js';
+import { drawPortrait } from './portraits.js';
 
 const Colors = window.SmsMarioColors;
 const $ = id => document.getElementById(id);
@@ -44,6 +45,22 @@ window.smsMarioLook = {
   },
   // Called with the look as it changes (the outfit tabs show it).
   onChange: null,
+  // A portrait of Mario in an outfit's look (portraits.js), or null when his model can't be read.
+  async portrait(outfitLook) {
+    if (!model) await (loading ||= load());
+    if (!model) return null;
+    const wanted = Colors.slotLook(outfitLook);
+    return drawPortrait({
+      data: model, clip: model.idle,
+      pixels: source => {
+        const pixels = new Uint8Array(source.rgba.length);
+        Colors.recolor(source, model.references, wanted.colors, pixels);
+        return pixels;
+      },
+      visible: shape => shape.part !== 'aloha' || wanted.aloha,
+      extras: wanted.sunglasses && model.sunglasses ? [{ rig: model.sunglasses, joint: model.sunglasses.attach.joint }] : [],
+    });
+  },
 };
 
 async function load() {

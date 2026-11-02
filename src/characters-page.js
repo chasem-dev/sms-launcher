@@ -6,7 +6,7 @@
 // it and Mario beside it or over it.
 import * as THREE from '../node_modules/three/build/three.module.js';
 import { createRig, jointMatrix } from './model-rig.js';
-import { characterIcon } from './outfit-icons.js';
+import { drawPortrait, release as releasePortraits } from './portraits.js';
 
 const $ = id => document.getElementById(id);
 const Colors = window.SmsMarioColors;
@@ -46,12 +46,15 @@ window.smsOnPage('characters', {
   show() {
     // the tab opens on the list and the character, not Animations
     setMode(false);
+    portraitsOn = true;
     loading ||= start();
   },
   hide() {
     viewer?.dispose();
     viewer = null;
     window.smsMarioLook.hide();
+    portraitsOn = false;
+    if (!drawing) releasePortraits();
   },
 });
 
@@ -110,7 +113,7 @@ const building = new Map();
 function make(id) {
   if (!building.has(id)) {
     building.set(id, window.sms.characterBuild(id).then(characters => { state.characters = characters; return characters; })
-      .finally(() => { building.delete(id); renderList(); renderPicker(); }));
+      .finally(() => { building.delete(id); renderList(); renderPicker(); refreshPortraits(); }));
     renderList();
     renderPicker();
   }
@@ -337,20 +340,18 @@ $('outfit-delete').addEventListener('click', () => {
   putOn();
 });
 
-// The tab of Mario's outfit follows his colours as they change.
-let iconQueued = false;
+// The portraits of Mario's outfit follow his colours, once they've stopped changing for a moment.
+let repaint = null;
 window.smsMarioLook.onChange = look => {
   const outfit = worn();
   if (outfit?.character !== 'mario') return;
   outfit.look = Colors.slotLook(look);
-  if (iconQueued) return;
-  iconQueued = true;
-  requestAnimationFrame(() => {
-    iconQueued = false;
+  clearTimeout(repaint);
+  repaint = setTimeout(() => {
     const tab = document.querySelector(`.outfit-tab[data-outfit="${state.outfits.active}"] .outfit-icon`);
-    if (tab && worn().character === 'mario') tab.innerHTML = characterIcon('mario', 'Mario', worn().look);
-    $('outfit-character-icon').innerHTML = characterIcon('mario', 'Mario', worn().look);
-  });
+    if (tab && worn().character === 'mario') portrait(tab, 'mario', worn().look);
+    if (worn().character === 'mario') portrait($('outfit-character-icon'), 'mario', worn().look);
+  }, 700);
 };
 
 function renderOutfits() {
@@ -364,7 +365,7 @@ function renderOutfits() {
     tab.classList.toggle('open', open);
     tab.dataset.outfit = String(index);
     tab.innerHTML = `<button type="button" class="outfit-wear" role="tab" aria-selected="${open}"><span class="outfit-icon"></span><span class="outfit-name"></span></button>`;
-    tab.querySelector('.outfit-icon').innerHTML = characterIcon(character.id, character.name, outfit.look);
+    portrait(tab.querySelector('.outfit-icon'), character.id, outfit.look);
     tab.querySelector('.outfit-name').textContent = outfit.name;
     const button = tab.querySelector('.outfit-wear');
     button.title = open ? `${outfit.name} (${character.name}): double-click to rename` : `Play as ${outfit.name} (${character.name})`;
@@ -417,7 +418,7 @@ function renderPanel() {
   const outfit = worn();
   if (!outfit) return;
   const character = characterOf(outfit.character), mario = character.id === 'mario';
-  $('outfit-character-icon').innerHTML = characterIcon(character.id, character.name, outfit.look);
+  portrait($('outfit-character-icon'), character.id, outfit.look);
   $('outfit-character-name').textContent = character.name;
   $('outfit-note-text').innerHTML = '';
   const name = document.createElement('strong');
@@ -430,6 +431,97 @@ function renderPanel() {
   $('outfit-about').textContent = state.eclipse && !mario
     ? `With Super Mario Eclipse on, the game plays as its own characters: ${outfit.name} is for Super Mario Sunshine.`
     : mario ? '' : `${character.about} ${character.name}'s colours can't be changed yet.`;
+}
+
+// --- Portraits: each outfit's character drawn from its own model (portraits.js), Mario in the outfit's
+// colours. main.js keeps them, so each is drawn once; until then a character shows its initial.
+
+const portraits = new Map(), wanted = new Map();
+let drawing = null, portraitsOn = false;
+// FNV-1a, for short names of a look and a model in portrait keys.
+const hash = text => {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < text.length; i++) h = Math.imul(h ^ text.charCodeAt(i), 0x01000193);
+  return (h >>> 0).toString(16).padStart(8, '0');
+};
+// Mario's portraits differ by look, the others' only by their model (their colours can't change yet).
+function portraitKey(id, look) {
+  const { stamp } = characterOf(id);
+  if (!stamp) return null;
+  return `${id}-${hash(stamp)}${id === 'mario' ? `-${hash(JSON.stringify(Colors.slotLook(look)))}` : ''}`;
+}
+
+// Shows character `id` (in `look`) in an .outfit-icon; one still being drawn keeps the picture it had
+// of the same character, or shows the initial.
+function portrait(icon, id, look) {
+  const key = portraitKey(id, look), url = key && portraits.get(key);
+  const keep = icon.dataset.character === id && icon.querySelector('img');
+  icon.dataset.portrait = key || '';
+  icon.dataset.character = id;
+  if (url) {
+    const image = document.createElement('img');
+    image.alt = '';
+    image.src = url;
+    icon.replaceChildren(image);
+  } else if (!keep) {
+    const initial = document.createElement('b');
+    initial.textContent = (characterOf(id).name || '?').charAt(0);
+    icon.replaceChildren(initial);
+  }
+  if (key && !url && !wanted.has(key)) {
+    wanted.set(key, { id, look });
+    drawing ||= drawWanted();
+  }
+}
+
+// The portraits wanted: those kept from before, then the rest drawn one at a time while the tab is open.
+async function drawWanted() {
+  try {
+    const kept = await window.sms.outfitPortraits([...wanted.keys()]).catch(() => ({}));
+    for (const [key, url] of Object.entries(kept)) if (url) { portraits.set(key, url); wanted.delete(key); showPortrait(key); }
+    for (const [key, { id, look }] of wanted) {
+      if (!portraitsOn) break;
+      wanted.delete(key);
+      const url = await drawCharacter(id, look).catch(() => null);
+      if (!url) continue;
+      portraits.set(key, url);
+      showPortrait(key);
+      window.sms.saveOutfitPortrait(key, url).catch(() => {});
+    }
+  } finally {
+    drawing = null;
+    // asked for while the last ones were drawn
+    if (portraitsOn && wanted.size) drawing = drawWanted();
+    else releasePortraits();
+  }
+}
+
+async function drawCharacter(id, look) {
+  if (id === 'mario') return window.smsMarioLook.portrait(look);
+  if (!characterOf(id).ready) return null;
+  const model = state.modelId === id && state.model ? state.model : await window.sms.characterModel(id);
+  const standing = model.animations.includes('ma_wait') ? 'ma_wait' : null;
+  const clip = standing && (state.clips.get(`${id}:${standing}`) || await window.sms.characterAnimation(id, standing));
+  return drawPortrait({ data: model, clip });
+}
+
+// The tabs' and the panel's pictures again, as a character is made.
+function refreshPortraits() {
+  if (!state.outfits) return;
+  for (const icon of page.querySelectorAll('.outfit-tab .outfit-icon')) {
+    const outfit = state.outfits.slots[Number(icon.closest('.outfit-tab').dataset.outfit)];
+    if (outfit) portrait(icon, outfit.character, outfit.look);
+  }
+  if (worn()) portrait($('outfit-character-icon'), worn().character, worn().look);
+}
+
+function showPortrait(key) {
+  for (const icon of page.querySelectorAll(`.outfit-icon[data-portrait="${key}"]`)) {
+    const image = document.createElement('img');
+    image.alt = '';
+    image.src = portraits.get(key);
+    icon.replaceChildren(image);
+  }
 }
 
 // --- Character picker: who wears a new outfit, or the one worn.
@@ -470,7 +562,7 @@ function renderPicker() {
     const note = building.has(character.id) ? 'Making…' : !character.ready && failed.has(character.id) ? 'Couldn\'t be made'
       : waiting(character) ? 'Needs Eclipse' : picking === 'change' && character.id === current ? 'Wearing' : '';
     button.innerHTML = '<span class="outfit-icon"></span><span class="outfit-pick-name"></span><small></small>';
-    button.querySelector('.outfit-icon').innerHTML = characterIcon(character.id, character.name, character.id === 'mario' ? worn()?.look : null);
+    portrait(button.querySelector('.outfit-icon'), character.id, character.id === 'mario' ? worn()?.look : null);
     button.querySelector('.outfit-pick-name').textContent = character.name;
     button.querySelector('small').textContent = note;
     button.classList.toggle('current', picking === 'change' && character.id === current);

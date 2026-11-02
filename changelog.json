@@ -4,14 +4,16 @@
     "launcher": [
       "Achievements are off in online games by default, since the others can earn them for you. Earn achievements online, on the Online page, turns them back on. Playing alone or split-screen still unlocks them.",
       "Achievements in dark mode: the page now goes dark with the rest of the launcher, instead of staying white. Unlocked achievements glow gold, locked ones sit back, and the filters, stage list and progress ring match.",
-      "Character tab: choose who you play as, made on your computer from your own disc. It shows the characters and the one you pick; choosing Mario puts his colours beside him to customize, and Animations shows any character in any of Mario's moves.",
       "Online, the launcher makes any character you haven't made yet before the game starts, so you see the other players as the characters they play.",
       "Character packs in mods/characters, your own included, now stay when the game updates. Before, an update left them in the old version's folder, so the game no longer listed them.",
       "Character tab: Luigi, from Super Mario Eclipse. If you have set Eclipse up once, the launcher makes him from it, with Eclipse on or off, and he plays in Super Mario Sunshine with Mario's moves and FLUDD. Online, players who haven't set Eclipse up see him as Mario.",
       "Character tab: Shadow Luigi, Luigi as the paintbrush impostor, see-through and shimmering as Shadow Mario is, in the game too. Like Luigi, he comes from the Super Mario Eclipse you set up once.",
       "Character tab: Shadow Mario's shimmer now moves, as it does in the game, instead of standing still.",
       "Luigi and Shadow Luigi speak as Super Mario Eclipse's Luigi does: Mario's voice from your disc, a little lower, with Mario's other calls for his jumps and efforts.",
-      "Prepare only: with Super Mario Eclipse switched on, or any game not set up yet, ▾ beside Prepare & play now has Prepare only, which gets the game ready without starting it. Update only now also gets the HD visuals and Eclipse's downloads, so Play later starts straight away."
+      "Prepare only: with Super Mario Eclipse switched on, or any game not set up yet, ▾ beside Prepare & play now has Prepare only, which gets the game ready without starting it. Update only now also gets the HD visuals and Eclipse's downloads, so Play later starts straight away.",
+      "Character tab: choose who you play as, made on your computer from your own disc, with Mario's colours to customize beside him. Animations shows any character in any of Mario's moves.",
+      "Character tab: outfits. Keep up to six, each a character in your own colours with its own name, as tabs over the character; the one you open is who you play as. Each tab shows a portrait of the character drawn from their own model, Mario in that outfit's colours. New outfit asks who wears it, Change gives an outfit to someone else, and double-clicking a tab renames it. Mario's colours, Shine shirt, sunglasses and FLUDD save into his outfit as you change them; the other characters' colours come later. The character list is now only in Animations.",
+      "Customize Mario in dark mode: its colour panel now goes dark with the rest of the launcher. Before, it stayed white, and the Use in the game switch's title couldn't be read."
     ],
     "game": [
       "Fixed Goop sometimes not cleaning",

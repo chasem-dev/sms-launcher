@@ -2,6 +2,7 @@
 // as the player picks colours. Drag to turn him, scroll to zoom.
 import * as THREE from '../node_modules/three/build/three.module.js';
 import { createRig, jointMatrix } from './model-rig.js';
+import { drawPortrait } from './portraits.js';
 
 const Colors = window.SmsMarioColors;
 const $ = id => document.getElementById(id);
@@ -16,6 +17,8 @@ const only = (colors, fludd) => Object.fromEntries(Object.entries(colors).filter
 const WRAP = [THREE.ClampToEdgeWrapping, THREE.RepeatWrapping, THREE.MirroredRepeatWrapping];
 
 let viewer = null, model = null, look = Colors.normalizeLook(), saveTimer = null, loading = null;
+// The look of the outfit put on (characters-page.js), for when Mario's model is still being read.
+let wearing = null;
 
 // Mario's colours are part of the Character tab (characters-page.js), which
 // shows them while Mario is chosen. Nothing of Mario's view stays on the GPU
@@ -29,8 +32,35 @@ window.smsMarioLook = {
   hide() {
     viewer?.dispose();
     viewer = null;
+    this.flush();
+  },
+  // Mario in an outfit's look (Use in the game stays as it is).
+  wear(outfitLook) {
+    wearing = Colors.slotLook(outfitLook);
+    if (model) change(() => { look = { ...look, ...wearing }; }, false);
+  },
+  // A change still waiting, saved now: before another outfit is put on.
+  flush() {
     if (saveTimer) { clearTimeout(saveTimer); save(); }
-  }
+  },
+  // Called with the look as it changes (the outfit tabs show it).
+  onChange: null,
+  // A portrait of Mario in an outfit's look (portraits.js), or null when his model can't be read.
+  async portrait(outfitLook) {
+    if (!model) await (loading ||= load());
+    if (!model) return null;
+    const wanted = Colors.slotLook(outfitLook);
+    return drawPortrait({
+      data: model, clip: model.idle,
+      pixels: source => {
+        const pixels = new Uint8Array(source.rgba.length);
+        Colors.recolor(source, model.references, wanted.colors, pixels);
+        return pixels;
+      },
+      visible: shape => shape.part !== 'aloha' || wanted.aloha,
+      extras: wanted.sunglasses && model.sunglasses ? [{ rig: model.sunglasses, joint: model.sunglasses.attach.joint }] : [],
+    });
+  },
 };
 
 async function load() {
@@ -38,7 +68,7 @@ async function load() {
   try {
     const result = await window.sms.marioModel();
     model = result.model;
-    look = Colors.normalizeLook(result.look);
+    look = { ...Colors.normalizeLook(result.look), ...wearing };
     renderControls();
     if (!page.hidden && !page.closest('.page').hidden) show();
     else setStatus('');
@@ -95,8 +125,10 @@ $('mario-relaunch').addEventListener('click', () => {
 
 // Repaints at most once a frame while a colour picker is dragged.
 let paintQueued = false;
-function change(update) {
+// `saving` off: a look put on from an outfit, which main.js already has.
+function change(update, saving = true) {
   update();
+  window.smsMarioLook.onChange?.(look);
   if (!paintQueued) {
     paintQueued = true;
     requestAnimationFrame(() => {
@@ -108,6 +140,7 @@ function change(update) {
     });
   }
   syncControls();
+  if (!saving) return;
   clearTimeout(saveTimer);
   saveTimer = setTimeout(save, 300);
 }
@@ -115,6 +148,7 @@ function save() {
   saveTimer = null;
   window.sms.saveMarioLook(look).catch(() => {});
 }
+
 
 // --- Panel -------------------------------------------------------------------
 

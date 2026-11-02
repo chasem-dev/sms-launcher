@@ -688,7 +688,6 @@ pre { height: 120px; margin: 0; padding: 12px; overflow: auto; border-radius: 8p
 /* Customize Mario */
 .mario-logo { background: linear-gradient(135deg, #e3322c, #b8211c); }
 .mario-logo svg { fill: #fff; }
-.mario-look-body { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) 330px; }
 .mario-stage-wrap { position: relative; min-height: 0; overflow: hidden; background: radial-gradient(ellipse 70% 55% at 50% 42%, #ffffff 0%, #dff1f4 55%, #b9dde4 100%); }
 .mario-stage-wrap::after { position: absolute; left: 50%; bottom: 13%; width: 38%; height: 6%; border-radius: 50%; background: radial-gradient(closest-side, #1a46564d, transparent); transform: translateX(-50%); content: ''; pointer-events: none; }
 .mario-stage { position: relative; z-index: 1; display: block; width: 100%; height: 100%; cursor: grab; outline: none; touch-action: none; opacity: 0; transition: opacity .35s ease-out; }
@@ -750,11 +749,64 @@ pre { height: 120px; margin: 0; padding: 12px; overflow: auto; border-radius: 8p
 .dark .path-why { color: #9fc3cb; }
 
 /* Characters */
-.characters-body { flex: 1; min-height: 0; display: grid; grid-template-columns: 230px minmax(0, 1fr) 280px; }
-/* By default the tab is the character list and the character; Mario brings his colours. Animations adds the rest. */
-.characters-page:not(.animations) .characters-body { grid-template-columns: 230px minmax(0, 1fr); }
-.characters-page:not(.animations) :is(.characters-panel, .characters-views, .characters-transport) { display: none; }
-.characters-body > .mario-look-body { min-width: 0; }
+.characters-body { flex: 1; min-height: 0; display: grid; grid-template-columns: 176px minmax(0, 1fr) 280px; }
+/* By default the tab is the outfits, the character worn and its panel (Mario's colours for Mario).
+   Animations is the character list, the character and the animations. */
+.characters-page:not(.animations) .characters-body { position: relative; grid-template-columns: minmax(0, 1fr) 330px; grid-template-rows: auto minmax(0, 1fr); }
+.characters-page:not(.animations) :is(.characters-side, .characters-panel, .characters-views, .characters-transport) { display: none; }
+.characters-page.animations :is(.outfits, .outfit-panel, .outfit-picker) { display: none; }
+.characters-page:not(.animations) :is(#mario-look, .characters-stage-wrap) { grid-row: 2; grid-column: 1; }
+.characters-page:not(.animations) .outfit-panel { grid-row: 2; grid-column: 2; }
+/* Outfits: a tab each, over the character. */
+.outfits { grid-column: 1 / -1; display: flex; gap: 4px; min-width: 0; padding: 10px 12px 0; border-bottom: 1px solid #d6e3e3; background: #eef4f3; }
+.outfit-tab { position: relative; display: flex; align-items: center; min-width: 0; max-width: 170px; margin-bottom: -1px; border: 1px solid transparent; border-bottom: 0; border-radius: 11px 11px 0 0; }
+.outfit-tab:hover:not(.open) { background: #e2eded; }
+.outfit-tab.open { border-color: #d6e3e3; background: #f8faf9; }
+.outfit-tab.open::after { position: absolute; left: 10px; right: 10px; top: -1px; height: 3px; border-radius: 0 0 3px 3px; background: #158188; content: ''; }
+.outfit-wear { display: flex; align-items: center; gap: 7px; min-width: 0; padding: 5px 12px 5px 6px; border: 0; border-radius: inherit; background: transparent; color: #4d6a71; font-size: 12px; font-weight: 650; }
+.outfit-tab.open .outfit-wear { padding-right: 2px; color: #17343d; }
+.outfit-name { overflow: hidden; text-overflow: ellipsis; }
+.outfit-icon { flex: none; display: block; width: 26px; height: 26px; overflow: hidden; border-radius: 7px; background: linear-gradient(#f3fbfc, #d6edf1); }
+.outfit-icon img { display: block; width: 100%; height: 100%; }
+/* a character's initial until its portrait is drawn */
+.outfit-icon b { display: grid; place-items: center; height: 100%; color: #7c9ba1; font-size: 13px; font-weight: 800; }
+:is(.outfit-character, .outfit-pick) .outfit-icon b { font-size: 18px; }
+.outfit-rename { flex: none; width: 24px; height: 24px; margin-right: 4px; padding: 0; border: 0; border-radius: 6px; background: transparent; color: #7a8b8f; font-size: 13px; }
+.outfit-rename:hover { background: #e8f1f1; color: #17343d; }
+.outfit-input { width: 130px; min-width: 0; margin-right: 6px; padding: 3px 6px; border: 1px solid #158188; border-radius: 6px; background: #fff; color: #17343d; font: inherit; font-size: 12px; font-weight: 650; }
+.outfit-input:focus { outline: none; box-shadow: 0 0 0 3px #15818833; }
+.outfit-add { flex: none; display: flex; align-items: center; gap: 7px; margin-bottom: 4px; padding: 4px 10px 4px 6px; border: 0; border-radius: 9px; background: transparent; color: #6f888d; font-size: 12px; font-weight: 600; }
+.outfit-add span { display: grid; place-items: center; width: 24px; height: 24px; border: 1.5px dashed #a9c6ca; border-radius: 7px; color: #6b9aa2; font-size: 15px; }
+.outfit-add:hover, .outfit-add.pressed { background: #e2eded; color: #2e4c53; }
+/* The outfit worn: its character, and Mario's colours for Mario. */
+.outfit-character { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; padding: 7px 10px 7px 7px; border: 1px solid #e1e9e8; border-radius: 12px; background: #fff; }
+.outfit-character .outfit-icon { width: 34px; height: 34px; border-radius: 9px; }
+.outfit-character > span:not(.outfit-icon) { flex: 1; display: grid; min-width: 0; }
+.outfit-character small { color: #6a8389; font-size: 10.5px; font-weight: 600; }
+.outfit-character strong { color: #17343d; font-size: 14px; }
+.outfit-character button { padding: 6px 12px; font-size: 12px; }
+.outfit-character button.pressed { border-color: #158188; }
+.outfit-note { display: flex; align-items: center; gap: 8px; margin: 0 0 12px; padding: 8px 12px; border-radius: 10px; background: #e7f3f2; color: #36585f; font-size: 12px; line-height: 1.4; }
+.outfit-note > i { flex: none; width: 7px; height: 7px; border-radius: 50%; background: #2fb37a; box-shadow: 0 0 0 3px #2fb37a33; }
+.outfit-note span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.outfit-note .text-button { flex: none; padding: 0; border: 0; background: none; font-size: 12px; }
+.outfit-note .text-button[hidden] { display: none; }
+.outfit-note .text-button.armed { color: #b3261e; }
+.outfit-about { margin: 0; color: #4d6a71; font-size: 12.5px; line-height: 1.5; }
+.outfit-about:empty { display: none; }
+/* Who wears a new outfit, or the one worn. */
+.outfit-picker { position: absolute; z-index: 6; width: 440px; max-width: calc(100% - 16px); padding: 12px; border: 1px solid #d5e2e2; border-radius: 14px; background: #fff; box-shadow: 0 18px 44px #0c2d3d38; }
+.outfit-picker[hidden] { display: none; }
+.outfit-picker > p { margin: 0 0 10px 4px; color: #17343d; font-size: 13px; font-weight: 700; }
+.outfit-picker-list { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; max-height: 330px; overflow: auto; }
+.outfit-pick { display: grid; justify-items: center; align-content: start; gap: 4px; min-width: 0; padding: 8px 4px; border: 1px solid #e4eded; border-radius: 10px; background: #fbfdfd; color: #2e4c53; font-size: 11px; font-weight: 650; white-space: normal; }
+.outfit-pick .outfit-icon { width: 40px; height: 40px; border-radius: 10px; }
+.outfit-pick:hover:not(:disabled), .outfit-pick:focus-visible { border-color: #158188; background: #e9f5f5; }
+.outfit-pick.current { border-color: #158188; }
+.outfit-pick small { color: #a0711f; font-size: 9.5px; font-weight: 600; }
+.outfit-pick small:empty { display: none; }
+.outfit-pick:disabled { cursor: not-allowed; }
+.outfit-pick:disabled .outfit-icon { opacity: .5; filter: grayscale(.6); }
 .characters-body > [hidden] { display: none; }
 .characters-list, .characters-panel { min-height: 0; overflow: auto; padding: 12px; background: #f8faf9; }
 .characters-side { display: flex; flex-direction: column; min-height: 0; border-right: 1px solid #dce7e6; background: #f8faf9; }
@@ -762,14 +814,7 @@ pre { height: 120px; margin: 0; padding: 12px; overflow: auto; border-radius: 8p
 .characters-item small { color: inherit; font-size: 10.5px; font-weight: 500; opacity: .7; }
 .characters-item small:empty { display: none; }
 .characters-item.playing span::after { margin-left: 6px; content: '●'; color: #e9a93a; }
-.characters-actions { display: grid; gap: 8px; padding: 12px; border-top: 1px solid #dce7e6; }
-.characters-actions button[hidden] { display: none; }
-.characters-actions button { min-width: 0; white-space: normal; }
-.characters-about { margin: 0; color: #4d6a71; font-size: 12px; line-height: 1.45; }
-.characters-about:empty { display: none; }
 .dark .characters-side { border-color: #2f5468; background: #0d2231; }
-.dark .characters-actions { border-color: #2f5468; }
-.dark .characters-about { color: #9fc3cb; }
 .characters-panel { display: flex; flex-direction: column; gap: 10px; border-left: 1px solid #dce7e6; }
 .characters-item, .characters-anim { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; padding: 7px 10px; border: 1px solid transparent; border-radius: 9px; background: transparent; color: #2e4c53; font-size: 13px; font-weight: 600; text-align: left; }
 .characters-item:hover, .characters-anim:hover { background: #e8f1f1; }
@@ -791,6 +836,38 @@ pre { height: 120px; margin: 0; padding: 12px; overflow: auto; border-radius: 8p
 .dark :is(.characters-list, .characters-panel) { border-color: #2f5468; background: #0d2231; }
 .dark :is(.characters-item, .characters-anim, .characters-compare) { color: #cfe3e8; }
 .dark :is(.characters-item, .characters-anim):hover { background: #16354a; }
+.dark .mario-panel { border-color: #2f5468; background: #0d2231; }
+.dark .outfits { border-color: #2f5468; background: #0a1c29; }
+.dark .outfit-tab.open { border-color: #2f5468; background: #0d2231; }
+.dark .outfit-tab:hover:not(.open), .dark :is(.outfit-add:hover, .outfit-add.pressed) { background: #12293a; }
+.dark .outfit-wear { color: #9fc3cb; }
+.dark .outfit-tab.open .outfit-wear { color: #e3eff2; }
+.dark .outfit-icon { background: linear-gradient(#24465a, #183447); }
+.dark .outfit-rename { color: #8fb0b8; }
+.dark .outfit-rename:hover { background: #1a3a4e; color: #e3eff2; }
+.dark .outfit-input { background: #0f2636; color: #e3eff2; }
+.dark .outfit-add { color: #7f9ca4; }
+.dark .outfit-add span { border-color: #33566a; color: #7f9ca4; }
+.dark .outfit-character { border-color: #2a4d61; background: #132e40; }
+.dark .outfit-character small { color: #8fb0b8; }
+.dark .outfit-character strong { color: #e3eff2; }
+.dark .outfit-note { background: #133a3f; color: #c9dce1; }
+.dark .outfit-note .text-button.armed { color: #ffb4a3; }
+.dark .outfit-about { color: #9fc3cb; }
+.dark .outfit-picker { border-color: #2f5468; background: #10283a; }
+.dark .outfit-picker > p { color: #e3eff2; }
+.dark .outfit-pick { border-color: #2a4d61; background: #132e40; color: #d7e9ee; }
+.dark .outfit-pick:hover:not(:disabled), .dark .outfit-pick:focus-visible { border-color: #1a9aa2; background: #1a4152; }
+.dark .outfit-pick small { color: #f5d68a; }
+.dark :is(.mario-in-game, .mario-swatches) { border-color: #2a4d61; background: #132e40; }
+.dark :is(.mario-swatch, .mario-fludd-presets) { border-color: #23404f; }
+.dark .mario-swatch-name { color: #d7e9ee; }
+.dark .mario-preset { border-color: #33566a; background: #1a3a4e; color: #d7e9ee; }
+.dark .mario-preset:hover { border-color: #4a7387; }
+.dark .mario-preset.active { border-color: #1a9aa2; background: #1a9aa2; color: #fff; }
+.dark .mario-swatch input[type="color"] { border-color: #33566a; background: #0f2636; }
+.dark .mario-reset { color: #8fb0b8; }
+.dark .mario-reset:hover { background: #1a3a4e; color: #e3eff2; }
 
 /* Tabs along the top: the launcher's pages, with Settings and Discord at the right end. */
 .nav-bar { flex: none; display: flex; align-items: center; gap: 4px; height: 48px; padding: 0 22px; border-bottom: 1px solid #ffffff22; background: #072a40d9; backdrop-filter: blur(16px); }

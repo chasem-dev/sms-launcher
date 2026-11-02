@@ -131,3 +131,50 @@ test('Luigi is made from the Super Mario Eclipse set up once, on the disc\'s own
     assert.deepEqual([luigi().ready, luigi().makeable], [true, false]);
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });
+
+test('a model with a normal of its own on each face is drawn smooth, and smooth models keep their normals', () => {
+  const { smoothFacets } = require('../src/character-model');
+  // two faces of a shallow roof meeting along an edge at 60 degrees, each corner with its face's normal
+  const position = Float32Array.from([0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, -1, -1, 0, 1, -1, 0]);
+  const roof = (x, y) => Float32Array.from([-x, y, 0, -x, y, 0, x, y, 0, x, y, 0, -x, y, 0, x, y, 0]);
+  const normal = roof(0.5, Math.sqrt(0.75)), drawIndex = new Uint16Array(6);
+  const smoothed = smoothFacets({ position, normal, drawIndex });
+  for (const v of [0, 1, 2, 3]) assert.deepEqual([...smoothed.subarray(v * 3, v * 3 + 3)].map(x => Math.round(x * 1000) / 1000 + 0), [0, 1, 0]);
+  assert.deepEqual([...smoothed.subarray(12)], [...normal.subarray(12)]);
+  // a sharp edge (90 degrees) stays sharp
+  const sharp = roof(Math.SQRT1_2, Math.SQRT1_2);
+  assert.deepEqual([...smoothFacets({ position, normal: sharp, drawIndex })], [...sharp]);
+  // corners on different joints stay apart
+  assert.equal(smoothFacets({ position, normal, drawIndex: Uint16Array.from([0, 0, 1, 1, 0, 1]) }), normal);
+  // corners that already share their normals are left as they are
+  const smooth = Float32Array.from({ length: 18 }, (_, i) => i % 3 === 1 ? 1 : 0);
+  assert.equal(smoothFacets({ position, normal: smooth, drawIndex }), smooth);
+});
+
+test('the cap is the one the game draws: ma_cap1 on the head, in the body\'s texture, not the body\'s own cap shape', () => {
+  const j3d = require('../src/j3d');
+  const { loadCharacter } = require('../src/character-model');
+  const shape = (material, drawIndex, tag) => ({ material, position: Float32Array.of(tag, 0, 0, tag, 1, 0, tag, 0, 1), normal: new Float32Array(9),
+    uv: new Float32Array(6), color: new Float32Array(12), drawIndex: new Uint16Array(3).fill(drawIndex), index: Uint32Array.of(0, 1, 2) });
+  const texture = name => ({ name, width: 1, height: 1, rgba: new Uint8Array(4), wrapS: 0, wrapT: 0 });
+  const body = {
+    joints: [{ name: 'jnt_center' }, { name: 'M_head' }, { name: 'M_head_cap1' }], draw: [{ weighted: false, index: 0 }, { weighted: false, index: 1 }],
+    envelopes: [], inverseBind: [], textures: [texture('H_ma_new_main')], materials: [{ textures: [0] }],
+    shapes: [0, 1, 2, 3, 4].map(i => shape(0, 0, i)),
+  };
+  const cap = { joints: [{ name: 'null_weight_A' }], draw: [{ weighted: false, index: 0 }], textures: [texture('H_ma_main_dummy')],
+    materials: [{ textures: [0] }], shapes: [shape(0, 0, 9)] };
+  const parse = j3d.parseBmd;
+  j3d.parseBmd = data => (data.toString() === 'cap' ? cap : body);
+  try {
+    const files = new Map([['bmd/ma_mdl1.bmd', Buffer.from('body')], ['bmd/ma_cap1.bmd', Buffer.from('cap')]]);
+    const { shapes, textures } = loadCharacter({ id: 'luigi', name: 'Luigi' }, files);
+    assert.deepEqual(shapes.map(s => s.position[0]), [0, 1, 2, 3, 9]);
+    const drawn = shapes.at(-1);
+    assert.deepEqual([...drawn.drawIndex], [1, 1, 1]);
+    assert.equal(textures[drawn.texture].name, 'H_ma_new_main');
+    // without ma_cap1, the body's own cap shape stays
+    files.delete('bmd/ma_cap1.bmd');
+    assert.deepEqual(loadCharacter({ id: 'luigi', name: 'Luigi' }, files).shapes.map(s => s.position[0]), [0, 1, 2, 3, 4]);
+  } finally { j3d.parseBmd = parse; }
+});

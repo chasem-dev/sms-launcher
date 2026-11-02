@@ -282,7 +282,7 @@ function wear(index) {
 
 // A new outfit for `character`, in the colours of the one worn, ready to be named.
 function addOutfit(character) {
-  const { slots } = state.outfits, index = slots.indexOf(null);
+  const { slots } = state.outfits, index = Colors.freeSlot(slots);
   if (index < 0) return;
   window.smsMarioLook.flush();
   slots[index] = { name: Colors.uniqueName(slots, character.name), character: character.id, look: Colors.slotLook(worn().look) };
@@ -409,7 +409,7 @@ function renderOutfits() {
     }
     return tab;
   }).filter(Boolean);
-  if (slots.includes(null)) {
+  if (Colors.freeSlot(slots) >= 0) {
     const add = document.createElement('button');
     add.type = 'button';
     add.id = 'outfit-add';
@@ -418,11 +418,34 @@ function renderOutfits() {
     add.title = 'A new outfit: pick who wears it';
     add.setAttribute('aria-haspopup', 'dialog');
     add.addEventListener('click', event => { event.stopPropagation(); togglePicker('new', add); });
-    tabs.push(add);
+    // kept in view at the end of the row when the tabs scroll (style.css)
+    const wrap = document.createElement('div');
+    wrap.className = 'outfit-add-wrap';
+    wrap.append(add);
+    tabs.push(wrap);
   }
   $('outfits').replaceChildren(...tabs);
+  showOpenTab();
   renderPanel();
 }
+
+// The open tab scrolled into the row's view, clear of New outfit at its end.
+function showOpenTab() {
+  const row = $('outfits'), tab = row.querySelector('.outfit-tab.open');
+  if (!tab || row.scrollWidth <= row.clientWidth) return;
+  // offsets are in the row's own scrolled content (it's the tabs' offsetParent)
+  const add = row.querySelector('.outfit-add-wrap')?.offsetWidth || 0, left = tab.offsetLeft - 12;
+  const right = tab.offsetLeft + tab.offsetWidth + add + 4 - row.clientWidth;
+  if (left < row.scrollLeft) row.scrollLeft = left;
+  else if (right > row.scrollLeft) row.scrollLeft = right;
+}
+// The wheel scrolls the row of outfits sideways when it doesn't fit.
+$('outfits').addEventListener('wheel', event => {
+  const row = event.currentTarget;
+  if (row.scrollWidth <= row.clientWidth || !event.deltaY || event.deltaX) return;
+  event.preventDefault();
+  row.scrollLeft += event.deltaY;
+}, { passive: false });
 
 function renderPanel() {
   const outfit = worn();

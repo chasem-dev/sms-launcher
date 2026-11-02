@@ -318,7 +318,8 @@
     };
   }
 
-  // Outfits: up to SLOTS of the player's own, each a character (an id from
+  // Outfits: as many as the player likes (MAX_OUTFITS only keeps a broken preferences file in
+  // bounds), each a character (an id from
   // character-roster.js) with a name and a look, one of them worn: who the game
   // starts as. Only Mario's colours can be chosen so far; every outfit keeps a
   // look, so one changed to Mario and back keeps its colours. A look is
@@ -326,7 +327,8 @@
   // least one outfit: a player from before outfits gets their look as the first.
   // `coop` is the outfit player 2 plays as in split-screen co-op (the worn one
   // too, if the player likes), or null: the game's own Luigi.
-  const SLOTS = 6, SLOT_NAME_LENGTH = 24;
+  // An outfit deleted leaves its place empty (null), so `active` and `coop` keep pointing at theirs.
+  const MAX_OUTFITS = 100, SLOT_NAME_LENGTH = 24;
   const outfitName = index => `Outfit ${index + 1}`;
   const CHARACTER_ID = /^[a-z0-9-]{1,48}$/;
   function slotLook(look) {
@@ -334,13 +336,14 @@
     return rest;
   }
   function normalizeOutfits(saved, look) {
-    const slots = Array.from({ length: SLOTS }, (_, index) => {
-      const slot = Array.isArray(saved?.slots) ? saved.slots[index] : null;
+    const given = Array.isArray(saved?.slots) ? saved.slots.slice(0, MAX_OUTFITS) : [];
+    const slots = given.map((slot, index) => {
       if (!slot || typeof slot !== 'object' || !slot.look || typeof slot.look !== 'object') return null;
       const name = typeof slot.name === 'string' ? slot.name.trim().slice(0, SLOT_NAME_LENGTH) : '';
       const character = typeof slot.character === 'string' && CHARACTER_ID.test(slot.character) ? slot.character : 'mario';
       return { name: name || outfitName(index), character, look: slotLook(slot.look) };
     });
+    while (slots.length && !slots[slots.length - 1]) slots.pop();
     let active = Number.isInteger(saved?.active) && slots[saved.active] ? saved.active : slots.findIndex(Boolean);
     if (active < 0) {
       active = 0;
@@ -348,6 +351,11 @@
     }
     const coop = Number.isInteger(saved?.coop) && slots[saved.coop] ? saved.coop : null;
     return { slots, active, coop };
+  }
+  // Where a new outfit goes: the first empty place, or after the last; -1 at MAX_OUTFITS.
+  function freeSlot(slots) {
+    const index = slots.indexOf(null);
+    return index >= 0 ? index : slots.length < MAX_OUTFITS ? slots.length : -1;
   }
   // `name`, or `name 2`, `name 3`… when an outfit already has it.
   function uniqueName(slots, name, except = -1) {
@@ -358,19 +366,19 @@
     }
   }
   // The outfits wearing `character` (chosen somewhere else: the game's own menu, or a launcher from before
-  // outfits): the first outfit of theirs, or a new one named `name` in `look` when there is room. Unchanged
-  // when the worn outfit is already theirs, or there is no room.
+  // outfits): the first outfit of theirs, or a new one named `name` in `look`. Unchanged when the worn
+  // outfit is already theirs, or there are MAX_OUTFITS.
   function wearCharacter(outfits, character, name, look) {
     const { slots, active } = outfits;
     if (slots[active].character === character) return outfits;
     let index = slots.findIndex(slot => slot?.character === character);
     if (index >= 0) return { ...outfits, active: index };
-    index = slots.indexOf(null);
+    index = freeSlot(slots);
     if (index < 0) return outfits;
     const added = slots.slice();
     added[index] = { name: uniqueName(slots, name), character, look: slotLook(look) };
     return { ...outfits, slots: added, active: index };
   }
 
-  return { REGIONS, PARTS, PRESETS, FLUDD_REGIONS, FLUDD_PRESETS, NOZZLES, SLOTS, SLOT_NAME_LENGTH, outfitName, uniqueName, wearCharacter, coverage, classify, lightness, references, blendEdges, ramp, recolor, normalize, normalizeLook, normalizeOutfits, slotLook, hex };
+  return { REGIONS, PARTS, PRESETS, FLUDD_REGIONS, FLUDD_PRESETS, NOZZLES, MAX_OUTFITS, SLOT_NAME_LENGTH, outfitName, freeSlot, uniqueName, wearCharacter, coverage, classify, lightness, references, blendEdges, ramp, recolor, normalize, normalizeLook, normalizeOutfits, slotLook, hex };
 });

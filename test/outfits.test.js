@@ -7,23 +7,23 @@ const colors = require('../src/mario-colors');
 test('a player from before outfits gets their look as the first outfit, worn', () => {
   const look = { colors: { hat: '#123456' }, inGame: false, sunglasses: true };
   const { slots, active } = colors.normalizeOutfits(undefined, look);
-  assert.equal(slots.length, colors.SLOTS);
+  assert.equal(slots.length, 1);
   assert.equal(active, 0);
   assert.deepEqual(slots[0], { name: 'Mario', character: 'mario', look: { colors: { hat: '#123456' }, aloha: false, sunglasses: true, fludd: false, nozzle: 'spray' } });
-  assert.deepEqual(slots.slice(1), Array(5).fill(null));
   assert.deepEqual(colors.normalizeOutfits({ slots: 'nope', active: 3 }).slots[0].look.colors, {});
 });
 
-test('outfits keep six places, each empty or a named character and look without Use in the game', () => {
+test('outfits keep their places, each empty or a named character and look without Use in the game', () => {
   const { slots } = colors.normalizeOutfits({ slots: [
     { name: '  Fire  ', look: { colors: { hat: '#FFFFFF', bogus: '#000000', shirt: 'red' }, inGame: false, aloha: true, nozzle: 'rocket' } },
     null,
     { look: {}, character: 'princess-peach' },
     { name: 'x'.repeat(40), look: { colors: {} } },
     { name: 'no look' },
-    null, { name: 'seventh', look: {} },
+    null, { name: 'seventh', look: {} }, null, 'nope',
   ], active: 0 });
-  assert.equal(slots.length, 6);
+  assert.equal(slots.length, 7, 'no limit of six, and empty places at the end are dropped');
+  assert.equal(slots[6].name, 'seventh');
   assert.deepEqual(slots[0], { name: 'Fire', character: 'mario', look: { colors: { hat: '#ffffff' }, aloha: true, sunglasses: false, fludd: false, nozzle: 'rocket' } });
   assert.equal(slots[1], null);
   assert.equal(slots[2].name, 'Outfit 3');
@@ -49,9 +49,18 @@ test('a character chosen elsewhere puts on their first outfit, or a new one when
   const luigi = colors.wearCharacter(outfits, 'luigi', 'Luigi', look);
   assert.equal(luigi.active, 2);
   assert.deepEqual(luigi.slots[2], { name: 'Luigi', character: 'luigi', look: colors.slotLook(look) });
-  assert.equal(outfits.slots[2], null, 'the outfits given are left as they were');
-  const full = colors.normalizeOutfits({ slots: Array.from({ length: 6 }, (_, i) => ({ name: `M${i}`, look: {} })), active: 3 });
+  assert.equal(outfits.slots.length, 2, 'the outfits given are left as they were');
+  const six = colors.normalizeOutfits({ slots: Array.from({ length: 6 }, (_, i) => ({ name: `M${i}`, look: {} })), active: 3 });
+  assert.equal(colors.wearCharacter(six, 'luigi', 'Luigi', look).active, 6, 'six outfits is not full');
+  const full = colors.normalizeOutfits({ slots: Array.from({ length: colors.MAX_OUTFITS + 5 }, (_, i) => ({ name: `M${i}`, look: {} })), active: 3 });
+  assert.equal(full.slots.length, colors.MAX_OUTFITS);
   assert.equal(colors.wearCharacter(full, 'luigi', 'Luigi', look), full);
+});
+
+test('a new outfit goes in the first empty place, else after the last', () => {
+  assert.equal(colors.freeSlot([{}, null, {}]), 1);
+  assert.equal(colors.freeSlot(Array(6).fill({})), 6);
+  assert.equal(colors.freeSlot(Array(colors.MAX_OUTFITS).fill({})), -1);
 });
 
 test('a new outfit gets its character\'s name, numbered when it is taken', () => {

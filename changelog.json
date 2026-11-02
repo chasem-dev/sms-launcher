@@ -26,7 +26,9 @@
       "Character voices: every voice clip of a character from the Character tab now fits in the game's sound memory. Before, a character with many clips, such as Luigi, could have one cut short and another left in Mario's voice.",
       "Achievements: Sinking Feeling (Super Mario Eclipse) now unlocks when you sink in Erto Rock's quicksand goop, Cleaning House (Super Mario Eclipse) when you defeat the boss in Hotel Lacrima's hideout, and Palm Tree Blast no longer fails when you step onto the sand castle itself on your way in. Only the beach's sand counts.",
       "Split-screen co-op: POINKs in Super Mario Eclipse (and the Puffers in Super Mario Sunshine) now stick to Luigi's FLUDD too, and he can pump them up and fire them. Before, one that grabbed Luigi jumped over to Mario's nozzle. Each player can now carry one at the same time.",
-      "Online: having an NPC's text box (or a sign) open when another player gets a Shine no longer crashes your game. The text box now closes and you join their Shine Get, and the same goes for the host leaving for another world or starting a cutscene: your text box closes and you go along."
+      "Online: having an NPC's text box (or a sign) open when another player gets a Shine no longer crashes your game. The text box now closes and you join their Shine Get, and the same goes for the host leaving for another world or starting a cutscene: your text box closes and you go along.",
+      "Radar: the Hotel Lobby's Secret (Sirena Beach, episode 2) now shows its own course on the radar and the full map. Before, it showed the secret course of Bianco Hills' episode 3, which is built on the same ground.",
+      "Super Mario Eclipse radar: the secret courses of Lancia Peaks and Erto Rock, and three in Peach's Castle, now show their own course on the radar and the full map instead of one of Super Mario Sunshine's secret courses."
     ]
   },
   "releases": [

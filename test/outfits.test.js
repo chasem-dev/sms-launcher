@@ -61,3 +61,17 @@ test('a new outfit gets its character\'s name, numbered when it is taken', () =>
   assert.equal(colors.uniqueName(slots, 'Luigi', 0), 'Luigi');
   assert.equal(colors.uniqueName([{ name: 'x'.repeat(24) }], 'x'.repeat(24)).length, 24);
 });
+
+test('player 2 in co-op is an outfit that exists, or none', () => {
+  const slots = [{ name: 'A', look: {} }, null, { name: 'B', character: 'princess-peach', look: {} }];
+  assert.equal(colors.normalizeOutfits({ slots }).coop, null);
+  assert.equal(colors.normalizeOutfits({ slots, coop: 2 }).coop, 2);
+  assert.equal(colors.normalizeOutfits({ slots, active: 0, coop: 0 }).coop, 0, 'the outfit worn can be player 2 too');
+  assert.equal(colors.normalizeOutfits({ slots, coop: 1 }).coop, null);
+  assert.equal(colors.normalizeOutfits({ slots, coop: '2' }).coop, null);
+  assert.equal(colors.normalizeOutfits({ slots, coop: 9 }).coop, null);
+  assert.equal(colors.normalizeOutfits(undefined, {}).coop, null);
+  const outfits = colors.normalizeOutfits({ slots, active: 0, coop: 2 });
+  assert.equal(colors.wearCharacter(outfits, 'princess-peach', 'Princess Peach', {}).coop, 2);
+  assert.equal(colors.wearCharacter(outfits, 'luigi', 'Luigi', {}).coop, 2);
+});

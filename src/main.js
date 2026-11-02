@@ -1418,6 +1418,12 @@ async function play(installation = null, session = null) {
   // and draws them as the characters they play (Eclipse plays as its own)
   if (session && session.mode !== 'coop' && !settings.eclipse && port.gameFeatures(root).onlineCharacters)
     await makeCharactersForOnline(root, rom);
+  // Co-op: player 2 as the outfit chosen for them on the Characters page
+  if (session?.mode === 'coop') {
+    const playerTwo = await coopPlayerTwo(rom, disc, root, settings);
+    Object.assign(env, playerTwo.env);
+    log(`Co-op: player 2 presses START on another controller to join as ${playerTwo.name}, and holds START to leave.`);
+  }
   // The game puts its version in the window title: the launcher's name for the build being played.
   const gameVersion = game.installed(root, settings)?.gameVersion;
   if (gameVersion) env.SMS_GAME_VERSION = String(gameVersion);
@@ -1530,16 +1536,66 @@ async function makeCharactersForOnline(root, rom) {
 // is (Eclipse's Mario with Eclipse on, in a folder of its own so switching doesn't paint him again).
 function marioPaintEnvironment(rom, disc, root, settings) {
   const env = { SMS_MULTIPLAYER_LOOK: marioPack.lookText(config.marioLook) };
+  const paint = marioPaint(rom, disc, root, settings, 'the other players', 'The other players keep their characters\' colours');
+  if (paint) env.SMS_MARIO_PAINT = paint;
+  return env;
+}
+// Mario's textures sorted into colour regions (marioPack.bakePaint), for the game to paint another Mario in
+// someone's colours (`whom`); null, said with `failed`, when it can't be made.
+function marioPaint(rom, disc, root, settings, whom, failed) {
   try {
     const started = Date.now();
-    env.SMS_MARIO_PAINT = marioPack.bakePaint({ rom: disc, references: marioFrom(rom).references,
+    const paint = marioPack.bakePaint({ rom: disc, references: marioFrom(rom).references,
       directory: path.join(app.getPath('userData'), settings.eclipse ? 'mario-paint-eclipse' : 'mario-paint'),
       packDirectories: port.texturePackFolders(settings, root, customTextureDirectory()) });
-    if (Date.now() - started > 250) log(`Got Mario ready to paint the other players in ${((Date.now() - started) / 1000).toFixed(1)} s.`);
+    if (Date.now() - started > 250) log(`Got Mario ready to paint ${whom} in ${((Date.now() - started) / 1000).toFixed(1)} s.`);
+    return paint || null;
   } catch (error) {
-    log(`The other players keep their characters' colours: ${error.message}`);
+    log(`${failed}: ${error.message}`);
+    return null;
   }
-  return env;
+}
+
+// The outfit chosen as co-op's player 2 on the Characters page, or null for the game's own Luigi.
+function coopOutfit() {
+  const { slots, coop } = config.marioOutfits;
+  return Number.isInteger(coop) && slots[coop] ? slots[coop] : null;
+}
+// Split-screen co-op's player 2 (SMS_COOP_CHARACTER, ext/coop): the outfit chosen for them, its character
+// made from the disc first if it isn't yet, and Mario's in the outfit's colours (SMS_COOP_LOOK, painted from
+// SMS_MARIO_PAINT as online players are). The game's own Luigi without one, with Super Mario Eclipse (which
+// plays its own characters), or with a game version from before. Returns the environment and who joins.
+async function coopPlayerTwo(rom, disc, root, settings) {
+  const luigi = { env: {}, name: 'Luigi' }, outfit = coopOutfit();
+  if (!outfit) return luigi;
+  if (settings.eclipse) {
+    log(`Co-op: with Super Mario Eclipse on, player 2 is Eclipse's own, not ${outfit.name}.`);
+    return luigi;
+  }
+  if (!port.gameFeatures(root).coopCharacter) {
+    log(`Co-op: player 2 is Luigi in this game version. Update the game to play player 2 as ${outfit.name}.`);
+    return luigi;
+  }
+  const character = characterRoster.list(root).find(c => c.id === outfit.character);
+  if (!character) return luigi;
+  if (!character.ready) {
+    if (!character.makeable) {
+      log(`Co-op: ${character.name} comes from Super Mario Eclipse and isn't made yet, so player 2 is Luigi. Set up Eclipse once to make ${character.name}.`);
+      return luigi;
+    }
+    log(`Making ${character.name} from your disc for player 2.`);
+    try { await makeCharacter(root, rom, character.id); log(`Made ${character.name} from your disc.`); }
+    catch (error) {
+      log(`${character.name} couldn't be made (${error.message}), so player 2 is Luigi.`);
+      return luigi;
+    }
+  }
+  const env = { SMS_COOP_CHARACTER: character.id };
+  // Mario in the outfit's colours; with Use in the game off, his usual ones, as for player 1
+  const look = character.id === 'mario' && config.marioLook.inGame ? marioPack.lookText(outfit.look) : '';
+  const paint = look && marioPaint(rom, disc, root, settings, 'player 2', `Player 2 keeps Mario's usual colours`);
+  if (paint) Object.assign(env, { SMS_COOP_LOOK: look, SMS_MARIO_PAINT: paint });
+  return { env, name: outfit.name };
 }
 
 // Custom textures (port.customTextureDirectory): the player's own texture packs, in the launcher's folder
@@ -1978,7 +2034,6 @@ async function playCoop() {
   const root = requireRepo();
   if (fs.existsSync(port.binaryPath(root, config.settings)) && !port.gameFeatures(root).coop && !config.settings.autoUpdate)
     throw new Error('This game version has no co-op yet. Update the game (Update & play) to play co-op.');
-  log('Co-op: player 2 presses START on another controller to join as Luigi, and holds START to leave.');
   return launchGame({ mode: 'coop', env: { SMS_COOP: '1' },
     beforePlay: async () => {
       if (!port.gameFeatures(config.repo).coop) throw new Error('This game version has no co-op yet. Update the game to play co-op.');
@@ -2334,7 +2389,9 @@ function registerHandlers() {
       saveConfig();
     }
     return { characters: characterRoster.list(charactersRoot()).map(character => ({ ...character, stamp: characterStamp(character) })), outfits: config.marioOutfits,
-      eclipse: Boolean(config.settings.eclipse), ready: Boolean(charactersRoot() && config.rom) };
+      eclipse: Boolean(config.settings.eclipse), ready: Boolean(charactersRoot() && config.rom),
+      // whether the game on disk plays co-op's player 2 as an outfit (an update brings it)
+      coopOutfit: Boolean(charactersRoot() && port.gameFeatures(charactersRoot()).coopCharacter) };
   });
   // What a character's model is made from, so its outfit portraits are drawn again when it changes: the
   // disc for Mario, the made pack for the others.

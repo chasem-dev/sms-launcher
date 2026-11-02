@@ -792,6 +792,15 @@ pre { height: 120px; margin: 0; padding: 12px; overflow: auto; border-radius: 8p
 .outfit-note .text-button { flex: none; padding: 0; border: 0; background: none; font-size: 12px; }
 .outfit-note .text-button[hidden] { display: none; }
 .outfit-note .text-button.armed { color: #b3261e; }
+/* Player 2 in co-op: this outfit, or who is. */
+.outfit-coop { display: flex; align-items: center; gap: 8px; margin: -4px 0 12px; padding: 6px 6px 6px 10px; border: 1px solid #e1e9e8; border-radius: 10px; background: #fff; color: #4d6a71; font-size: 12px; line-height: 1.4; }
+.outfit-coop svg { flex: none; width: 18px; height: 18px; fill: none; stroke: #6f888d; stroke-width: 1.6; stroke-linecap: round; }
+.outfit-coop span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.outfit-coop strong { color: #17343d; }
+.outfit-coop button { flex: none; padding: 5px 10px; font-size: 11.5px; }
+.outfit-coop.on { border-color: #e7c873; background: #fdf6e3; }
+.outfit-coop.on svg { stroke: #a0711f; }
+.outfit-p2 { flex: none; padding: 1px 5px; border-radius: 5px; background: #f3dea0; color: #6b4a0e; font-size: 9.5px; font-weight: 800; letter-spacing: .02em; }
 .outfit-about { margin: 0; color: #4d6a71; font-size: 12.5px; line-height: 1.5; }
 .outfit-about:empty { display: none; }
 /* Who wears a new outfit, or the one worn. */
@@ -854,6 +863,12 @@ pre { height: 120px; margin: 0; padding: 12px; overflow: auto; border-radius: 8p
 .dark .outfit-note { background: #133a3f; color: #c9dce1; }
 .dark .outfit-note .text-button.armed { color: #ffb4a3; }
 .dark .outfit-about { color: #9fc3cb; }
+.dark .outfit-coop { border-color: #2a4d61; background: #132e40; color: #9fc3cb; }
+.dark .outfit-coop svg { stroke: #8fb0b8; }
+.dark .outfit-coop strong { color: #e3eff2; }
+.dark .outfit-coop.on { border-color: #7a6326; background: #2e2a17; }
+.dark .outfit-coop.on svg { stroke: #f5d68a; }
+.dark .outfit-p2 { background: #5c4a17; color: #f5d68a; }
 .dark .outfit-picker { border-color: #2f5468; background: #10283a; }
 .dark .outfit-picker > p { color: #e3eff2; }
 .dark .outfit-pick { border-color: #2a4d61; background: #132e40; color: #d7e9ee; }

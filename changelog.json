@@ -10,7 +10,8 @@
       "Character tab: Luigi, from Super Mario Eclipse. If you have set Eclipse up once, the launcher makes him from it, with Eclipse on or off, and he plays in Super Mario Sunshine with Mario's moves and FLUDD. Online, players who haven't set Eclipse up see him as Mario.",
       "Character tab: Shadow Luigi, Luigi as the paintbrush impostor, see-through and shimmering as Shadow Mario is, in the game too. Like Luigi, he comes from the Super Mario Eclipse you set up once.",
       "Character tab: Shadow Mario's shimmer now moves, as it does in the game, instead of standing still.",
-      "Luigi and Shadow Luigi speak as Super Mario Eclipse's Luigi does: Mario's voice from your disc, a little lower, with Mario's other calls for his jumps and efforts."
+      "Luigi and Shadow Luigi speak as Super Mario Eclipse's Luigi does: Mario's voice from your disc, a little lower, with Mario's other calls for his jumps and efforts.",
+      "Prepare only: with Super Mario Eclipse switched on, or any game not set up yet, ▾ beside Prepare & play now has Prepare only, which gets the game ready without starting it. Update only now also gets the HD visuals and Eclipse's downloads, so Play later starts straight away."
     ],
     "game": [
       "Fixed Goop sometimes not cleaning",

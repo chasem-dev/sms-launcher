@@ -184,6 +184,175 @@ function withoutShapes(model, hidden) {
   return out;
 }
 
+// Vertex attributes (GX_VA_*) and where VTX1 keeps each one's array (its 13 offsets: position, normal,
+// NBT, two colours, eight texture coordinates).
+const PNMTXIDX = 0, POS = 9, NRM = 10, CLR0 = 11, CLR1 = 12;
+const VTX_SLOT = attr => (attr === POS ? 0 : attr === NRM ? 1 : attr >= CLR0 && attr <= 20 ? attr - 8 : -1);
+// The size of one entry of an array in this format: its components (by count), each by its type.
+function entrySize(attr, { count, type }) {
+  if (attr === CLR0 || attr === CLR1) return [2, 3, 4, 2, 3, 4][type];
+  const components = attr === POS ? (count ? 3 : 2) : attr === NRM ? 3 : (count ? 2 : 1);
+  return components * [1, 1, 2, 2, 4][type];
+}
+// VTX1's formats ({ count, type, frac } by attribute) and arrays (the bytes by attribute, padding and all).
+function readVertexArrays(vtx) {
+  const formats = new Map();
+  for (let f = vtx.readUInt32BE(8); vtx.readUInt32BE(f) !== 0xff; f += 16)
+    formats.set(vtx.readUInt32BE(f), { count: vtx.readUInt32BE(f + 4), type: vtx.readUInt32BE(f + 8), frac: vtx[f + 12] });
+  const offsets = Array.from({ length: 13 }, (_, i) => vtx.readUInt32BE(0x0c + i * 4));
+  const arrays = new Map();
+  for (const attr of formats.keys()) {
+    const slot = VTX_SLOT(attr), start = offsets[slot];
+    if (slot < 0 || !start) continue;
+    const next = offsets.filter(o => o > start).reduce((a, b) => Math.min(a, b), vtx.length);
+    arrays.set(attr, vtx.subarray(start, next));
+  }
+  return { formats, offsets, arrays };
+}
+
+// A shape's place in SHP1 (offsets from the chunk's start): its entry, attributes ([{ attr, type }]) and
+// display lists ([{ loc, start, size }]).
+function readShape(shp, s) {
+  const off = k => shp.readUInt32BE(0x0c + k * 4);
+  const entry = off(0) + shp.readUInt16BE(off(1) + s * 2) * 0x28;
+  const attrs = [];
+  for (let a = off(3) + shp.readUInt16BE(entry + 4); shp.readUInt32BE(a) !== 0xff; a += 8) attrs.push({ attr: shp.readUInt32BE(a), type: shp.readUInt32BE(a + 4) });
+  const lists = [];
+  for (let p = 0, first = shp.readUInt16BE(entry + 8); p < shp.readUInt16BE(entry + 2); p++) {
+    const loc = off(7) + (first + p) * 8;
+    lists.push({ loc, start: off(5) + shp.readUInt32BE(loc + 4), size: shp.readUInt32BE(loc) });
+  }
+  return { entry, attrs, lists };
+}
+
+// Each vertex of a shape's display lists: [{ op, vertices: [{ attr: index }] }] per primitive.
+function readPrimitives(shp, { attrs, lists }) {
+  const out = [];
+  for (const { start, size } of lists) {
+    for (let q = start; q < start + size;) {
+      const op = shp[q++];
+      if (op === 0) continue;
+      if ((op & 0xf8) < 0x80 || (op & 0xf8) > 0xb8) throw new Error(`A display list with command ${op.toString(16)}.`);
+      const n = shp.readUInt16BE(q), vertices = [];
+      q += 2;
+      for (let v = 0; v < n; v++) {
+        const vertex = {};
+        for (const { attr, type } of attrs) {
+          if (type === 0) continue;
+          vertex[attr] = type === 3 ? shp.readUInt16BE(q) : shp[q];
+          q += type === 3 ? 2 : 1;
+        }
+        vertices.push(vertex);
+      }
+      out.push({ op, vertices });
+    }
+  }
+  return out;
+}
+
+// A copy of a model with shape `target` drawn as `donor`'s one shape (a model of one joint, as the cap
+// ma_cap1.bmd is), on the model's draw matrix `draw`: the donor's positions, normals and texture coordinates
+// are added to the model's arrays, and the target draws them in a display list of its own, in its own
+// material. A colour the donor hasn't is the one the target's first vertex had.
+function withShapeFrom(model, target, donor, { draw }) {
+  const own = chunks(model), his = chunks(donor);
+  const find = (list, type) => list.find(c => c.type === type)?.data;
+  const vtx = find(own, 'VTX1'), shp = find(own, 'SHP1'), donorVtx = find(his, 'VTX1'), donorShp = find(his, 'SHP1');
+  if (!vtx || !shp || !donorVtx || !donorShp) throw new Error('A model without vertices or shapes.');
+  if (target >= shp.readUInt16BE(8) || donorShp.readUInt16BE(8) !== 1) throw new Error('No such shape to draw anew, or a donor of more than one.');
+  const shape = readShape(shp, target), donorShape = readShape(donorShp, 0);
+  if (shape.lists.length !== 1) throw new Error('A shape of more than one packet.');
+  if (shape.attrs.some(a => a.type === 1 && a.attr !== PNMTXIDX) || shape.attrs.some(a => a.type === 2)) throw new Error('A shape with 8-bit or direct vertex data.');
+  const vertices = readVertexArrays(vtx), donorVertices = readVertexArrays(donorVtx);
+  const [first] = readPrimitives(shp, shape)[0]?.vertices || [{}];
+  const primitives = readPrimitives(donorShp, donorShape);
+  const donorMatrices = donorShp.readUInt32BE(0x0c + 6 * 4) + donorShp.readUInt16BE(donorShape.entry + 6) * 8;
+  if (donorShape.lists.some((_, p) => donorShp.readUInt16BE(donorMatrices + p * 8 + 2) !== 1)) throw new Error('A donor on more than one matrix.');
+
+  // each array the donor adds to: the model's (an entry's worth of padding at most), then the donor's
+  const base = new Map();
+  const grown = new Map([...vertices.arrays].map(([attr, bytes]) => {
+    const format = vertices.formats.get(attr), donorFormat = donorVertices.formats.get(attr);
+    const extra = donorVertices.arrays.get(attr);
+    if (!shape.attrs.some(a => a.attr === attr) || attr === CLR0 || attr === CLR1 || !extra) return [attr, bytes];
+    if (!donorFormat || ['count', 'type', 'frac'].some(k => donorFormat[k] !== format[k])) throw new Error('The donor\'s vertices are in another format.');
+    const size = entrySize(attr, format), count = Math.ceil(bytes.length / size);
+    base.set(attr, count);
+    const out = Buffer.alloc(count * size + Math.floor(extra.length / size) * size);
+    bytes.copy(out);
+    extra.copy(out, count * size, 0, out.length - count * size);
+    return [attr, out];
+  }));
+  for (const { attr } of shape.attrs)
+    if (attr !== PNMTXIDX && attr !== CLR0 && attr !== CLR1 && !base.has(attr)) throw new Error('The donor lacks a vertex attribute the shape draws.');
+  if ([...base].some(([attr, n]) => n + Math.floor(donorVertices.arrays.get(attr).length / entrySize(attr, donorVertices.formats.get(attr))) > 0xffff))
+    throw new Error('Too many vertices for 16-bit indices.');
+
+  // VTX1 again: its header and formats, then each array in its old order, 32-byte aligned
+  const order = [...vertices.offsets.keys()].filter(slot => vertices.offsets[slot]).sort((a, b) => vertices.offsets[a] - vertices.offsets[b]);
+  const head = Buffer.from(vtx.subarray(0, vertices.offsets[order[0]]));
+  const pieces = [head];
+  let size = head.length;
+  for (const slot of order) {
+    const attr = [...grown.keys()].find(a => VTX_SLOT(a) === slot);
+    const bytes = attr !== undefined ? grown.get(attr) : vtx.subarray(vertices.offsets[slot], order.map(s => vertices.offsets[s]).find(o => o > vertices.offsets[slot]) || vtx.length);
+    const pad = align(size, 32) - size;
+    if (pad) pieces.push(Buffer.alloc(pad));
+    size += pad;
+    head.writeUInt32BE(size, 0x0c + slot * 4);
+    pieces.push(bytes);
+    size += bytes.length;
+  }
+  pieces.push(Buffer.alloc(align(size, 32) - size));
+  const newVtx = Buffer.concat(pieces);
+  newVtx.writeUInt32BE(newVtx.length, 4);
+
+  // the donor's primitives in the target's attributes, as a display list of its own
+  const dl = [];
+  for (const { op, vertices: list } of primitives) {
+    const prim = Buffer.alloc(3);
+    prim[0] = op;
+    prim.writeUInt16BE(list.length, 1);
+    dl.push(prim);
+    for (const vertex of list) {
+      for (const { attr, type } of shape.attrs) {
+        if (type === 0) continue;
+        if (type === 1) { dl.push(Buffer.from([0])); continue; }   // the shape's one matrix
+        const value = Buffer.alloc(2);
+        value.writeUInt16BE(base.has(attr) ? base.get(attr) + vertex[attr] : (first[attr] ?? 0));
+        dl.push(value);
+      }
+    }
+  }
+  // placed at the end of the display lists' part, before the tables after it, which move on: the game's
+  // loader reads each part of SHP1 up to the next (the last to the end), so one placed after the
+  // packets' table would be read as part of it
+  const list = Buffer.concat(dl), listSize = align(list.length, 32);
+  const sectionAt = Array.from({ length: 8 }, (_, k) => shp.readUInt32BE(0x0c + k * 4)), dlData = sectionAt[5];
+  const listAt = sectionAt.filter(o => o > dlData).reduce((x, y) => Math.min(x, y), shp.length);
+  if (listAt % 32) throw new Error('Display lists out of alignment.');
+  const newShp = Buffer.concat([shp.subarray(0, listAt), list, Buffer.alloc(listSize - list.length), shp.subarray(listAt)]);
+  newShp.writeUInt32BE(newShp.length, 4);
+  sectionAt.forEach((o, k) => { if (o >= listAt) newShp.writeUInt32BE(o + listSize, 0x0c + k * 4); });
+  const loc = shape.lists[0].loc + (shape.lists[0].loc >= listAt ? listSize : 0);
+  newShp.writeUInt32BE(listSize, loc);
+  newShp.writeUInt32BE(listAt - dlData, loc + 4);
+  const entry = shape.entry + (shape.entry >= listAt ? listSize : 0);
+
+  // on draw matrix `draw`: the shape takes the matrices of a packet (of one matrix) that's drawn on it
+  const sections = Array.from({ length: 8 }, (_, k) => newShp.readUInt32BE(0x0c + k * 4));
+  const matrixTable = sections[4], matrixData = sections[6], end = sections.filter(o => o > matrixData).reduce((x, y) => Math.min(x, y), newShp.length);
+  let found = -1;
+  for (let m = 0; matrixData + m * 8 + 8 <= end && found < 0; m++) {
+    const md = matrixData + m * 8;
+    if (newShp.readUInt16BE(md + 2) === 1 && newShp.readUInt16BE(matrixTable + newShp.readUInt32BE(md + 4) * 2) === draw) found = m;
+  }
+  if (found < 0) throw new Error('No packet of the model is drawn on that matrix.');
+  newShp.writeUInt16BE(found, entry + 6);
+
+  return writeFile(model, own.map(c => (c.type === 'VTX1' ? { type: 'VTX1', data: newVtx } : c.type === 'SHP1' ? { type: 'SHP1', data: newShp } : c)));
+}
+
 // The body (a .bmd on Mario's skeleton) as Shadow Mario: the files of a character's look/ folder. `hide`:
 // the body's shapes left out (the game draws a look model whole).
 function shadowLook(body, shadowBmd, shadowBtk, { hide = [] } = {}) {
@@ -194,4 +363,4 @@ function shadowLook(body, shadowBmd, shadowBtk, { hide = [] } = {}) {
   return { 'default.bmd': bmd, 'kagemario_scroll.btk': shadowScroll(shadowBtk, materials, shadowNames) };
 }
 
-module.exports = { shadowLook, withoutShapes, assign, chunks };
+module.exports = { shadowLook, withoutShapes, withShapeFrom, assign, chunks };

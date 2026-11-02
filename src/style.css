@@ -147,6 +147,10 @@ pre { height: 120px; margin: 0; padding: 12px; overflow: auto; border-radius: 8p
 .window-control:hover { background: #ffffff2c; }
 .window-control.close-control:hover { border-color: #d85b5d; background: #cb4149; color: #fff; }
 .window-control svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; pointer-events: none; }
+/* The maximize button's icon follows the window: maximize, restore down, or leave full screen. */
+#window-maximize .icon-restore, #window-maximize .icon-leave-full-screen,
+#window-maximize[data-state="maximized"] .icon-maximize, #window-maximize[data-state="fullscreen"] .icon-maximize { display: none; }
+#window-maximize[data-state="maximized"] .icon-restore, #window-maximize[data-state="fullscreen"] .icon-leave-full-screen { display: block; }
 .viewport { padding: 24px 28px 16px; }
 .home-page { gap: 14px; }
 .intro { flex: none; align-items: start; min-height: 0; color: #fff; text-shadow: 0 2px 18px #082b4599; }

@@ -2312,14 +2312,17 @@ function renderPublicOnline(value) {
 window.sms.onPublicOnline(renderPublicOnline);
 $('install-app-update').addEventListener('click', () => window.sms.installAppUpdate().catch(showError));
 $('check-updates').addEventListener('click', checkForUpdates);
+// The middle window button maximizes (the taskbar stays in view) or restores the window, and leaves full screen,
+// which F11 switches.
+const WINDOW_BUTTON = { normal: 'Maximize', maximized: 'Restore down', fullscreen: 'Exit full screen' };
 function renderWindowState(value) {
-  const fullscreen = Boolean(value.fullscreen);
-  $('window-fullscreen').setAttribute('aria-pressed', String(fullscreen));
-  $('window-fullscreen').setAttribute('aria-label', fullscreen ? 'Exit full screen' : 'Enter full screen');
-  $('window-fullscreen').title = fullscreen ? 'Exit full screen' : 'Enter full screen';
+  const state = value?.fullscreen ? 'fullscreen' : value?.maximized ? 'maximized' : 'normal';
+  $('window-maximize').setAttribute('data-state', state);
+  $('window-maximize').setAttribute('aria-label', state === 'normal' ? 'Maximize window' : WINDOW_BUTTON[state]);
+  $('window-maximize').title = state === 'fullscreen' ? WINDOW_BUTTON[state] : `${WINDOW_BUTTON[state]} (F11: full screen)`;
 }
 $('window-minimize').addEventListener('click', () => window.sms.minimizeWindow());
-$('window-fullscreen').addEventListener('click', () => window.sms.toggleFullScreen().then(renderWindowState).catch(showError));
+$('window-maximize').addEventListener('click', () => window.sms.toggleMaximize().then(renderWindowState).catch(showError));
 $('window-close').addEventListener('click', () => window.sms.closeWindow());
 window.sms.onWindowState(renderWindowState);
 
@@ -2356,6 +2359,13 @@ function gamepadBack() {
 window.addEventListener('keydown', event => {
   if (event.key !== 'Escape' || event.defaultPrevented || capture || openDialog() || page === 'play') return;
   showPage('play');
+});
+// F11 (and Ctrl+Cmd+F on a Mac) switches the launcher's full screen, unless Controls is waiting for a key.
+window.addEventListener('keydown', event => {
+  const macFullScreen = event.metaKey && event.ctrlKey && event.key?.toLowerCase() === 'f';
+  if ((event.key !== 'F11' && !macFullScreen) || event.defaultPrevented || capture || event.repeat) return;
+  event.preventDefault();
+  window.sms.toggleFullScreen().then(renderWindowState).catch(showError);
 });
 window.smsGamepadNav.start({
   document, window,

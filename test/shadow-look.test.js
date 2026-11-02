@@ -1,7 +1,7 @@
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { shadowLook, withoutShapes, assign, chunks } = require('../src/shadow-look');
+const { shadowLook, withoutShapes, withShapeFrom, assign, chunks } = require('../src/shadow-look');
 
 const names = list => {
   const head = Buffer.alloc(4 + list.length * 4), strings = [];
@@ -107,4 +107,40 @@ test('a shape left out draws nothing: its display lists are all no-ops, the othe
   assert.equal(dl.toString('latin1'), 'BBBB\0\0\0\0');
   assert.equal(out.length, model.length);
   assert.equal(chunks(model)[0].data.subarray(0x84, 0x8c).toString('latin1'), 'BBBBAAAA');   // the model given is kept
+});
+
+// A model of one shape: VTX1 with float positions, SHP1 with one triangle of positions 0, 1, 2 on draw matrix 0.
+function oneShape(positions) {
+  const vtx = Buffer.alloc(0x60 + positions.length * 4);
+  vtx.write('VTX1', 0, 'ascii'); vtx.writeUInt32BE(vtx.length, 4); vtx.writeUInt32BE(0x40, 8); vtx.writeUInt32BE(0x60, 0x0c);
+  vtx.writeUInt32BE(9, 0x40); vtx.writeUInt32BE(1, 0x44); vtx.writeUInt32BE(4, 0x48); vtx.writeUInt32BE(0xff, 0x50);
+  positions.forEach((v, i) => vtx.writeFloatBE(v, 0x60 + i * 4));
+  const shp = Buffer.alloc(0xd0);
+  shp.write('SHP1', 0, 'ascii'); shp.writeUInt32BE(shp.length, 4); shp.writeUInt16BE(1, 8);
+  [0x40, 0x68, 0, 0x70, 0x80, 0xa0, 0xc0, 0xc8].forEach((o, k) => shp.writeUInt32BE(o, 0x0c + k * 4));
+  shp[0x40] = 3; shp.writeUInt16BE(1, 0x42);                                  // one packet, its matrices 0, its list 0
+  shp.writeUInt32BE(9, 0x70); shp.writeUInt32BE(3, 0x74); shp.writeUInt32BE(0xff, 0x78);   // positions by 16-bit index
+  Buffer.from([0x90, 0, 3, 0, 0, 0, 1, 0, 2]).copy(shp, 0xa0);
+  shp.writeUInt16BE(1, 0xc2);                                                  // matrices: one, table entry 0 (draw 0)
+  shp.writeUInt32BE(32, 0xc8);                                                 // list: 32 bytes at 0
+  return file('J3D2bmd3', [vtx, shp]);
+}
+
+test('a shape drawn as another model\'s: its vertices added, its own display list among the others, the tables after it moved on', () => {
+  const model = oneShape([0, 0, 0, 1, 0, 0, 0, 1, 0]), donor = oneShape([5, 5, 5, 6, 5, 5, 5, 6, 5]);
+  const out = withShapeFrom(model, 0, donor, { draw: 0 });
+  const [vtx, shp] = chunks(out).map(c => c.data);
+  const positions = Array.from({ length: 18 }, (_, i) => vtx.readFloatBE(vtx.readUInt32BE(0x0c) + i * 4));
+  assert.deepEqual(positions, [0, 0, 0, 1, 0, 0, 0, 1, 0, 5, 5, 5, 6, 5, 5, 5, 6, 5]);
+  assert.equal(shp.readUInt32BE(0x0c + 5 * 4), 0xa0);                         // the lists where they were
+  assert.equal(shp.readUInt32BE(0x0c + 6 * 4), 0xc0 + 32);                    // the matrices and packets after the new one
+  assert.equal(shp.readUInt32BE(0x0c + 7 * 4), 0xc8 + 32);
+  const packet = shp.readUInt32BE(0x0c + 7 * 4);
+  assert.equal(shp.readUInt32BE(packet), 32);
+  assert.equal(shp.readUInt32BE(packet + 4), 32);                              // right after the old list
+  assert.deepEqual([...shp.subarray(0xa0 + 32, 0xa0 + 41)], [0x90, 0, 3, 0, 3, 0, 4, 0, 5]);
+  assert.deepEqual([...shp.subarray(0xa0, 0xa0 + 9)], [0x90, 0, 3, 0, 0, 0, 1, 0, 2]);   // the old list kept
+  assert.equal(shp.readUInt32BE(4), shp.length);
+  assert.equal(out.readUInt32BE(8), out.length);
+  assert.throws(() => withShapeFrom(model, 0, donor, { draw: 7 }), /matrix/);
 });

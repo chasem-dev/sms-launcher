@@ -10,8 +10,8 @@ const path = require('node:path');
 const crypto = require('node:crypto');
 const { Disc } = require('./disc');
 const { rarc, yaz0 } = require('./archive');
-const { jointKinds, withJointKinds } = require('./j3d');
-const { shadowLook } = require('./shadow-look');
+const { jointKinds, withJointKinds, parseBmd } = require('./j3d');
+const { shadowLook, withShapeFrom } = require('./shadow-look');
 const { withFolder, withFiles } = require('./rarc-write');
 const { convert, convertSunshine } = require('./character-convert');
 const { writeFluddPlace } = require('./character-model');
@@ -127,14 +127,19 @@ function luigi(disc, progress, { eclipse }) {
 // Shadow Luigi: Luigi (as above) with a look made of his body and the plaza's Shadow Mario's materials
 // (shadow-look.js), which the game draws as it draws Shadow Mario. The game draws a look whole, so the
 // body's Shine shirt (shape 10, which it shows on the body only once Mario has the shirt) is left out of
-// it: he never wears it, as Shadow Mario doesn't.
-const SHIRT_SHAPE = 10;
+// it: he never wears it, as Shadow Mario doesn't. And the body's cap (shape 4) is drawn as his cap model:
+// on the body the game hides that shape and draws ma_cap1.bmd on M_head (TMarioCap), and Eclipse's Luigi's
+// body cap is a broken leftover whose texture coordinates don't match its corners (a patchy, blocky cap).
+const SHIRT_SHAPE = 10, BODY_CAP_SHAPE = 4;
 function shadowLuigi(disc, progress, options) {
   const { 'model.szs': model } = luigi(disc, progress, options);
   const plaza = rarc(yaz0(disc.file('data/scene/dolpic1.szs')));
   const shadow = plaza.get('kagemario/default.bmd'), scroll = plaza.get('kagemario/kagemario_scroll.btk');
   if (!shadow || !scroll) throw new Error('Your disc\'s Delfino Plaza has no Shadow Mario.');
-  return { 'model.szs': withFolder(model, 'look', shadowLook(rarc(yaz0(model)).get('bmd/ma_mdl1.bmd'), shadow, scroll, { hide: [SHIRT_SHAPE] })) };
+  const files = rarc(yaz0(model)), body = files.get('bmd/ma_mdl1.bmd'), cap = files.get('bmd/ma_cap1.bmd');
+  const { joints, draw } = parseBmd(body), head = joints.findIndex(j => j.name === 'M_head');
+  const look = withShapeFrom(body, BODY_CAP_SHAPE, cap, { draw: draw.findIndex(d => !d.weighted && d.index === head) });
+  return { 'model.szs': withFolder(model, 'look', shadowLook(look, shadow, scroll, { hide: [SHIRT_SHAPE] })) };
 }
 // The Eclipse release a character comes from (its file's name): one made from another is made again.
 const ECLIPSE_RELEASE = (path.basename(ECLIPSE_ISO).match(/v\d+(?:\.\d+)*/) || ['eclipse'])[0];
@@ -190,7 +195,7 @@ const ROSTER = [
   { id: 'luigi', name: 'Luigi', about: 'Super Mario Eclipse\'s Luigi, by the Super Mario Eclipse team, made from the Eclipse you set up. He moves as Mario does.',
     version: `3-${ECLIPSE_RELEASE}`, from: 'eclipse', voice: LUIGI_VOICE, build: luigi },
   { id: 'shadow-luigi', name: 'Shadow Luigi', about: 'Luigi as the paintbrush impostor, see-through and shimmering as Shadow Mario is. Made from the Eclipse you set up.',
-    version: `3-${ECLIPSE_RELEASE}`, from: 'eclipse', voice: LUIGI_VOICE, build: shadowLuigi },
+    version: `4-${ECLIPSE_RELEASE}`, from: 'eclipse', voice: LUIGI_VOICE, build: shadowLuigi },
   { id: 'bowser-jr', name: 'Bowser Jr.', about: 'Bowser\'s son, bandana and all, from Corona Mountain.', version: 1,
     build: sunshineCharacter('coronaBoss', 'koopajr', 'koopajr_model.bmd', BOWSER_JR_LABELS) },
 ];

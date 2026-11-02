@@ -267,3 +267,27 @@ test('a dropped card folder imports the save with progress and skips the other f
   assert.throws(() => readGciFiles([emptyFolder]), /no Dolphin \.gci/);
   assert.throws(() => readGciFiles([path.join(folder, '01-GMSE-super_mario_sunshine.gci'), path.join(folder, '04-GMSE-super_mario_eclipse.gci')]), /None of these files has Sunshine or Eclipse progress/);
 });
+
+test('a card\'s saves give each file\'s Shines and blue coins, from the copy the game would load', () => {
+  const { fileProgress, cardProgress } = require('../src/gci-save');
+  const bytes = fixture();
+  // File A's newer copy: 12 Shines and blue coins at the first and last of their flags (and one flag either side, not theirs)
+  setSector(bytes, 2, sector => {
+    sector.writeUInt32BE(3, 0); sector.writeUInt32BE(4, 4); sector.writeUInt16BE(12, 0x1c);
+    for (const flag of [0x77, 0x78, 0x100, 0x365, 0x366]) sector[0x60 + (flag >> 3)] |= 1 << (flag & 7);
+  });
+  // File B: a newer copy whose checksum fails, so the older one counts
+  setSector(bytes, 3, sector => { sector.writeUInt32BE(1, 0); sector.writeUInt32BE(4, 4); sector.writeUInt16BE(5, 0x1c); });
+  setSector(bytes, 4, sector => { sector.writeUInt32BE(2, 0); sector.writeUInt32BE(4, 4); sector.writeUInt16BE(9, 0x1c); });
+  bytes[0x40 + 4 * 0x2000 + 0x1c] ^= 0xff;
+  const data = bytes.subarray(0x40);
+  assert.deepEqual(fileProgress(data), [{ shines: 12, blueCoins: 3 }, { shines: 5, blueCoins: 0 }, null]);
+
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'card-progress-'));
+  try {
+    assert.deepEqual(cardProgress(dir), []);
+    fs.writeFileSync(path.join(dir, 'GMSE04_super_mario_sunshine.dat'), data);
+    fs.writeFileSync(path.join(dir, 'super_mario_sunshine.dat'), data.subarray(0, 0x2000));  // cut short: left out
+    assert.deepEqual(cardProgress(dir), [{ game: 'eclipse', title: 'Super Mario Eclipse', files: fileProgress(data) }]);
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});

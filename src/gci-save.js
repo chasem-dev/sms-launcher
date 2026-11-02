@@ -27,20 +27,57 @@ function otherFile(message, reason) {
   return Object.assign(new Error(message), { code: 'OTHER_FILE', reason });
 }
 
-// Shines in each of the three save files, or null for a file never saved.
+// Each of the three save files' progress, or null for a file never saved: its Shines (the count the game
+// writes in the file's header, Super Mario Eclipse's 240 included) and its blue coins (the flags the game
+// counts for them, TFlagManager::correctFlag; Eclipse clears the ones past its own).
 // Sector 0 holds the banner and options; each save file is a pair of sectors
 // (1-2, 3-4, 5-6) and the game uses the intact one written last.
-function fileShines(data, badBlocks) {
+const BLUE_COIN_FLAGS = [0x78, 0x365];
+function fileProgress(data, badBlocks = checksumFailures(data)) {
   return [0, 1, 2].map(file => {
     let newest = null;
     for (const sector of [1 + 2 * file, 2 + 2 * file]) {
       const start = sector * BLOCK;
-      if (badBlocks.includes(sector + 1)) continue;
+      if (badBlocks.includes(sector + 1) || start + BLOCK > data.length) continue;
       if (data.readUInt32BE(start + 4) !== 4) continue; // TFlagManager's save magic
       const writes = data.readUInt32BE(start);
-      if (!newest || writes > newest.writes) newest = { writes, shines: data.readUInt16BE(start + 0x1c) };
+      if (!newest || writes > newest.writes) newest = { writes, start };
     }
-    return newest && newest.shines;
+    if (!newest) return null;
+    // the card's flags (mCardBools) follow the 0x60-byte header, eight to a byte, lowest bit first
+    const flags = newest.start + 0x60;
+    let blueCoins = 0;
+    for (let flag = BLUE_COIN_FLAGS[0]; flag <= BLUE_COIN_FLAGS[1]; flag++) blueCoins += (data[flags + (flag >> 3)] >> (flag & 7)) & 1;
+    return { shines: data.readUInt16BE(newest.start + 0x1c), blueCoins };
+  });
+}
+
+// The blocks (1 to 7) whose checksums don't match. Sunshine does not normalize 0xffff to zero (unlike card
+// filesystem checksums).
+function checksumFailures(data) {
+  const bad = [];
+  for (let block = 0; block * BLOCK + BLOCK <= data.length && block < 7; block++) {
+    const start = block * BLOCK;
+    let sum = 0, inverted = 0;
+    for (let offset = 0; offset < BLOCK - 4; offset += 2) {
+      const word = data.readUInt16BE(start + offset);
+      sum = (sum + word) & 0xffff;
+      inverted = (inverted + (word ^ 0xffff)) & 0xffff;
+    }
+    if (data.readUInt16BE(start + BLOCK - 4) !== sum ||
+        data.readUInt16BE(start + BLOCK - 2) !== inverted) bad.push(block + 1);
+  }
+  return bad;
+}
+
+// The Sunshine and Eclipse saves in a memory card folder (the card or a backup's copy of it), each game's
+// three files as fileProgress gives them. Games without a save there are left out.
+function cardProgress(dir) {
+  return Object.values(GAMES).flatMap(({ game, title, file }) => {
+    let data;
+    try { data = fs.readFileSync(path.join(dir, `${file}.dat`)); } catch (_) { return []; }
+    if (data.length < SIZE) return [];
+    return [{ game, title, files: fileProgress(data) }];
   });
 }
 
@@ -72,20 +109,8 @@ function convertGci(bytes) {
     throw new Error('The GCI banner or comment metadata is invalid. Export the save again from Dolphin.');
 
   const data = Buffer.from(bytes.subarray(HEADER));
-  const badBlocks = [];
-  for (let block = 0; block < 7; block++) {
-    const start = block * BLOCK;
-    let sum = 0, inverted = 0;
-    for (let offset = 0; offset < BLOCK - 4; offset += 2) {
-      const word = data.readUInt16BE(start + offset);
-      sum = (sum + word) & 0xffff;
-      inverted = (inverted + (word ^ 0xffff)) & 0xffff;
-    }
-    // Sunshine does not normalize 0xffff to zero (unlike card filesystem checksums).
-    if (data.readUInt16BE(start + BLOCK - 4) !== sum ||
-        data.readUInt16BE(start + BLOCK - 2) !== inverted) badBlocks.push(block + 1);
-  }
-  const shines = fileShines(data, badBlocks);
+  const badBlocks = checksumFailures(data);
+  const shines = fileProgress(data, badBlocks).map(file => file && file.shines);
   if (shines.every(count => count === null))
     throw Object.assign(new Error(`This ${game.title} save has no saved progress in any of its three files.` +
       (game === GAMES.GMSE01 ? ' If you play Super Mario Eclipse in Dolphin, choose its 04-GMSE-super_mario_sunshine.gci instead.' : '')),
@@ -196,4 +221,4 @@ function importGci(converted, saveDir, backups = saves.backupRoot()) {
   return { name: converted.name, directory: saveDir, previous: previous.directory || null };
 }
 
-module.exports = { convertGci, readGci, readGciFiles, importGci };
+module.exports = { convertGci, readGci, readGciFiles, importGci, fileProgress, cardProgress };

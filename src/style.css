@@ -511,6 +511,24 @@ pre { height: 120px; margin: 0; padding: 12px; overflow: auto; border-radius: 8p
 .path-row > button, .path-row > .actions { flex: none; }
 .path-row .backup-picker { flex: 1; display: flex; align-items: center; gap: 12px; min-width: 0; margin: 0; }
 .backup-picker span { flex: none; }
+/* The chosen backup's files: each game, then File A, B and C with their Shines and blue coins */
+.backup-progress { display: grid; gap: 10px; padding: 0 0 12px; }
+.backup-progress-game { display: grid; gap: 6px; }
+.backup-progress-game > strong { color: #405a60; font-size: 12px; font-weight: 650; }
+.backup-progress-files { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.backup-progress-file { display: flex; align-items: center; gap: 10px; min-width: 0; padding: 8px 10px; border: 1px solid #dfe9ea; border-radius: 8px; background: #f7fbfb; }
+.backup-progress-file.empty { background: transparent; border-style: dashed; }
+.backup-progress-label { flex: none; margin-right: auto; color: #334b51; font-size: 12px; font-weight: 650; }
+.backup-progress-none { color: #7d9397; font-size: 12px; }
+.backup-progress-count { display: inline-flex; align-items: center; gap: 4px; color: #2b4147; font-size: 13px; font-weight: 650; font-variant-numeric: tabular-nums; }
+.backup-progress-count.shine::before { color: #e8a800; font-size: 14px; content: '\2605'; }
+.backup-progress-count.blue-coin::before { width: 10px; height: 10px; border: 1.5px solid #1f5fc9; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #8fc2ff, #2f7ff0 60%, #1d5bc4); content: ''; }
+.backup-progress-empty { margin: 0; color: #7d9397; font-size: 12px; }
+.dark .backup-progress-game > strong, .dark .backup-progress-label { color: #c9dce1; }
+.dark .backup-progress-file { border-color: #2a4d61; background: #10293a; }
+.dark .backup-progress-file.empty { background: transparent; }
+.dark .backup-progress-count { color: #e6f2f4; }
+.dark :is(.backup-progress-none, .backup-progress-empty) { color: #93acb4; }
 .settings-group > .small-path { min-height: 0; margin: 0; padding: 14px 0 2px; }
 .settings-group > .version-list { margin: 0; padding: 4px 0; }
 .preset-group .field { min-height: 60px; }

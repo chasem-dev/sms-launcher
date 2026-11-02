@@ -558,3 +558,46 @@ test('a step that runs out of disk space says which drive is full instead of bla
   assert.equal(tools.outOfSpaceError(hint, { dataFolder, platform: 'win32' }), null);
   assert.equal(tools.hintedError(new Error('Access is denied.'), { dataFolder, platform: 'win32' }), null);
 });
+
+test('a drive without hard links is found by trying one in the staging folder, which is left empty', t => {
+  const staging = fs.mkdtempSync(path.join(os.tmpdir(), 'sms-link-probe-'));
+  t.after(() => fs.rmSync(staging, { recursive: true, force: true }));
+  assert.equal(tools.hardLinksWork(staging), true);
+  // Windows on exFAT or FAT32: CreateHardLink fails with ERROR_INVALID_FUNCTION, which Node reports as EISDIR.
+  t.mock.method(fs, 'linkSync', () => { throw Object.assign(new Error('EISDIR: illegal operation on a directory, link'), { code: 'EISDIR' }); });
+  assert.equal(tools.hardLinksWork(staging), false);
+  assert.deepEqual(fs.readdirSync(staging), []);
+});
+
+test('unpacking without hard links writes each one as a copy of its file', async t => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'sms-unpack-links-'));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  // node-tar packs hard links as files, so the archive is written a block at a time, as the tools' packer's is.
+  const block = (header, body = '') => {
+    const head = new tar.Header({ mode: 0o755, mtime: new Date(0), size: Buffer.byteLength(body), ...header });
+    head.encode();
+    const data = Buffer.alloc(Math.ceil(Buffer.byteLength(body) / 512) * 512);
+    data.write(body);
+    return Buffer.concat([head.block, data]);
+  };
+  const archive = path.join(root, 'tools.tar.gz');
+  fs.writeFileSync(archive, require('node:zlib').gzipSync(Buffer.concat([
+    block({ path: 'msys64/', type: 'Directory' }),
+    block({ path: 'msys64/mingw64/bin/g++.exe', type: 'File' }, 'compiler'),
+    block({ path: 'msys64/mingw64/bin/c++.exe', type: 'Link', linkpath: 'msys64/mingw64/bin/g++.exe' }),
+    block({ path: 'other/skipped.txt', type: 'File' }, 'not kept'),
+    Buffer.alloc(1024)])));
+  const entries = [];
+  await tar.t({ file: archive, onReadEntry: entry => entries.push([entry.path, entry.type]) });
+  assert.ok(entries.some(([name, type]) => name === 'msys64/mingw64/bin/c++.exe' && type === 'Link'), 'the archive holds a hard link');
+  const keep = name => name === 'msys64' || name.startsWith('msys64/');
+  for (const copyLinks of [true, false]) {
+    const staging = path.join(root, `staging-${copyLinks}`);
+    fs.mkdirSync(staging);
+    await tools.unpackScript(archive, staging, keep, () => {}, { copyLinks });
+    const bin = path.join(staging, 'msys64', 'mingw64', 'bin');
+    assert.equal(fs.readFileSync(path.join(bin, 'c++.exe'), 'utf8'), 'compiler');
+    assert.equal(fs.statSync(path.join(bin, 'c++.exe')).nlink, copyLinks ? 1 : 2);
+    assert.equal(fs.existsSync(path.join(staging, 'other')), false);
+  }
+});

@@ -541,6 +541,52 @@ function unpackNative(tarPath, args, progress, { stallMs = 5 * 60 * 1000, folder
   });
 }
 
+// exFAT and FAT32 drives (a handheld's microSD card or second drive, most USB
+// sticks) can't make hard links, and the Windows tools archive holds thousands
+// (MSYS2's g++.exe, clang.exe…). Windows' tar fails on each with "Invalid
+// argument", so on such a drive the archive unpacks in JavaScript instead,
+// with each hard link written as a copy of its file. `folder` is the empty
+// staging folder.
+function hardLinksWork(folder) {
+  const probe = path.join(folder, '.hard-link-probe');
+  fs.writeFileSync(probe, '');
+  try { fs.linkSync(probe, `${probe}-2`); return true; }
+  catch (_) { return false; }
+  finally { for (const file of [probe, `${probe}-2`]) fs.rmSync(file, { force: true }); }
+}
+
+// Unpacks `archive` into `staging` with node-tar, keeping `keep(entry name)`.
+// copyLinks writes each hard link as a copy of the file it links to, which
+// the archive always holds earlier.
+async function unpackScript(archive, staging, keep, progress, { copyLinks = false, tar = require('tar') } = {}) {
+  let entries = 0;
+  const links = [];
+  const inside = name => {
+    const file = path.resolve(staging, name);
+    if (path.relative(staging, file).startsWith('..') || path.isAbsolute(path.relative(staging, file)))
+      throw new Error(`Build tool archive has a file outside its folder: ${name}`);
+    return file;
+  };
+  await tar.x({ file: archive, cwd: staging, strict: true,
+    onReadEntry() {
+      if (++entries % 1000 === 0) progress(null, `Unpacking build tools… ${entries.toLocaleString()} files`);
+    },
+    filter(name, entry) {
+      if (!keep(name.replace(/^\.\//, ''))) return false;
+      if (!copyLinks || entry?.type !== 'Link') return true;
+      links.push([inside(name), inside(String(entry.linkpath))]);
+      return false;
+    }
+  });
+  for (const [file, target] of links) {
+    if (!fs.existsSync(target)) throw new Error(`Build tool archive is incomplete: ${path.relative(staging, file)} ` +
+      `links to ${path.relative(staging, target)}, which it doesn't hold.`);
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.copyFileSync(target, file);
+  }
+  return entries;
+}
+
 async function prepare(userData, { platform = process.platform, run, progress = () => {},
   forcePrivate = false, source = null, archiveFile = null, archives = false, rosetta = true } = {}) {
   if (!['linux', 'win32', 'darwin'].includes(platform)) throw new Error('This operating system is not supported.');
@@ -571,22 +617,16 @@ async function prepare(userData, { platform = process.platform, run, progress = 
     const top = platform === 'win32' ? 'msys64' : 'env';
     const nativeTar = platform === 'win32'
       ? path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'tar.exe') : null;
-    if (nativeTar && fs.existsSync(nativeTar) && commandWorks(nativeTar, ['--version'])) {
+    const links = platform !== 'win32' || hardLinksWork(staging);
+    if (!links) progress(null, `The drive holding ${parent} can't make hard links (it is likely exFAT or FAT32, ` +
+      'as SD cards and USB drives often are), so the build tools unpack more slowly, with copies in place of links…');
+    if (links && nativeTar && fs.existsSync(nativeTar) && commandWorks(nativeTar, ['--version'])) {
       // Windows includes bsdtar; its native extraction avoids slow per-file JS filesystem work.
       const { args, cwd } = nativeUnpackArgs(archive, staging, top, parent);
       await unpackNative(nativeTar, args, progress, { folder: parent, cwd });
     } else {
-      let entries = 0;
-      await require('tar').x({ file: archive, cwd: staging, strict: true,
-        onReadEntry() {
-          if (++entries % 1000 === 0) progress(null, `Unpacking build tools… ${entries.toLocaleString()} files`);
-        },
-        filter(name) {
-          const entry = name.replace(/^\.\//, '');
-          return entry === top || entry.startsWith(`${top}/`) || entry === 'THIRD-PARTY-NOTICES.md' ||
-            entry.startsWith('package-sources/');
-        }
-      });
+      await unpackScript(archive, staging, entry => entry === top || entry.startsWith(`${top}/`) ||
+        entry === 'THIRD-PARTY-NOTICES.md' || entry.startsWith('package-sources/'), progress, { copyLinks: !links });
     }
     if (!fs.existsSync(path.join(staging, top))) throw new Error('Build tool archive is incomplete.');
     if (fs.existsSync(root)) { await renameRetrying(root, previous); keptPrevious = true; }
@@ -670,4 +710,4 @@ async function pruneToolsets(userData, keep = [], { platform = process.platform,
 
 module.exports = { TOOLSET, toolsetFor, platformId, rootFor, legacyRootFor, privateReady, missingTools, deletedToolsError, blockedToolError,
   outOfSpace, forkFailed, outOfSpaceError, forkFailedError, hintedError, systemReady, status, environment, environmentAtRoot, check,
-  fetchVerified, hashFile, assetFor, prepare, pruneToolsets, unpackNative, nativeUnpackArgs, renameRetrying };
+  fetchVerified, hashFile, assetFor, prepare, pruneToolsets, unpackNative, nativeUnpackArgs, renameRetrying, hardLinksWork, unpackScript };

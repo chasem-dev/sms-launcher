@@ -318,12 +318,15 @@
     };
   }
 
-  // Outfits: up to SLOTS looks of the player's own, each with a name, one of
-  // them worn. An outfit is everything but Use in the game, which stays one
-  // switch for whichever outfit Mario wears. There is always at least one: a
-  // player from before outfits gets their look as the first.
+  // Outfits: up to SLOTS of the player's own, each a character (an id from
+  // character-roster.js) with a name and a look, one of them worn: who the game
+  // starts as. Only Mario's colours can be chosen so far; every outfit keeps a
+  // look, so one changed to Mario and back keeps its colours. A look is
+  // everything but Use in the game, which stays one switch. There is always at
+  // least one outfit: a player from before outfits gets their look as the first.
   const SLOTS = 6, SLOT_NAME_LENGTH = 24;
   const outfitName = index => `Outfit ${index + 1}`;
+  const CHARACTER_ID = /^[a-z0-9-]{1,48}$/;
   function slotLook(look) {
     const { inGame: _, ...rest } = normalizeLook(look);
     return rest;
@@ -333,15 +336,38 @@
       const slot = Array.isArray(saved?.slots) ? saved.slots[index] : null;
       if (!slot || typeof slot !== 'object' || !slot.look || typeof slot.look !== 'object') return null;
       const name = typeof slot.name === 'string' ? slot.name.trim().slice(0, SLOT_NAME_LENGTH) : '';
-      return { name: name || outfitName(index), look: slotLook(slot.look) };
+      const character = typeof slot.character === 'string' && CHARACTER_ID.test(slot.character) ? slot.character : 'mario';
+      return { name: name || outfitName(index), character, look: slotLook(slot.look) };
     });
     let active = Number.isInteger(saved?.active) && slots[saved.active] ? saved.active : slots.findIndex(Boolean);
     if (active < 0) {
       active = 0;
-      slots[0] = { name: outfitName(0), look: slotLook(look) };
+      slots[0] = { name: 'Mario', character: 'mario', look: slotLook(look) };
     }
     return { slots, active };
   }
+  // `name`, or `name 2`, `name 3`… when an outfit already has it.
+  function uniqueName(slots, name, except = -1) {
+    const taken = new Set(slots.filter((slot, index) => slot && index !== except).map(slot => slot.name.toLowerCase()));
+    for (let n = 1; ; n++) {
+      const candidate = (n === 1 ? name : `${name.slice(0, SLOT_NAME_LENGTH - String(n).length - 1)} ${n}`);
+      if (!taken.has(candidate.toLowerCase())) return candidate;
+    }
+  }
+  // The outfits wearing `character` (chosen somewhere else: the game's own menu, or a launcher from before
+  // outfits): the first outfit of theirs, or a new one named `name` in `look` when there is room. Unchanged
+  // when the worn outfit is already theirs, or there is no room.
+  function wearCharacter(outfits, character, name, look) {
+    const { slots, active } = outfits;
+    if (slots[active].character === character) return outfits;
+    let index = slots.findIndex(slot => slot?.character === character);
+    if (index >= 0) return { slots, active: index };
+    index = slots.indexOf(null);
+    if (index < 0) return outfits;
+    const added = slots.slice();
+    added[index] = { name: uniqueName(slots, name), character, look: slotLook(look) };
+    return { slots: added, active: index };
+  }
 
-  return { REGIONS, PARTS, PRESETS, FLUDD_REGIONS, FLUDD_PRESETS, NOZZLES, SLOTS, SLOT_NAME_LENGTH, outfitName, coverage, classify, lightness, references, blendEdges, ramp, recolor, normalize, normalizeLook, normalizeOutfits, slotLook, hex };
+  return { REGIONS, PARTS, PRESETS, FLUDD_REGIONS, FLUDD_PRESETS, NOZZLES, SLOTS, SLOT_NAME_LENGTH, outfitName, uniqueName, wearCharacter, coverage, classify, lightness, references, blendEdges, ramp, recolor, normalize, normalizeLook, normalizeOutfits, slotLook, hex };
 });

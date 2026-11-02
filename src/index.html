@@ -116,16 +116,9 @@
       <div class="characters-body">
         <div class="characters-side">
           <div id="characters-list" class="characters-list" aria-label="Characters"></div>
-          <div class="characters-actions">
-            <button id="characters-play-as" class="solid" hidden></button>
-            <p id="characters-about" class="characters-about"></p>
-          </div>
         </div>
-        <div id="mario-look" class="mario-look-body" aria-label="Mario's colours" hidden>
-          <div id="mario-outfits" class="mario-outfits" role="tablist" aria-label="Outfits"></div>
-          <div class="mario-stage-wrap"><canvas id="mario-stage" class="mario-stage" tabindex="0" aria-label="Mario, drag or use the arrow keys to turn him"></canvas><div id="mario-status" class="mario-status" role="status" hidden><span class="mario-loader" aria-hidden="true"></span><span id="mario-status-text"></span><span id="mario-status-actions" class="actions mario-status-actions" hidden><button id="mario-retry" class="solid">Try again</button><button id="mario-relaunch" class="subtle">Restart launcher</button></span></div><p id="mario-preview-note" class="mario-preview-note">Your colours show in the game the next time it starts.</p></div>
-          <div class="mario-panel"><p class="mario-outfit-note"><i aria-hidden="true"></i><span>Changes save to <strong id="mario-outfit-note-name"></strong> as you make them.</span><button id="mario-outfit-delete" type="button" class="text-button">Delete</button></p><label class="switch mario-in-game"><span><strong>Use in the game</strong><small>Off: the game shows Mario as usual. Your colours stay here.</small></span><input id="mario-in-game" type="checkbox" checked><i></i></label><div id="mario-presets" class="mario-presets" role="group" aria-label="Presets"></div><div id="mario-regions"></div></div>
-        </div>
+        <div id="outfits" class="outfits" role="tablist" aria-label="Outfits"></div>
+        <div id="mario-look" class="mario-stage-wrap" aria-label="Mario's colours" hidden><canvas id="mario-stage" class="mario-stage" tabindex="0" aria-label="Mario, drag or use the arrow keys to turn him"></canvas><div id="mario-status" class="mario-status" role="status" hidden><span class="mario-loader" aria-hidden="true"></span><span id="mario-status-text"></span><span id="mario-status-actions" class="actions mario-status-actions" hidden><button id="mario-retry" class="solid">Try again</button><button id="mario-relaunch" class="subtle">Restart launcher</button></span></div><p id="mario-preview-note" class="mario-preview-note">Your colours show in the game the next time it starts.</p></div>
         <div id="characters-stage-wrap" class="characters-stage-wrap">
           <canvas id="characters-stage" class="characters-stage" tabindex="0" aria-label="The character, drag or use the arrow keys to turn it"></canvas>
           <div id="characters-status" class="mario-status" role="status" hidden><span class="mario-loader" aria-hidden="true"></span><span id="characters-status-text"></span></div>
@@ -139,6 +132,13 @@
             <select id="characters-speed" aria-label="Speed"><option value="0.25">&#188;&#215;</option><option value="0.5">&#189;&#215;</option><option value="1" selected>1&#215;</option></select>
           </div>
         </div>
+        <div id="outfit-panel" class="mario-panel outfit-panel">
+          <div class="outfit-character"><span id="outfit-character-icon" class="outfit-icon"></span><span><small>Character</small><strong id="outfit-character-name"></strong></span><button id="outfit-character-change" type="button" class="subtle" aria-haspopup="dialog">Change</button></div>
+          <p class="outfit-note"><i aria-hidden="true"></i><span id="outfit-note-text"></span><button id="outfit-delete" type="button" class="text-button">Delete</button></p>
+          <div id="mario-colours" hidden><label class="switch mario-in-game"><span><strong>Use in the game</strong><small>Off: the game shows Mario as usual. Your colours stay here.</small></span><input id="mario-in-game" type="checkbox" checked><i></i></label><div id="mario-presets" class="mario-presets" role="group" aria-label="Presets"></div><div id="mario-regions"></div></div>
+          <p id="outfit-about" class="outfit-about"></p>
+        </div>
+        <div id="outfit-picker" class="outfit-picker" role="dialog" aria-labelledby="outfit-picker-title" hidden><p id="outfit-picker-title"></p><div id="outfit-picker-list" class="outfit-picker-list"></div></div>
         <div class="characters-panel">
           <label class="characters-compare">FLUDD <input id="characters-fludd" type="checkbox" checked></label>
           <label class="characters-compare">Mario <select id="characters-compare"><option value="off">hidden</option><option value="beside">beside</option><option value="over">see-through, over</option></select></label>

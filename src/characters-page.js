@@ -1,13 +1,15 @@
-// Characters: who the game starts as. Each of the launcher's characters
-// (character-roster.js) is made from the player's own disc, then shown as the
-// game draws it, standing; Mario is shown with his colours beside him
-// (mario-look.js). Animations shows any character in any of its animations,
-// with the floor under it and Mario beside it or over it. Play as sets who the
-// game starts as (F4 in the game switches between them).
+// Characters: who the game starts as. The player's outfits (up to six) are tabs, each a character
+// in its colours; the open one is who the game starts as (F4 in the game switches between
+// characters). Each of the launcher's characters (character-roster.js) is made from the player's
+// own disc, then shown as the game draws it, standing; Mario is shown with his colours beside him
+// (mario-look.js). Animations shows any character in any of its animations, with the floor under
+// it and Mario beside it or over it.
 import * as THREE from '../node_modules/three/build/three.module.js';
 import { createRig, jointMatrix } from './model-rig.js';
+import { characterIcon } from './outfit-icons.js';
 
 const $ = id => document.getElementById(id);
+const Colors = window.SmsMarioColors;
 const page = $('page-characters');
 const WRAP = [THREE.ClampToEdgeWrapping, THREE.RepeatWrapping, THREE.MirroredRepeatWrapping];
 // Mario's height with his cap, the floor's scale.
@@ -29,12 +31,13 @@ const VIEWS = { front: [0, 0.1], side: [Math.PI / 2, 0.1], back: [Math.PI, 0.1],
 const state = {
   characters: [], id: null, playing: 'mario', eclipse: false, showFludd: true, fluddRig: null, model: null, animation: 'ma_wait', clips: new Map(), mario: null, compare: 'off',
   frame: 0, running: true, speed: 1, filter: '', animations: false, modelId: null,
+  outfits: null,
 };
 // Mario, outside Animations, is shown with his colours.
 const colouring = () => state.id === 'mario' && !state.animations;
 const comparing = () => state.animations && state.compare !== 'off';
 const INTRO = {
-  basic: 'Who you play as. Each is made on your computer, from your own disc. In the game, F4 switches between them. Drag to turn, scroll to zoom.',
+  basic: 'Who you play as, in your colours, made on your computer from your own disc. In the game, F4 switches characters. Drag to turn, scroll to zoom.',
   animations: 'Each character in any of its animations, with FLUDD, and Mario beside it or over it to compare. Drag to turn, scroll to zoom.',
 };
 let viewer = null, loading = null;
@@ -69,13 +72,17 @@ function setMode(animations) {
 }
 $('characters-mode').addEventListener('click', () => {
   setMode(!state.animations);
-  if (state.id && !loading) choose(state.id).catch(error => setStatus(error.message || String(error)));
+  closePicker();
+  // back from Animations: the outfit worn
+  const id = state.animations ? state.id : worn()?.character;
+  if (id && !loading) choose(id).catch(error => setStatus(error.message || String(error)));
 });
 
 // Mario's colours, or the character's own view.
 function showStage() {
   const colours = colouring();
   $('mario-look').hidden = !colours;
+  $('mario-colours').hidden = !colours;
   $('characters-stage-wrap').hidden = colours;
   if (colours) {
     viewer?.dispose();
@@ -91,7 +98,8 @@ async function start() {
       await refresh();
     }
     makeAll();
-    await choose(state.id || state.playing);
+    if (worn().character === 'mario') window.smsMarioLook.wear(worn().look);
+    await choose(state.animations && state.id ? state.id : worn().character);
   } catch (error) {
     setStatus(error.message || String(error));
   } finally { loading = null; }
@@ -102,8 +110,9 @@ const building = new Map();
 function make(id) {
   if (!building.has(id)) {
     building.set(id, window.sms.characterBuild(id).then(characters => { state.characters = characters; return characters; })
-      .finally(() => { building.delete(id); renderList(); }));
+      .finally(() => { building.delete(id); renderList(); renderPicker(); }));
     renderList();
+    renderPicker();
   }
   return building.get(id);
 }
@@ -115,7 +124,7 @@ async function makeAll() {
   makingAll = true;
   try {
     for (let next; (next = state.characters.find(c => !c.ready && c.makeable !== false && !failed.has(c.id)));) {
-      try { await make(next.id); } catch (_) { failed.add(next.id); renderList(); }
+      try { await make(next.id); } catch (_) { failed.add(next.id); renderList(); renderPicker(); }
     }
   } finally { makingAll = false; }
 }
@@ -125,14 +134,14 @@ const needsEclipse = name => `${name} comes from Super Mario Eclipse. Turn on Su
 const waiting = character => Boolean(character && !character.ready && character.makeable === false);
 
 async function refresh() {
-  const { characters, selected, eclipse, ready } = await window.sms.characters();
+  const { characters, outfits, eclipse, ready } = await window.sms.characters();
   state.characters = characters;
   state.setUp = ready !== false;
-  // the game's own menu keeps a character by its name
-  const playing = characters.find(c => c.id === selected || c.name.toLowerCase() === String(selected).toLowerCase());
-  state.playing = playing ? playing.id : 'mario';
+  state.outfits = outfits;
+  state.playing = worn().character;
   state.eclipse = eclipse;
   renderList();
+  renderOutfits();
 }
 
 // --- Loading -------------------------------------------------------------------
@@ -228,21 +237,255 @@ function renderList() {
     button.addEventListener('click', () => { if (id !== state.id) choose(id).catch(error => setStatus(error.message)); });
     return button;
   }));
-  const character = state.characters.find(c => c.id === state.id);
-  const play = $('characters-play-as');
-  play.hidden = !character;
-  play.disabled = !character || character.id === state.playing || state.eclipse || waiting(character);
-  play.textContent = !character ? '' : character.id === state.playing ? `Playing as ${character.name}` : `Play as ${character.name}`;
-  $('characters-about').textContent = state.eclipse ? 'With Super Mario Eclipse on, the game plays as its own characters.' : character?.about || '';
 }
 
+// --- Outfits -------------------------------------------------------------------
+// Tabs over the character, one per outfit: a character in its colours, and the one open is who the
+// game starts as. Changes to Mario's colours save into his outfit as they're made (mario-look.js and
+// main.js), so there's nothing to save or load.
 
-$('characters-play-as').addEventListener('click', async () => {
-  try {
-    state.playing = await window.sms.characterPlay(state.id);
-    renderList();
-  } catch (error) { setStatus(error.message || String(error)); }
+const worn = () => state.outfits?.slots[state.outfits.active];
+const characterOf = id => state.characters.find(c => c.id === id) || { id, name: id, about: '' };
+// `renaming` is the outfit whose name is being typed, `deleting` a Delete waiting for its second press,
+// `picking` what the character picker is for: 'new' or 'change'.
+let renaming = -1, deleting = null, picking = null;
+
+function saveOutfits() {
+  window.sms.saveMarioOutfits(state.outfits).catch(error => setStatus(error.message || String(error)));
+}
+
+// The outfit worn shown, and played as.
+function putOn() {
+  const outfit = worn();
+  state.playing = outfit.character;
+  if (outfit.character === 'mario') window.smsMarioLook.wear(outfit.look);
+  renderOutfits();
+  renderList();
+  if (!state.animations) choose(outfit.character).catch(error => setStatus(error.message || String(error)));
+}
+
+function wear(index) {
+  if (index === state.outfits.active) return;
+  // a change to Mario's colours still waiting goes into the outfit it was made in
+  window.smsMarioLook.flush();
+  state.outfits.active = index;
+  renaming = -1;
+  disarmDelete();
+  closePicker();
+  saveOutfits();
+  putOn();
+}
+
+// A new outfit for `character`, in the colours of the one worn, ready to be named.
+function addOutfit(character) {
+  const { slots } = state.outfits, index = slots.indexOf(null);
+  if (index < 0) return;
+  window.smsMarioLook.flush();
+  slots[index] = { name: Colors.uniqueName(slots, character.name), character: character.id, look: Colors.slotLook(worn().look) };
+  state.outfits.active = index;
+  renaming = index;
+  disarmDelete();
+  saveOutfits();
+  putOn();
+}
+
+// The outfit worn, for another character; a name it was given for its character follows.
+function changeCharacter(character) {
+  const outfit = worn(), before = characterOf(outfit.character).name;
+  if (outfit.character === character.id) return;
+  window.smsMarioLook.flush();
+  const named = outfit.name === before || outfit.name.startsWith(`${before.slice(0, Colors.SLOT_NAME_LENGTH - 3)} `) && /\d+$/.test(outfit.name)
+    || /^Outfit \d+$/.test(outfit.name);
+  outfit.character = character.id;
+  if (named) outfit.name = Colors.uniqueName(state.outfits.slots, character.name, state.outfits.active);
+  saveOutfits();
+  putOn();
+}
+
+function rename(index, name) {
+  renaming = -1;
+  const trimmed = name.trim().slice(0, Colors.SLOT_NAME_LENGTH), outfit = state.outfits.slots[index];
+  if (trimmed && outfit && trimmed !== outfit.name) {
+    outfit.name = trimmed;
+    saveOutfits();
+  }
+  renderOutfits();
+}
+
+// Delete asks once more first; the last outfit can't be deleted.
+function disarmDelete() {
+  if (!deleting) return;
+  clearTimeout(deleting);
+  deleting = null;
+}
+$('outfit-delete').addEventListener('click', () => {
+  const { slots } = state.outfits;
+  if (slots.filter(Boolean).length < 2) return;
+  if (!deleting) {
+    deleting = setTimeout(() => { deleting = null; renderPanel(); }, 3000);
+    renderPanel();
+    return;
+  }
+  disarmDelete();
+  const gone = state.outfits.active;
+  window.smsMarioLook.flush();
+  slots[gone] = null;
+  // the outfit beside it is put on
+  const next = slots.findIndex((slot, index) => slot && index > gone);
+  state.outfits.active = next >= 0 ? next : slots.map(Boolean).lastIndexOf(true);
+  saveOutfits();
+  putOn();
 });
+
+// The tab of Mario's outfit follows his colours as they change.
+let iconQueued = false;
+window.smsMarioLook.onChange = look => {
+  const outfit = worn();
+  if (outfit?.character !== 'mario') return;
+  outfit.look = Colors.slotLook(look);
+  if (iconQueued) return;
+  iconQueued = true;
+  requestAnimationFrame(() => {
+    iconQueued = false;
+    const tab = document.querySelector(`.outfit-tab[data-outfit="${state.outfits.active}"] .outfit-icon`);
+    if (tab && worn().character === 'mario') tab.innerHTML = characterIcon('mario', 'Mario', worn().look);
+    $('outfit-character-icon').innerHTML = characterIcon('mario', 'Mario', worn().look);
+  });
+};
+
+function renderOutfits() {
+  if (!state.outfits) return;
+  const { slots, active } = state.outfits;
+  const tabs = slots.map((outfit, index) => {
+    if (!outfit) return null;
+    const open = index === active, character = characterOf(outfit.character);
+    const tab = document.createElement('div');
+    tab.className = 'outfit-tab';
+    tab.classList.toggle('open', open);
+    tab.dataset.outfit = String(index);
+    tab.innerHTML = `<button type="button" class="outfit-wear" role="tab" aria-selected="${open}"><span class="outfit-icon"></span><span class="outfit-name"></span></button>`;
+    tab.querySelector('.outfit-icon').innerHTML = characterIcon(character.id, character.name, outfit.look);
+    tab.querySelector('.outfit-name').textContent = outfit.name;
+    const button = tab.querySelector('.outfit-wear');
+    button.title = open ? `${outfit.name} (${character.name}): double-click to rename` : `Play as ${outfit.name} (${character.name})`;
+    button.addEventListener('click', () => wear(index));
+    button.addEventListener('dblclick', () => { renaming = index; renderOutfits(); });
+    if (open && renaming !== index) {
+      const edit = document.createElement('button');
+      edit.type = 'button';
+      edit.className = 'outfit-rename';
+      edit.textContent = '✎';
+      edit.title = edit.ariaLabel = `Rename ${outfit.name}`;
+      edit.addEventListener('click', () => { renaming = index; renderOutfits(); });
+      tab.append(edit);
+    }
+    if (renaming === index) {
+      const input = document.createElement('input');
+      input.className = 'outfit-input';
+      input.maxLength = Colors.SLOT_NAME_LENGTH;
+      input.value = outfit.name;
+      input.spellcheck = false;
+      input.ariaLabel = 'Outfit name';
+      let done = false;
+      const finish = keep => { if (done) return; done = true; rename(index, keep ? input.value : ''); };
+      input.addEventListener('keydown', event => {
+        if (event.key === 'Enter') { event.preventDefault(); finish(true); }
+        if (event.key === 'Escape') { event.preventDefault(); finish(false); }
+      });
+      input.addEventListener('blur', () => finish(true));
+      tab.querySelector('.outfit-name').replaceWith(input);
+      requestAnimationFrame(() => { input.focus(); input.select(); });
+    }
+    return tab;
+  }).filter(Boolean);
+  if (slots.includes(null)) {
+    const add = document.createElement('button');
+    add.type = 'button';
+    add.id = 'outfit-add';
+    add.className = 'outfit-add';
+    add.innerHTML = '<span aria-hidden="true">+</span>New outfit';
+    add.title = 'A new outfit: pick who wears it';
+    add.setAttribute('aria-haspopup', 'dialog');
+    add.addEventListener('click', event => { event.stopPropagation(); togglePicker('new', add); });
+    tabs.push(add);
+  }
+  $('outfits').replaceChildren(...tabs);
+  renderPanel();
+}
+
+function renderPanel() {
+  const outfit = worn();
+  if (!outfit) return;
+  const character = characterOf(outfit.character), mario = character.id === 'mario';
+  $('outfit-character-icon').innerHTML = characterIcon(character.id, character.name, outfit.look);
+  $('outfit-character-name').textContent = character.name;
+  $('outfit-note-text').innerHTML = '';
+  const name = document.createElement('strong');
+  name.textContent = outfit.name;
+  $('outfit-note-text').append('You play as ', name, mario ? '. Changes save to it as you make them.' : '.');
+  const only = state.outfits.slots.filter(Boolean).length < 2;
+  $('outfit-delete').hidden = only;
+  $('outfit-delete').textContent = deleting ? `Delete ${outfit.name}?` : 'Delete';
+  $('outfit-delete').classList.toggle('armed', Boolean(deleting));
+  $('outfit-about').textContent = state.eclipse && !mario
+    ? `With Super Mario Eclipse on, the game plays as its own characters: ${outfit.name} is for Super Mario Sunshine.`
+    : mario ? '' : `${character.about} ${character.name}'s colours can't be changed yet.`;
+}
+
+// --- Character picker: who wears a new outfit, or the one worn.
+
+$('outfit-character-change').addEventListener('click', event => { event.stopPropagation(); togglePicker('change', event.currentTarget); });
+
+function togglePicker(mode, anchor) {
+  if (picking === mode) { closePicker(); return; }
+  picking = mode;
+  const picker = $('outfit-picker'), body = page.querySelector('.characters-body');
+  picker.hidden = false;
+  renderPicker();
+  // under what opened it, inside the page
+  const at = anchor.getBoundingClientRect(), box = body.getBoundingClientRect();
+  picker.style.top = `${at.bottom - box.top + 6}px`;
+  picker.style.left = `${Math.max(8, Math.min(at.left - box.left - 12, box.width - picker.offsetWidth - 8))}px`;
+  anchor.classList.add('pressed');
+  picker.querySelector('button:not(:disabled)')?.focus();
+}
+
+function closePicker() {
+  if (!picking) return;
+  picking = null;
+  $('outfit-picker').hidden = true;
+  for (const pressed of page.querySelectorAll('.outfit-add.pressed, #outfit-character-change.pressed')) pressed.classList.remove('pressed');
+}
+document.addEventListener('click', event => { if (picking && !$('outfit-picker').contains(event.target)) closePicker(); });
+document.addEventListener('keydown', event => { if (picking && event.key === 'Escape') closePicker(); });
+
+function renderPicker() {
+  if (!picking) return;
+  const current = worn()?.character;
+  $('outfit-picker-title').textContent = picking === 'new' ? 'New outfit: who wears it?' : `Who wears ${worn().name}?`;
+  $('outfit-picker-list').replaceChildren(...state.characters.map(character => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'outfit-pick';
+    const note = building.has(character.id) ? 'Making…' : !character.ready && failed.has(character.id) ? 'Couldn\'t be made'
+      : waiting(character) ? 'Needs Eclipse' : picking === 'change' && character.id === current ? 'Wearing' : '';
+    button.innerHTML = '<span class="outfit-icon"></span><span class="outfit-pick-name"></span><small></small>';
+    button.querySelector('.outfit-icon').innerHTML = characterIcon(character.id, character.name, character.id === 'mario' ? worn()?.look : null);
+    button.querySelector('.outfit-pick-name').textContent = character.name;
+    button.querySelector('small').textContent = note;
+    button.classList.toggle('current', picking === 'change' && character.id === current);
+    // one that can't be made yet can't be worn yet
+    button.disabled = waiting(character);
+    if (waiting(character)) button.title = needsEclipse(character.name);
+    button.addEventListener('click', () => {
+      const mode = picking;
+      closePicker();
+      if (mode === 'new') addOutfit(character);
+      else changeCharacter(character);
+    });
+    return button;
+  }));
+}
 
 function renderAnimations() {
   const list = $('characters-animations');

@@ -22,7 +22,6 @@ contextBridge.exposeInMainWorld('sms', {
     ipcRenderer.on('character-build-progress', handler);
     return () => ipcRenderer.removeListener('character-build-progress', handler);
   },
-  characterPlay: id => ipcRenderer.invoke('character-play', id),
   characterFludd: () => ipcRenderer.invoke('character-fludd'),
   saveMarioLook: look => ipcRenderer.invoke('save-mario-look', look),
   saveMarioOutfits: outfits => ipcRenderer.invoke('save-mario-outfits', outfits),

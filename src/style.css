@@ -709,6 +709,25 @@ pre { height: 120px; margin: 0; padding: 12px; overflow: auto; border-radius: 8p
 .mario-preset { padding: 5px 11px; border: 1px solid #cddcdc; border-radius: 20px; background: #fff; color: #2e4c53; font-size: 12px; font-weight: 650; }
 .mario-preset:hover { border-color: #7fbfc6; }
 .mario-preset.active { border-color: #158188; background: #158188; color: #fff; }
+.mario-my-looks { margin-bottom: 14px; }
+.mario-my-looks .group-title { margin-top: 4px; }
+.mario-slots { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.mario-slot { display: grid; justify-items: center; gap: 5px; min-width: 0; padding: 8px 6px 6px; border: 1px solid #cddcdc; border-radius: 10px; background: #fff; color: #2e4c53; font-size: 11px; font-weight: 650; }
+.mario-slot:hover { border-color: #7fbfc6; }
+.mario-slot.empty { border-style: dashed; background: transparent; color: #8a9da1; font-weight: 600; }
+.mario-slot.picked { border-color: #158188; box-shadow: 0 0 0 1px #158188; }
+.mario-slot.active { background: #e3f3f3; }
+.mario-slot-colors { display: flex; height: 16px; }
+.mario-slot-colors i { width: 16px; height: 16px; margin-left: -4px; border: 2px solid #fff; border-radius: 50%; box-shadow: inset 0 0 0 1px #17343d2e; }
+.mario-slot-colors i:first-child { margin-left: 0; }
+.mario-slot.empty .mario-slot-colors::before { width: 16px; height: 16px; border-radius: 50%; background: #e4ecec; content: ''; }
+.mario-slot-name { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mario-slot-actions { display: flex; gap: 6px; margin-top: 8px; }
+.mario-slot-actions input { flex: 1; min-width: 0; padding: 5px 9px; border: 1px solid #cddcdc; border-radius: 8px; background: #fff; color: #17343d; font: inherit; font-size: 12px; }
+.mario-slot-actions button { padding: 5px 11px; font-size: 12px; white-space: nowrap; }
+.mario-slot-actions button[hidden] { display: none; }
+.mario-slot-actions button.armed { color: #b3261e; }
+.mario-slot-note { margin: 6px 2px 0; color: #637980; font-size: 11px; line-height: 1.4; }
 .mario-swatches { display: grid; gap: 2px; padding: 4px 12px; border: 1px solid #e1e9e8; border-radius: 12px; background: #fff; }
 .mario-swatch { display: grid; grid-template-columns: 1fr auto 26px; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid #eef2f1; cursor: pointer; }
 .mario-swatch:last-child { border-bottom: 0; }
@@ -791,6 +810,23 @@ pre { height: 120px; margin: 0; padding: 12px; overflow: auto; border-radius: 8p
 .dark :is(.characters-list, .characters-panel) { border-color: #2f5468; background: #0d2231; }
 .dark :is(.characters-item, .characters-anim, .characters-compare) { color: #cfe3e8; }
 .dark :is(.characters-item, .characters-anim):hover { background: #16354a; }
+.dark .mario-panel { border-color: #2f5468; background: #0d2231; }
+.dark :is(.mario-in-game, .mario-swatches, .mario-slot) { border-color: #2a4d61; background: #132e40; }
+.dark :is(.mario-swatch, .mario-fludd-presets) { border-color: #23404f; }
+.dark :is(.mario-swatch-name, .mario-slot) { color: #d7e9ee; }
+.dark :is(.mario-slot-note) { color: #9fc3cb; }
+.dark .mario-preset { border-color: #33566a; background: #1a3a4e; color: #d7e9ee; }
+.dark :is(.mario-preset, .mario-slot):hover { border-color: #4a7387; }
+.dark .mario-preset.active { border-color: #1a9aa2; background: #1a9aa2; color: #fff; }
+.dark .mario-slot.empty { border-color: #33566a; background: transparent; color: #7f9ca4; }
+.dark .mario-slot.empty .mario-slot-colors::before { background: #1f3f52; }
+.dark .mario-slot.picked { border-color: #1a9aa2; box-shadow: 0 0 0 1px #1a9aa2; }
+.dark .mario-slot.active { background: #1a4152; }
+.dark .mario-slot-colors i { border-color: #132e40; box-shadow: inset 0 0 0 1px #ffffff2e; }
+.dark :is(.mario-swatch input[type="color"], .mario-slot-actions input) { border-color: #33566a; background: #0f2636; color: #e3eff2; }
+.dark .mario-reset { color: #8fb0b8; }
+.dark .mario-reset:hover { background: #1a3a4e; color: #e3eff2; }
+.dark .mario-slot-actions button.armed { color: #ffb4a3; }
 
 /* Tabs along the top: the launcher's pages, with Settings and Discord at the right end. */
 .nav-bar { flex: none; display: flex; align-items: center; gap: 4px; height: 48px; padding: 0 22px; border-bottom: 1px solid #ffffff22; background: #072a40d9; backdrop-filter: blur(16px); }

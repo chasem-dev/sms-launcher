@@ -25,6 +25,7 @@ contextBridge.exposeInMainWorld('sms', {
   characterPlay: id => ipcRenderer.invoke('character-play', id),
   characterFludd: () => ipcRenderer.invoke('character-fludd'),
   saveMarioLook: look => ipcRenderer.invoke('save-mario-look', look),
+  saveMarioLookSlots: slots => ipcRenderer.invoke('save-mario-look-slots', slots),
   relaunchLauncher: () => ipcRenderer.invoke('relaunch-launcher'),
   chooseRepo: () => ipcRenderer.invoke('choose-repo'),
   chooseLocation: () => ipcRenderer.invoke('choose-location'),

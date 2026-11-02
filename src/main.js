@@ -276,6 +276,8 @@ function loadConfig() {
     vulkanFailed: typeof saved.vulkanFailed === 'string' ? saved.vulkanFailed.slice(0, 300) : null,
     // Customize Mario: the colours the player chose and the Shine shirt.
     marioLook: marioColors.normalizeLook(saved.marioLook),
+    // Customize Mario's saved looks, to load again later (six places, each empty or named).
+    marioLookSlots: marioColors.normalizeSlots(saved.marioLookSlots),
     // The Multiplayer window's fields, as last used.
     multiplayer: savedMultiplayer(saved.multiplayer)
   };
@@ -2270,7 +2272,7 @@ function registerHandlers() {
     saveConfig();
     return state();
   });
-  ipcMain.handle('mario-model', () => ({ model: marioFrom(port.validateRom(config.rom)), look: config.marioLook }));
+  ipcMain.handle('mario-model', () => ({ model: marioFrom(port.validateRom(config.rom)), look: config.marioLook, slots: config.marioLookSlots }));
   // The Characters page: the launcher's characters (character-roster.js), each made from the player's disc
   // the first time it is chosen, posed by its animations; Play as sets who the game starts as.
   const charactersRoot = () => (config.repo && fs.existsSync(config.repo) ? config.repo : null);
@@ -2326,6 +2328,11 @@ function registerHandlers() {
   ipcMain.handle('save-mario-look', (_event, look) => {
     config.marioLook = marioColors.normalizeLook(look);
     saveConfig();
+  });
+  ipcMain.handle('save-mario-look-slots', (_event, slots) => {
+    config.marioLookSlots = marioColors.normalizeSlots(slots);
+    saveConfig();
+    return config.marioLookSlots;
   });
   ipcMain.handle('choose-repo', async () => {
     if (portableRoot) throw new Error('The portable launcher keeps its setup files in its own folder.');

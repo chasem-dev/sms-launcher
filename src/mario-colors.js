@@ -318,5 +318,29 @@
     };
   }
 
-  return { REGIONS, PARTS, PRESETS, FLUDD_REGIONS, FLUDD_PRESETS, NOZZLES, coverage, classify, lightness, references, blendEdges, ramp, recolor, normalize, normalizeLook, hex };
+  // The player's own saved looks: SLOTS places, each empty (null) or a name
+  // and a look. A saved look is everything but Use in the game, which stays
+  // one switch for whichever look Mario wears.
+  const SLOTS = 6, SLOT_NAME_LENGTH = 24;
+  function slotLook(look) {
+    const { inGame: _, ...rest } = normalizeLook(look);
+    return rest;
+  }
+  function normalizeSlots(slots) {
+    return Array.from({ length: SLOTS }, (_, index) => {
+      const slot = Array.isArray(slots) ? slots[index] : null;
+      if (!slot || typeof slot !== 'object' || !slot.look || typeof slot.look !== 'object') return null;
+      const name = typeof slot.name === 'string' ? slot.name.trim().slice(0, SLOT_NAME_LENGTH) : '';
+      return { name: name || `Look ${index + 1}`, look: slotLook(slot.look) };
+    });
+  }
+  // Whether `look` is the saved look `saved` (its colours, outfit and FLUDD).
+  function sameLook(look, saved) {
+    const a = slotLook(look), b = slotLook(saved);
+    const keys = Object.keys(a.colors);
+    return keys.length === Object.keys(b.colors).length && keys.every(id => a.colors[id] === b.colors[id])
+      && ['aloha', 'sunglasses', 'fludd', 'nozzle'].every(key => a[key] === b[key]);
+  }
+
+  return { REGIONS, PARTS, PRESETS, FLUDD_REGIONS, FLUDD_PRESETS, NOZZLES, SLOTS, SLOT_NAME_LENGTH, coverage, classify, lightness, references, blendEdges, ramp, recolor, normalize, normalizeLook, normalizeSlots, slotLook, sameLook, hex };
 });

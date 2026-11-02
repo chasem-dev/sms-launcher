@@ -16,6 +16,8 @@ const only = (colors, fludd) => Object.fromEntries(Object.entries(colors).filter
 const WRAP = [THREE.ClampToEdgeWrapping, THREE.RepeatWrapping, THREE.MirroredRepeatWrapping];
 
 let viewer = null, model = null, look = Colors.normalizeLook(), saveTimer = null, loading = null;
+// My looks: the player's saved looks, and the place picked to save into or rename.
+let slots = Colors.normalizeSlots(), slot = 0, clearArmed = null, slotNameTimer = null;
 
 // Mario's colours are part of the Character tab (characters-page.js), which
 // shows them while Mario is chosen. Nothing of Mario's view stays on the GPU
@@ -30,6 +32,7 @@ window.smsMarioLook = {
     viewer?.dispose();
     viewer = null;
     if (saveTimer) { clearTimeout(saveTimer); save(); }
+    if (slotNameTimer) { clearTimeout(slotNameTimer); slotNameTimer = null; saveSlots(); }
   }
 };
 
@@ -39,6 +42,9 @@ async function load() {
     const result = await window.sms.marioModel();
     model = result.model;
     look = Colors.normalizeLook(result.look);
+    slots = Colors.normalizeSlots(result.slots);
+    const wearing = slots.findIndex(saved => saved && Colors.sameLook(look, saved.look));
+    slot = wearing >= 0 ? wearing : Math.max(0, slots.indexOf(null));
     renderControls();
     if (!page.hidden && !page.closest('.page').hidden) show();
     else setStatus('');
@@ -118,6 +124,10 @@ function save() {
 
 // --- Panel -------------------------------------------------------------------
 
+// The colours a saved look's place shows, and a region's colour on the disc.
+const SLOT_COLORS = ['hat', 'shirt', 'overalls', 'shoes'];
+const originalColor = id => model?.references[Colors.REGIONS.findIndex(region => region.id === id)]?.color;
+
 function swatch(id, onChange = () => {}) {
   const index = Colors.REGIONS.findIndex(region => region.id === id), original = model.references[index]?.color;
   if (!original) return null;
@@ -138,6 +148,92 @@ function swatch(id, onChange = () => {}) {
 
 $('mario-in-game').addEventListener('change', event => change(() => { look.inGame = event.target.checked; }));
 
+// --- My looks ----------------------------------------------------------------
+// Six places to keep a look in and put it back on later. Picking a saved look
+// wears it; picking an empty place gets it ready for Save here.
+
+function saveSlots() {
+  slotNameTimer = null;
+  window.sms.saveMarioLookSlots(slots).catch(() => {});
+}
+
+// A saved look's place: four of its colours and its name.
+function slotButton(index) {
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'mario-slot';
+  button.dataset.slot = String(index);
+  button.innerHTML = '<span class="mario-slot-colors" aria-hidden="true"></span><span class="mario-slot-name"></span>';
+  button.addEventListener('click', () => {
+    slot = index;
+    disarmClear();
+    const saved = slots[index];
+    if (saved) change(() => { look = { ...look, ...Colors.slotLook(saved.look) }; });
+    else syncControls();
+  });
+  return button;
+}
+
+function disarmClear() {
+  if (!clearArmed) return;
+  clearTimeout(clearArmed);
+  clearArmed = null;
+}
+
+$('mario-slot-save').addEventListener('click', () => {
+  disarmClear();
+  slots[slot] = { name: $('mario-slot-name').value.trim() || slots[slot]?.name || `Look ${slot + 1}`, look: Colors.slotLook(look) };
+  slots = Colors.normalizeSlots(slots);
+  saveSlots();
+  syncControls();
+});
+// Clear asks once more first: a saved look can't come back.
+$('mario-slot-clear').addEventListener('click', () => {
+  if (!slots[slot]) return;
+  if (!clearArmed) {
+    clearArmed = setTimeout(() => { clearArmed = null; syncControls(); }, 3000);
+    syncControls();
+    return;
+  }
+  disarmClear();
+  slots[slot] = null;
+  saveSlots();
+  syncControls();
+});
+$('mario-slot-name').addEventListener('input', event => {
+  if (!slots[slot]) return;
+  const name = event.target.value.trim();
+  if (name) slots[slot] = { ...slots[slot], name: name.slice(0, Colors.SLOT_NAME_LENGTH) };
+  syncSlots();
+  clearTimeout(slotNameTimer);
+  slotNameTimer = setTimeout(saveSlots, 400);
+});
+// An emptied name goes back to the saved one.
+$('mario-slot-name').addEventListener('change', event => {
+  if (slots[slot] && !event.target.value.trim()) event.target.value = slots[slot].name;
+});
+$('mario-slot-name').addEventListener('keydown', event => {
+  if (event.key === 'Enter') { event.preventDefault(); $('mario-slot-save').click(); }
+});
+
+function syncSlots() {
+  for (const button of document.querySelectorAll('.mario-slot')) {
+    const index = Number(button.dataset.slot), saved = slots[index];
+    button.classList.toggle('empty', !saved);
+    button.classList.toggle('picked', index === slot);
+    const wearing = Boolean(saved && Colors.sameLook(look, saved.look));
+    button.classList.toggle('active', wearing);
+    button.setAttribute('aria-pressed', String(wearing));
+    button.querySelector('.mario-slot-name').textContent = saved ? saved.name : 'Empty';
+    button.title = saved ? `Wear ${saved.name}` : `Place ${index + 1}: empty`;
+    button.querySelector('.mario-slot-colors').replaceChildren(...(saved ? SLOT_COLORS.map(id => {
+      const dot = document.createElement('i');
+      dot.style.background = saved.look.colors[id] || originalColor(id) || '#ccc';
+      return dot;
+    }) : []));
+  }
+}
+
 // A row of preset buttons; `fludd` presets replace FLUDD's colours, the others Mario's.
 function presetButtons(presets, fludd, onChange = () => {}) {
   return presets.map(preset => {
@@ -153,6 +249,7 @@ function presetButtons(presets, fludd, onChange = () => {}) {
 }
 
 function renderControls() {
+  $('mario-slots').replaceChildren(...Array.from({ length: Colors.SLOTS }, (_, index) => slotButton(index)));
   $('mario-presets').replaceChildren(...presetButtons(Colors.PRESETS, false));
   const list = $('mario-regions');
   list.replaceChildren();
@@ -234,6 +331,21 @@ function syncControls() {
     button.classList.toggle('active', active);
     button.setAttribute('aria-pressed', String(active));
   }
+  syncSlots();
+  const saved = slots[slot], name = $('mario-slot-name');
+  // A name typed for an empty place stays until it is saved or another place is picked.
+  if (document.activeElement !== name && (saved || name.dataset.slot !== String(slot))) name.value = saved ? saved.name : '';
+  name.dataset.slot = String(slot);
+  name.placeholder = `Look ${slot + 1}`;
+  const wearing = Boolean(saved && Colors.sameLook(look, saved.look));
+  $('mario-slot-save').textContent = saved ? (wearing ? 'Saved' : 'Save over') : 'Save here';
+  $('mario-slot-save').disabled = wearing;
+  $('mario-slot-clear').hidden = !saved;
+  $('mario-slot-clear').textContent = clearArmed ? 'Clear it?' : 'Clear';
+  $('mario-slot-clear').classList.toggle('armed', Boolean(clearArmed));
+  $('mario-slot-note').textContent = !saved ? `Save here keeps Mario's look as he is now in place ${slot + 1}.`
+    : wearing ? `Mario wears ${saved.name}. Change anything, then Save over to update it.`
+    : `Save over replaces ${saved.name} with Mario's look as he is now.`;
   $('mario-in-game').checked = look.inGame;
   $('mario-preview-note').textContent = look.inGame ? 'Your colours show in the game the next time it starts.'
     : 'The game shows Mario as usual: Use in the game is off.';

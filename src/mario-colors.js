@@ -324,6 +324,8 @@
   // look, so one changed to Mario and back keeps its colours. A look is
   // everything but Use in the game, which stays one switch. There is always at
   // least one outfit: a player from before outfits gets their look as the first.
+  // `coop` is the outfit player 2 plays as in split-screen co-op (the worn one
+  // too, if the player likes), or null: the game's own Luigi.
   const SLOTS = 6, SLOT_NAME_LENGTH = 24;
   const outfitName = index => `Outfit ${index + 1}`;
   const CHARACTER_ID = /^[a-z0-9-]{1,48}$/;
@@ -344,7 +346,8 @@
       active = 0;
       slots[0] = { name: 'Mario', character: 'mario', look: slotLook(look) };
     }
-    return { slots, active };
+    const coop = Number.isInteger(saved?.coop) && slots[saved.coop] ? saved.coop : null;
+    return { slots, active, coop };
   }
   // `name`, or `name 2`, `name 3`… when an outfit already has it.
   function uniqueName(slots, name, except = -1) {
@@ -361,12 +364,12 @@
     const { slots, active } = outfits;
     if (slots[active].character === character) return outfits;
     let index = slots.findIndex(slot => slot?.character === character);
-    if (index >= 0) return { slots, active: index };
+    if (index >= 0) return { ...outfits, active: index };
     index = slots.indexOf(null);
     if (index < 0) return outfits;
     const added = slots.slice();
     added[index] = { name: uniqueName(slots, name), character, look: slotLook(look) };
-    return { slots: added, active: index };
+    return { ...outfits, slots: added, active: index };
   }
 
   return { REGIONS, PARTS, PRESETS, FLUDD_REGIONS, FLUDD_PRESETS, NOZZLES, SLOTS, SLOT_NAME_LENGTH, outfitName, uniqueName, wearCharacter, coverage, classify, lightness, references, blendEdges, ramp, recolor, normalize, normalizeLook, normalizeOutfits, slotLook, hex };

@@ -31,7 +31,7 @@ const VIEWS = { front: [0, 0.1], side: [Math.PI / 2, 0.1], back: [Math.PI, 0.1],
 const state = {
   characters: [], id: null, playing: 'mario', eclipse: false, showFludd: true, fluddRig: null, model: null, animation: 'ma_wait', clips: new Map(), mario: null, compare: 'off',
   frame: 0, running: true, speed: 1, filter: '', animations: false, modelId: null,
-  outfits: null,
+  outfits: null, coopOutfit: true,
 };
 // Mario, outside Animations, is shown with his colours.
 const colouring = () => state.id === 'mario' && !state.animations;
@@ -137,12 +137,13 @@ const needsEclipse = name => `${name} comes from Super Mario Eclipse. Turn on Su
 const waiting = character => Boolean(character && !character.ready && character.makeable === false);
 
 async function refresh() {
-  const { characters, outfits, eclipse, ready } = await window.sms.characters();
+  const { characters, outfits, eclipse, ready, coopOutfit } = await window.sms.characters();
   state.characters = characters;
   state.setUp = ready !== false;
   state.outfits = outfits;
   state.playing = worn().character;
   state.eclipse = eclipse;
+  state.coopOutfit = coopOutfit !== false;
   renderList();
   renderOutfits();
 }
@@ -333,6 +334,8 @@ $('outfit-delete').addEventListener('click', () => {
   const gone = state.outfits.active;
   window.smsMarioLook.flush();
   slots[gone] = null;
+  // player 2 in co-op is the game's own Luigi again
+  if (state.outfits.coop === gone) state.outfits.coop = null;
   // the outfit beside it is put on
   const next = slots.findIndex((slot, index) => slot && index > gone);
   state.outfits.active = next >= 0 ? next : slots.map(Boolean).lastIndexOf(true);
@@ -369,6 +372,13 @@ function renderOutfits() {
     tab.querySelector('.outfit-name').textContent = outfit.name;
     const button = tab.querySelector('.outfit-wear');
     button.title = open ? `${outfit.name} (${character.name}): double-click to rename` : `Play as ${outfit.name} (${character.name})`;
+    if (index === state.outfits.coop) {
+      const badge = document.createElement('span');
+      badge.className = 'outfit-p2';
+      badge.textContent = 'P2';
+      button.append(badge);
+      button.title += ', player 2 in co-op';
+    }
     button.addEventListener('click', () => wear(index));
     button.addEventListener('dblclick', () => { renaming = index; renderOutfits(); });
     if (open && renaming !== index) {
@@ -428,10 +438,34 @@ function renderPanel() {
   $('outfit-delete').hidden = only;
   $('outfit-delete').textContent = deleting ? `Delete ${outfit.name}?` : 'Delete';
   $('outfit-delete').classList.toggle('armed', Boolean(deleting));
+  renderCoop(outfit);
   $('outfit-about').textContent = state.eclipse && !mario
     ? `With Super Mario Eclipse on, the game plays as its own characters: ${outfit.name} is for Super Mario Sunshine.`
     : mario ? '' : `${character.about} ${character.name}'s colours can't be changed yet.`;
 }
+
+// Player 2 in co-op (Play co-op, under ▾ beside Play): an outfit chosen here, or the game's own Luigi.
+// The open outfit is made player 2, or no longer is.
+function renderCoop(outfit) {
+  const { slots, active, coop } = state.outfits, chosen = coop === active, other = coop !== null && !chosen ? slots[coop] : null;
+  const text = $('outfit-coop-text'), name = document.createElement('strong');
+  name.textContent = chosen ? outfit.name : other ? other.name : 'Luigi';
+  text.replaceChildren(...(chosen ? [name, ' is player 2 in co-op.'] : ['In co-op, player 2 is ', name, other ? '.' : ', the game\'s own.']));
+  if (state.eclipse) text.append(' Not with Super Mario Eclipse on: its player 2 is its own.');
+  else if (!state.coopOutfit && coop !== null) text.append(' Update the game to play co-op this way.');
+  $('outfit-coop').classList.toggle('on', chosen);
+  const toggle = $('outfit-coop-toggle');
+  toggle.textContent = chosen ? 'Not player 2' : 'Make player 2';
+  toggle.title = chosen ? `Player 2 is the game's own Luigi again, not ${outfit.name}` : `Player 2 plays as ${outfit.name} in Play co-op`;
+}
+$('outfit-coop-toggle').addEventListener('click', () => {
+  const { active, coop } = state.outfits;
+  window.smsMarioLook.flush();
+  state.outfits.coop = coop === active ? null : active;
+  disarmDelete();
+  saveOutfits();
+  renderOutfits();
+});
 
 // --- Portraits: each outfit's character drawn from its own model (portraits.js), Mario in the outfit's
 // colours. main.js keeps them, so each is drawn once; until then a character shows its initial.

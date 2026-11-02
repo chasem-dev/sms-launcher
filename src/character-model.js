@@ -46,6 +46,11 @@ function loadFluddRig(rom) {
 }
 // The body model's Shine shirt, shown only once Mario has it.
 const ALOHA_SHAPE = 10;
+// The cap: the game hides the body model's own cap shape (TMario::initModel) and draws ma_cap1.bmd on the
+// M_head joint instead, painted with the body's first texture (TMarioCap). Mario's two caps look alike,
+// but Super Mario Eclipse's Luigi's body cap is a broken leftover: his cap is the one in ma_cap1.
+const BODY_CAP_SHAPE = 4;
+const CAP = 'bmd/ma_cap1.bmd';
 
 // The body model as the viewer draws it, and the names of the animations.
 function loadCharacter(character, files, look = null) {
@@ -86,17 +91,31 @@ function loadCharacter(character, files, look = null) {
     }
     return byIndex.get(key);
   };
+  // ma_cap1's one joint sits on M_head as it stands, so its corners are drawn as the head's own
+  const head = model.joints.findIndex(j => j.name === 'M_head');
+  const headDraw = model.draw.findIndex(d => !d.weighted && d.index === head);
+  const cap = !look && head >= 0 && headDraw >= 0 && files.has(CAP) ? j3d.parseBmd(files.get(CAP)) : null;
   model.shapes.forEach((shape, i) => {
-    if ((!look && i === ALOHA_SHAPE) || !shape.index.length) return;
+    if ((!look && i === ALOHA_SHAPE) || (cap && i === BODY_CAP_SHAPE) || !shape.index.length) return;
     const material = model.materials[shape.material] || {};
     const texture = !material.textures ? -1 : shadow ? shadowFor(material) : textureFor(material.textures[0]);
     const warp = shimmer && material.textures && material.textures[2] >= 0 ? textureFor(material.textures[2]) : -1;
-    shapes.push({ position: shape.position, normal: shape.normal, uv: shape.uv, color: texture < 0 && shape.hasColor ? shape.color : null, warp,
+    shapes.push({ position: shape.position, normal: smoothFacets(shape), uv: shape.uv, color: texture < 0 && shape.hasColor ? shape.color : null, warp,
       drawIndex: shape.drawIndex, index: shape.index, texture, doubleSided: material.cull === 0, translucent: !shadow && material.mode === 4,
       // Shadow Mario is lit only by his shine (his colours are his texture's, unlit)
       shine: shadow,
       alphaTest: material.alphaTest?.comp0 === 6 ? material.alphaTest.ref0 / 255 : 0 });
   });
+  for (const shape of cap?.shapes || []) {
+    if (!shape.index.length) continue;
+    const material = cap.materials[shape.material] || {};
+    // its first texture is a stand-in for the body's
+    const texture = material.textures?.[0] === 0 ? textureFor(0) : -1;
+    shapes.push({ position: shape.position, normal: smoothFacets(shape), uv: shape.uv, color: texture < 0 && shape.hasColor ? shape.color : null,
+      warp: -1, drawIndex: new Uint16Array(shape.drawIndex.length).fill(headDraw), index: shape.index, texture,
+      doubleSided: material.cull === 0, translucent: material.mode === 4, shine: false,
+      alphaTest: material.alphaTest?.comp0 === 6 ? material.alphaTest.ref0 / 255 : 0 });
+  }
   const toon = model.textures.find(t => /toon/i.test(t.name));
   // Mario's body animations: the ones for his 29 joints (not FLUDD's or the hands' own).
   const animations = [...files.keys()].filter(name => /^bck\/.*\.bck$/.test(name) && jointCount(files.get(name)) === model.joints.length)
@@ -107,6 +126,40 @@ function loadCharacter(character, files, look = null) {
     joints: model.joints, draw: model.draw, envelopes: model.envelopes, inverseBind: model.inverseBind, shapes, textures,
     toon: toon ? toonBands(toon) : [0.72, 1], animations, shimmer,
   };
+}
+
+// A shape modelled with a normal of its own on each face (Super Mario Eclipse's Luigi's gloves)
+// shows every face apart in the viewer's soft light, where the game's two shades of light hide them: such
+// a shape gets each corner's normal blended with the faces around it that meet it at under CREASE degrees.
+// Faces count as meeting where their corners share a place and joint. Shapes with smooth normals already
+// (Mario's own) keep theirs, hard edges and all.
+const CREASE = Math.cos(70 * Math.PI / 180);
+function smoothFacets({ position, normal, drawIndex }) {
+  const places = new Map();
+  for (let v = 0; v < drawIndex.length; v++) {
+    const key = `${drawIndex[v]} ${position[v * 3].toFixed(3)} ${position[v * 3 + 1].toFixed(3)} ${position[v * 3 + 2].toFixed(3)}`;
+    const place = places.get(key);
+    if (place) place.push(v); else places.set(key, [v]);
+  }
+  const dot = (a, b) => normal[a * 3] * normal[b * 3] + normal[a * 3 + 1] * normal[b * 3 + 1] + normal[a * 3 + 2] * normal[b * 3 + 2];
+  let shared = 0, split = 0;
+  for (const place of places.values()) {
+    if (place.length < 2) continue;
+    shared++;
+    if (place.some(v => dot(v, place[0]) < 0.999)) split++;
+  }
+  if (!shared || split * 2 < shared) return normal;
+  const out = Float32Array.from(normal);
+  for (const place of places.values()) {
+    if (place.length < 2) continue;
+    for (const v of place) {
+      let x = 0, y = 0, z = 0;
+      for (const w of place) if (dot(v, w) >= CREASE) { x += normal[w * 3]; y += normal[w * 3 + 1]; z += normal[w * 3 + 2]; }
+      const length = Math.hypot(x, y, z);
+      if (length > 1e-6) out.set([x / length, y / length, z / length], v * 3);
+    }
+  }
+  return out;
 }
 
 // Shadow Mario's colour, as his material makes it in the game: the screen behind him (his first
@@ -161,4 +214,4 @@ function createCache() {
   };
 }
 
-module.exports = { loadCharacter, loadAnimation, createCache, loadFluddRig, fluddPlace, writeFluddPlace, FLUDD_PLACE };
+module.exports = { smoothFacets, loadCharacter, loadAnimation, createCache, loadFluddRig, fluddPlace, writeFluddPlace, FLUDD_PLACE };

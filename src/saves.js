@@ -178,9 +178,14 @@ function listBackups(destination = backupRoot()) {
     }).filter(Boolean).sort((a, b) => b.id.localeCompare(a.id));
 }
 
+// A backup's folder, from its id as listBackups gives it.
+function backupFolder(id, destination = backupRoot()) {
+  if (typeof id !== 'string' || !/^[0-9TZ-]+-[a-f0-9]{6}$/.test(id)) throw new Error('Invalid backup selection.');
+  return path.join(destination, id);
+}
+
 function restoreBackup(id, saveDir, destination = backupRoot()) {
-  if (!/^[0-9TZ-]+-[a-f0-9]{6}$/.test(id)) throw new Error('Invalid backup selection.');
-  const folder = path.join(destination, id);
+  const folder = backupFolder(id, destination);
   const manifest = JSON.parse(fs.readFileSync(path.join(folder, 'manifest.json'), 'utf8'));
   if (manifest.version !== 1 || !Array.isArray(manifest.files) || !manifest.files.length)
     throw new Error('Backup manifest is invalid.');
@@ -250,4 +255,4 @@ function moveBuildKeepingSaves(buildDirectory, destination, saveDir, backups = b
 }
 
 module.exports = { saveDirectory, gameSaveDirectory, prepareSaveDirectory, guestSaveDirectory, moveOldGuestSaves, backupRoot, modSaveDirectory,
-  cleanupWouldRemoveSaves, backupSaves, listBackups, restoreBackup, moveBuildKeepingSaves };
+  cleanupWouldRemoveSaves, backupSaves, listBackups, backupFolder, restoreBackup, moveBuildKeepingSaves };

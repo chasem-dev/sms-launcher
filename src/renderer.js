@@ -806,6 +806,7 @@ function refresh(data) {
   }));
   if (data.backups.some(backup => backup.id === selectedBackup)) $('backup-list').value = selectedBackup;
   $('backup-list').disabled = Boolean(data.active) || !data.backups.length;
+  showBackupProgress();
 
   changing = true;
   $('arch').replaceChildren(...platform.arches.map(arch => {
@@ -2003,6 +2004,51 @@ dolphinDrop.addEventListener('drop', event => {
 });
 // Prevent dropped files from navigating away from the launcher.
 for (const type of ['dragover', 'drop']) window.addEventListener(type, event => event.preventDefault());
+
+// What the chosen backup holds: each game's three files, with their Shines and blue coins.
+let backupShown = null;
+async function showBackupProgress() {
+  const id = $('backup-list').value || null, panel = $('backup-progress');
+  if (id === backupShown) return;
+  backupShown = id;
+  if (!id) { panel.hidden = true; panel.replaceChildren(); return; }
+  let games;
+  try { games = await window.sms.backupProgress(id); } catch (_) { games = null; }
+  if (backupShown !== id) return;
+  panel.hidden = false;
+  if (!games || !games.length) {
+    const note = document.createElement('p'); note.className = 'backup-progress-empty';
+    note.textContent = games ? 'This backup has no Super Mario Sunshine or Super Mario Eclipse save.' : 'This backup\'s saves could not be read.';
+    panel.replaceChildren(note);
+    return;
+  }
+  const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
+  panel.replaceChildren(...games.map(({ title, files }) => {
+    const game = document.createElement('div'); game.className = 'backup-progress-game';
+    const name = document.createElement('strong'); name.textContent = title;
+    const row = document.createElement('div'); row.className = 'backup-progress-files';
+    row.append(...files.map((file, i) => {
+      const cell = document.createElement('div'); cell.className = `backup-progress-file${file ? '' : ' empty'}`;
+      const label = document.createElement('span'); label.className = 'backup-progress-label'; label.textContent = `File ${'ABC'[i]}`;
+      cell.append(label);
+      if (!file) {
+        const none = document.createElement('span'); none.className = 'backup-progress-none'; none.textContent = 'Empty';
+        cell.append(none);
+      } else {
+        for (const [kind, count, one, many] of [['shine', file.shines, 'Shine', 'Shines'], ['blue-coin', file.blueCoins, 'blue coin', 'blue coins']]) {
+          const item = document.createElement('span'); item.className = `backup-progress-count ${kind}`;
+          item.title = plural(count, one, many); item.setAttribute('aria-label', item.title);
+          item.textContent = count;
+          cell.append(item);
+        }
+      }
+      return cell;
+    }));
+    game.append(name, row);
+    return game;
+  }));
+}
+$('backup-list').addEventListener('change', showBackupProgress);
 
 $('restore-saves').addEventListener('click', async () => {
   setMessage('');

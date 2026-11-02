@@ -479,10 +479,13 @@ const hash = text => {
   return (h >>> 0).toString(16).padStart(8, '0');
 };
 // Mario's portraits differ by look, the others' only by their model (their colours can't change yet).
+// PORTRAIT_DRAWING goes up when the launcher draws models differently, so portraits drawn before are drawn
+// again (2: the cap the game draws, ma_cap1, and faceted gloves drawn smooth).
+const PORTRAIT_DRAWING = 2;
 function portraitKey(id, look) {
   const { stamp } = characterOf(id);
   if (!stamp) return null;
-  return `${id}-${hash(stamp)}${id === 'mario' ? `-${hash(JSON.stringify(Colors.slotLook(look)))}` : ''}`;
+  return `${id}-${hash(`${PORTRAIT_DRAWING} ${stamp}`)}${id === 'mario' ? `-${hash(JSON.stringify(Colors.slotLook(look)))}` : ''}`;
 }
 
 // Shows character `id` (in `look`) in an .outfit-icon; one still being drawn keeps the picture it had

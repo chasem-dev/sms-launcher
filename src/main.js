@@ -2558,6 +2558,8 @@ function registerHandlers() {
     }
     return { imported, skipped };
   }));
+  // The Shines and blue coins in each file of a backup's saves, for the Saves page's backup picker.
+  ipcMain.handle('backup-progress', (_event, id) => gciSave.cardProgress(path.join(saves.backupFolder(id), 'files')));
   ipcMain.handle('restore-saves', async (_event, id) => {
     if (operation || active) throw new Error('Stop the running game or task before restoring saves.');
     if (!saves.listBackups().some(item => item.id === id && item.source === currentSaveDirectory()))

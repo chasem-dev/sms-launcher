@@ -776,8 +776,12 @@ pre { height: 120px; margin: 0; padding: 12px; overflow: auto; border-radius: 8p
 .characters-page:not(.animations) :is(#mario-look, .characters-stage-wrap) { grid-row: 2; grid-column: 1; }
 .characters-page:not(.animations) .outfit-panel { grid-row: 2; grid-column: 2; }
 /* Outfits: a tab each, over the character. */
-.outfits { grid-column: 1 / -1; display: flex; gap: 4px; min-width: 0; padding: 10px 12px 0; border-bottom: 1px solid #d6e3e3; background: #eef4f3; }
-.outfit-tab { position: relative; display: flex; align-items: center; min-width: 0; max-width: 170px; margin-bottom: -1px; border: 1px solid transparent; border-bottom: 0; border-radius: 11px 11px 0 0; }
+/* Any number of outfits: when the tabs don't fit, the row scrolls sideways (the wheel too), with New
+   outfit kept in view at its end: its wrap covers the row's right padding and down to the line, so no
+   tab shows around it. The line under the tabs is drawn in the row's background, so the open tab still covers it
+   inside the scrolling box. */
+.outfits { --outfits-bg: #eef4f3; --outfits-line: #d6e3e3; position: relative; grid-column: 1 / -1; display: flex; gap: 4px; min-width: 0; padding: 10px 12px 0; overflow: auto hidden; scrollbar-width: thin; background: linear-gradient(var(--outfits-line), var(--outfits-line)) bottom / 100% 1px no-repeat, var(--outfits-bg); }
+.outfit-tab { position: relative; flex: none; display: flex; align-items: center; max-width: 170px; border: 1px solid transparent; border-bottom: 0; border-radius: 11px 11px 0 0; }
 .outfit-tab:hover:not(.open) { background: #e2eded; }
 .outfit-tab.open { border-color: #d6e3e3; background: #f8faf9; }
 .outfit-tab.open::after { position: absolute; left: 10px; right: 10px; top: -1px; height: 3px; border-radius: 0 0 3px 3px; background: #158188; content: ''; }
@@ -793,7 +797,8 @@ pre { height: 120px; margin: 0; padding: 12px; overflow: auto; border-radius: 8p
 .outfit-rename:hover { background: #e8f1f1; color: #17343d; }
 .outfit-input { width: 130px; min-width: 0; margin-right: 6px; padding: 3px 6px; border: 1px solid #158188; border-radius: 6px; background: #fff; color: #17343d; font: inherit; font-size: 12px; font-weight: 650; }
 .outfit-input:focus { outline: none; box-shadow: 0 0 0 3px #15818833; }
-.outfit-add { flex: none; display: flex; align-items: center; gap: 7px; margin-bottom: 4px; padding: 4px 10px 4px 6px; border: 0; border-radius: 9px; background: transparent; color: #6f888d; font-size: 12px; font-weight: 600; }
+.outfit-add-wrap { position: sticky; right: -12px; flex: none; display: flex; margin-bottom: 1px; padding: 0 12px 3px 0; background: var(--outfits-bg); }
+.outfit-add { flex: none; display: flex; align-items: center; gap: 7px; padding: 4px 10px 4px 6px; border: 0; border-radius: 9px; background: transparent; color: #6f888d; font-size: 12px; font-weight: 600; }
 .outfit-add span { display: grid; place-items: center; width: 24px; height: 24px; border: 1.5px dashed #a9c6ca; border-radius: 7px; color: #6b9aa2; font-size: 15px; }
 .outfit-add:hover, .outfit-add.pressed { background: #e2eded; color: #2e4c53; }
 /* The outfit worn: its character, and Mario's colours for Mario. */
@@ -864,7 +869,7 @@ pre { height: 120px; margin: 0; padding: 12px; overflow: auto; border-radius: 8p
 .dark :is(.characters-item, .characters-anim, .characters-compare) { color: #cfe3e8; }
 .dark :is(.characters-item, .characters-anim):hover { background: #16354a; }
 .dark .mario-panel { border-color: #2f5468; background: #0d2231; }
-.dark .outfits { border-color: #2f5468; background: #0a1c29; }
+.dark .outfits { --outfits-bg: #0a1c29; --outfits-line: #2f5468; }
 .dark .outfit-tab.open { border-color: #2f5468; background: #0d2231; }
 .dark .outfit-tab:hover:not(.open), .dark :is(.outfit-add:hover, .outfit-add.pressed) { background: #12293a; }
 .dark .outfit-wear { color: #9fc3cb; }

@@ -41,7 +41,8 @@
       "Online: another player getting a Shine while you are watching a cutscene, such as a Shine coming out, no longer crashes your game. Before, their Shine Get played without its \"Shine Get!\" text and then the game closed. Now it waits for the cutscene to end, then plays as usual.",
       "Radar: the Hotel Lobby's Secret (Sirena Beach, episode 2) now shows its own course on the radar and the full map. Before, it showed the secret course of Bianco Hills' episode 3, which is built on the same ground.",
       "Super Mario Eclipse radar: the secret courses of Lancia Peaks and Erto Rock, and three in Peach's Castle, now show their own course on the radar and the full map instead of one of Super Mario Sunshine's secret courses.",
-      "Pianta Village's Chain Chomplets: at 60 and 120 FPS, a Chomplet's tail pulled harder than it should while you held it (about 1.4 times as hard at 60 FPS and 2.3 times at 120). It now pulls the same as at 30 FPS at every frame rate."
+      "Pianta Village's Chain Chomplets: at 60 and 120 FPS, a Chomplet's tail pulled harder than it should while you held it (about 1.4 times as hard at 60 FPS and 2.3 times at 120). It now pulls the same as at 30 FPS at every frame rate.",
+      "Split-screen co-op: going into or out of a building in Delfino Plaza, like the raccoons' blue coin shop, no longer sends the other player straight back through the door. Before, the players could end up split between inside and outside, the camera showed empty sky or looked down at nothing, and Mario could be left high above the plaza."
     ]
   },
   "releases": [

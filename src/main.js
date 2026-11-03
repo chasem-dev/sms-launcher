@@ -2298,20 +2298,27 @@ function registerHandlers() {
     return { saved: true };
   });
   const senderWindow = event => BrowserWindow.fromWebContents(event.sender);
-  ipcMain.handle('window-state', event => {
-    const target = senderWindow(event);
-    return { fullscreen: target?.isFullScreen() || false, minimized: target?.isMinimized() || false };
-  });
+  ipcMain.handle('window-state', event => windowState(senderWindow(event)));
   ipcMain.handle('window-minimize', event => {
     const target = senderWindow(event);
     target?.minimize();
     return { minimized: target?.isMinimized() || false };
   });
+  // The middle window button maximizes, which leaves the taskbar or Dock showing. Full screen is F11
+  // (window-toggle-full-screen), and the same button leaves it.
+  ipcMain.handle('window-toggle-maximize', event => {
+    const target = senderWindow(event);
+    if (!target) return windowState(null);
+    if (target.isFullScreen()) target.setFullScreen(false);
+    else if (target.isMaximized()) target.unmaximize();
+    else target.maximize();
+    return windowState(target);
+  });
   ipcMain.handle('window-toggle-full-screen', event => {
     const target = senderWindow(event);
-    if (!target) return { fullscreen: false };
+    if (!target) return windowState(null);
     target.setFullScreen(!target.isFullScreen());
-    return { fullscreen: target.isFullScreen() };
+    return windowState(target);
   });
   ipcMain.handle('window-close', event => senderWindow(event)?.close());
   ipcMain.handle('state', async () => { await checkTools(); return state(); });
@@ -2673,6 +2680,11 @@ function registerHandlers() {
   ipcMain.handle('display-info', () => displayInfo());
 }
 
+function windowState(target) {
+  return { fullscreen: target?.isFullScreen() || false, maximized: target?.isMaximized() || false,
+    minimized: target?.isMinimized() || false };
+}
+
 const WINDOW_SIZE = { width: 1080, height: 760, minWidth: 900, minHeight: 600 };
 
 function createWindow() {
@@ -2686,9 +2698,8 @@ function createWindow() {
   });
   if (windowsScaling) displayScale.followDisplayScale(window, screen, WINDOW_SIZE, zoom);
   window.setMenuBarVisibility(false);
-  const sendWindowState = () => broadcast('window-state', { fullscreen: window.isFullScreen() });
-  window.on('enter-full-screen', sendWindowState);
-  window.on('leave-full-screen', sendWindowState);
+  const sendWindowState = () => broadcast('window-state', windowState(window));
+  for (const event of ['enter-full-screen', 'leave-full-screen', 'maximize', 'unmaximize', 'restore']) window.on(event, sendWindowState);
   // Back from the taskbar: the online count catches up at once rather than at the next minute.
   window.on('restore', () => checkPublicOnline({ fresh: 30 * 1000 }));
   window.loadFile(path.join(__dirname, 'index.html'));

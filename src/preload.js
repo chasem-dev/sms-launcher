@@ -107,6 +107,7 @@ contextBridge.exposeInMainWorld('sms', {
   zoomFactor: () => webFrame.getZoomFactor(),
   windowState: () => ipcRenderer.invoke('window-state'),
   minimizeWindow: () => ipcRenderer.invoke('window-minimize'),
+  toggleMaximize: () => ipcRenderer.invoke('window-toggle-maximize'),
   toggleFullScreen: () => ipcRenderer.invoke('window-toggle-full-screen'),
   closeWindow: () => ipcRenderer.invoke('window-close'),
   onWindowState: callback => ipcRenderer.on('window-state', (_event, value) => callback(value)),

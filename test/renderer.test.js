@@ -60,6 +60,8 @@ async function renderer(data = state(), copyError = null, notes = { releases: []
   }
   const sms = {
     state: async () => data, windowState: async () => ({}), zoomFactor: () => 1,
+    toggleMaximize: async () => { calls.push('toggleMaximize'); return { maximized: calls.filter(call => call === 'toggleMaximize').length % 2 === 1 }; },
+    toggleFullScreen: async () => { calls.push('toggleFullScreen'); return { fullscreen: true }; },
     importDolphinSave: async file => { calls.push('importDolphinSave'); droppedFiles.push(file); return importResult; },
     onLog(callback) { logCallback = callback; }, onActivity(callback) { activityCallback = callback; }, onAppUpdate() {}, onWindowState() {}, onOnline(callback) { listeners.online = callback; }, onPublicOnline(callback) { listeners.publicOnline = callback; },
     onLogReset(callback) { resetCallback = callback; },
@@ -93,7 +95,7 @@ async function renderer(data = state(), copyError = null, notes = { releases: []
   const context = vm.createContext({ console, setInterval() {}, clearInterval() {}, requestAnimationFrame: callback => setImmediate(callback),
     cancelAnimationFrame() {}, navigator: { getGamepads: () => [] }, SmsBindings: require('../src/bindings'),
     window: { sms, smsActivityLog: require('../src/activity-log'), smsChangelogText: require('../src/changelog-text'), smsRumble: require('../src/rumble'), smsGamepadNav: { start: options => Object.assign(gamepad, options) },
-      addEventListener() {}, removeEventListener() {} }, document: {
+      addEventListener(event, callback) { (listeners.window ||= {})[event] = [...(listeners.window[event] || []), callback]; }, removeEventListener() {} }, document: {
     getElementById(id) { assert.ok(elements.has(id), `Missing HTML element ${id}`); return elements.get(id); },
     querySelectorAll(selector) {
       const modals = ['steam-add', 'mac-tools-help', 'apple-silicon-switched', 'achievements-get'].map(id => elements.get(id));
@@ -1044,4 +1046,29 @@ test('no dot when the mod list is the one last seen', async () => {
   const ui = await renderer();
   assert.equal(ui.elements.get('mods-new').hidden, true);
   assert.equal(ui.elements.get('settings-mods-new').hidden, true);
+});
+
+test('the window button maximizes and restores the launcher, and F11 switches full screen', async () => {
+  const ui = await renderer();
+  const button = ui.elements.get('window-maximize');
+  assert.equal(button['data-state'], 'normal');
+  await ui.click('window-maximize');
+  assert.deepEqual(ui.calls.filter(call => call === 'toggleMaximize'), ['toggleMaximize']);
+  assert.equal(button['data-state'], 'maximized');
+  assert.equal(button['aria-label'], 'Restore down');
+  await ui.click('window-maximize');
+  assert.equal(button['data-state'], 'normal');
+  assert.equal(button['aria-label'], 'Maximize window');
+  assert.ok(!ui.calls.includes('toggleFullScreen'));
+  const press = key => {
+    const event = { key, defaultPrevented: false, preventDefault() { this.defaultPrevented = true; } };
+    for (const callback of ui.listeners.window.keydown) callback(event);
+    return event;
+  };
+  assert.equal(press('a').defaultPrevented, false);
+  assert.equal(press('F11').defaultPrevented, true);
+  await new Promise(setImmediate);
+  assert.ok(ui.calls.includes('toggleFullScreen'));
+  assert.equal(button['data-state'], 'fullscreen');
+  assert.equal(button['aria-label'], 'Exit full screen');
 });

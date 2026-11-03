@@ -304,6 +304,67 @@ test('an old game version with a file another program has open loses everything 
   assert.equal(fs.existsSync(current), true);
 });
 
+test('the first install goes once two updates replaced it, its HD packs moving into the kept versions', async t => {
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'sms prune first-'));
+  t.after(() => fs.rmSync(home, { recursive: true, force: true }));
+  const base = path.join(home, 'sms-pc-port');
+  fs.mkdirSync(path.join(base, 'mods', 'hd-cutscenes'), { recursive: true });
+  fs.mkdirSync(path.join(base, 'build', 'windows-64'), { recursive: true });
+  fs.writeFileSync(path.join(base, 'mods', 'hd-cutscenes', 'movie.thp'), 'movie');
+  fs.writeFileSync(path.join(base, 'build', 'windows-64', 'sms.exe'), 'game');
+  const version = name => {
+    const root = path.join(`${base}.releases`, name);
+    fs.mkdirSync(path.join(root, 'mods'), { recursive: true });
+    return root;
+  };
+  const first = version('a-first');
+  game.carryUserFiles(base, first);
+  const second = version('b-second');
+  game.carryUserFiles(first, second);
+
+  // A folder the player chose (no launcher-source.json) always stays, as does a kept version.
+  assert.deepEqual(await game.pruneSnapshots(base, [second, first]), []);
+  fs.writeFileSync(path.join(base, 'launcher-source.json'), '{}');
+  assert.deepEqual(await game.pruneSnapshots(base, [second, first, base]), []);
+  // One holding the disc, or the memory card, stays too.
+  fs.writeFileSync(path.join(base, 'disc.iso'), 'disc');
+  assert.deepEqual(await game.pruneSnapshots(base, [second, first], [path.join(base, 'disc.iso')]), []);
+  fs.rmSync(path.join(base, 'disc.iso'));
+
+  assert.deepEqual(await game.pruneSnapshots(base, [second, first]), [base]);
+  assert.equal(fs.existsSync(base), false);
+  for (const root of [first, second])
+    assert.equal(fs.readFileSync(path.join(root, 'mods', 'hd-cutscenes', 'movie.thp'), 'utf8'), 'movie');
+  assert.deepEqual(await game.pruneSnapshots(base, [second, first]), []);
+});
+
+test('builds a rebuild replaced or left unfinished are removed, unless one is under way or holds saves', async t => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'sms prune builds-'));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  const id = '0123abcd-4567-89ab-cdef-0123456789ab';
+  const build = name => {
+    const folder = path.join(root, 'build', name);
+    fs.mkdirSync(folder, { recursive: true });
+    fs.writeFileSync(path.join(folder, 'sms.exe'), name);
+    return folder;
+  };
+  const current = build('windows-64');
+  const replaced = build(`windows-64.previous-${id}`);
+  const failed = build(`windows-64.failed-${id}`);
+  const interrupted = build(`windows-64.interrupted-${id}`);
+  // Partly restored saves stay, as does what a build under way moved aside.
+  const restoreFailed = build(`windows-64.restore-failed-${id}`);
+  const underWay = build(`windows-64-eclipse.previous-${id}`);
+  fs.writeFileSync(path.join(root, 'build', 'windows-64-eclipse.launcher-transaction.json'), '{}');
+  const withSaves = build(`windows-32.previous-${id}`);
+  fs.mkdirSync(path.join(withSaves, 'saves'));
+
+  const removed = await game.pruneBuildLeftovers(root, [path.join(withSaves, 'saves')]);
+  assert.deepEqual(removed.sort(), [replaced, failed, interrupted].sort());
+  for (const folder of [current, restoreFailed, underWay, withSaves]) assert.equal(fs.existsSync(folder), true);
+  assert.deepEqual(await game.pruneBuildLeftovers(path.join(root, 'missing')), []);
+});
+
 test('each OS and Mac architecture has its own tool version without changing existing archive hashes', () => {
   for (const [platform, arch] of [['linux','x64'],['win32','x64'],['darwin','x64'],['darwin','arm64']])
     assert.equal(tools.toolsetFor(platform, arch), tools.assetFor(platform, arch).toolset);

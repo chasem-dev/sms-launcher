@@ -1197,7 +1197,7 @@ function renderExclusiveResolutions(chosen) {
     .filter(size => { const [w, h] = size.split('x').map(Number); return w <= nativeWidth && h <= nativeHeight; });
   if (chosen && chosen !== 'desktop' && !sizes.includes(chosen)) sizes.push(chosen);
   const option = (value, label) => { const item = document.createElement('option'); item.value = value; item.textContent = label; return item; };
-  $('exclusiveResolution').replaceChildren(option('desktop', `Desktop resolution (${nativeWidth}×${nativeHeight})`),
+  $('exclusiveResolution').replaceChildren(option('desktop', `Desktop (${nativeWidth}×${nativeHeight})`),
     ...sizes.map(size => option(size, size.replace('x', '×'))));
 }
 
@@ -1215,7 +1215,7 @@ function renderDependents(busy = false) {
   $('promptPad').disabled = busy || $('buttonPrompts').value !== 'auto';
   // the display's gamma encodes what the TV gamma decoded
   $('displayGamma').disabled = busy || $('gameGamma').value === 'off';
-  // FSR 1's quality sets the internal resolution, in place of Picture sharpness
+  // FSR 1's quality sets the internal resolution, in place of Resolution
   const fsr = ['fsr', 'nis'].includes($('presentFilter').value);
   $('fsrMode').disabled = busy || !fsr;
   $('fsr-hint').hidden = !fsr;

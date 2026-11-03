@@ -28,8 +28,8 @@
     { id: 'SAVE_STATE', label: 'Save a state' }, { id: 'LOAD_STATE', label: 'Load the newest state' },
     // The radar's full map (src/radar.cpp in the game), with the Radar setting on.
     { id: 'MAP', label: 'Open the map' },
-    // Held with Tilt with the C-stick on: the C-stick's up and down zoom as on the GameCube (CAMERA_ZOOM in pad.cpp).
-    { id: 'CAMERA_ZOOM', label: 'Zoom with the C-stick (hold, with Tilt with the C-stick on)' }
+    // Held with C-stick tilts camera on: the C-stick's up and down zoom as on the GameCube (CAMERA_ZOOM in pad.cpp).
+    { id: 'CAMERA_ZOOM', label: 'Zoom with the C-stick (hold, with C-stick tilts camera on)' }
   ];
   // The game's built-in defaults (kDefaultBindings in platform/pad/pad.cpp), laid out for keyboard and mouse
   // with mouse look: WASD moves, left click jumps, right click dives, Q switches the nozzle, E is the close-up

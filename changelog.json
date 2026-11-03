@@ -18,7 +18,8 @@
       "Character tab: Make player 2 picks the outfit the second player plays as in Play co-op, Mario's in its colours. A P2 badge marks it on its tab. Without one, player 2 is Luigi as before.",
       "Saves: choosing a backup under Restore a backup now shows what it holds: File A, B and C of Super Mario Sunshine and Super Mario Eclipse, with each file's Shines and blue coins, or Empty.",
       "Customize Mario in dark mode: its colour panel now goes dark with the rest of the launcher. Before, it stayed white, and the Use in the game switch's title couldn't be read.",
-      "Maximizing the launcher now leaves the Windows taskbar in view: the button beside minimize maximizes and restores the window instead of making it full screen. F11 still switches full screen."
+      "Maximizing the launcher now leaves the Windows taskbar in view: the button beside minimize maximizes and restores the window instead of making it full screen. F11 still switches full screen.",
+      "Fixed Download port source failing on drives that can't make hard links, such as an SD card or USB drive formatted exFAT (often D: on a handheld): unpacking the build tools stopped with thousands of \"Invalid argument\" errors. There, the build tools now unpack more slowly, with copies in place of links."
     ],
     "game": [
       "Fixed Goop sometimes not cleaning",

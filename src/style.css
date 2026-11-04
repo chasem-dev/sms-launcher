@@ -384,6 +384,13 @@ pre { height: 120px; margin: 0; padding: 12px; overflow: auto; border-radius: 8p
 .changelog-clamp { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
 .changelog-headline.changelog-clamp { -webkit-line-clamp: 4; }
 .changelog-change.open .changelog-clamp { display: block; }
+.changelog-full .changelog-clamp { display: block; overflow: visible; }
+.changelog-hotfix { grid-column: 1 / -1; display: grid; gap: 8px; padding: 12px 16px 14px; border: 1px solid #bfe0d4; border-radius: 12px; background: #eef8f4; }
+.changelog-hotfix .changelog-change { margin: 0; padding: 0; border: 0; }
+.changelog-hotfix-label { color: #1d7a5c; font-size: 12px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+.changelog-base-head { grid-column: 1 / -1; display: grid; gap: 4px; }
+.changelog-base-head h3 { color: #17343d; font-size: 20px; letter-spacing: -.01em; }
+.changelog-base-head p { color: #637980; font-size: 12.5px; }
 .changelog-change.can-open:not(.open) .changelog-clamp:last-child { -webkit-mask-image: linear-gradient(180deg, #000 calc(100% - 1.5em), #0008); }
 .changelog-tag { display: inline-flex; align-items: center; height: 18px; margin-right: 7px; padding: 0 7px; border-radius: 999px; background: #e6f3f2; color: #1d6f78;
   font-size: 10px; font-weight: 800; vertical-align: 1px; white-space: nowrap; }
@@ -640,6 +647,10 @@ pre { height: 120px; margin: 0; padding: 12px; overflow: auto; border-radius: 8p
 .dark .binding-modes button { color: #a9c3ca; }
 .dark .binding-modes button[aria-pressed="true"] { background: #1c3e53; box-shadow: none; }
 .dark :is(.preset-tip, .controls-note) { border-color: #5a4b22; background: #2b2716; color: #f3e2a8; }
+.dark .changelog-hotfix { border-color: #2c6b58; background: #12352f; }
+.dark .changelog-hotfix-label { color: #6fd6b2; }
+.dark .changelog-base-head h3 { color: #e8f1f4; }
+.dark .changelog-base-head p { color: #9db4bf; }
 .dark :is(.changelog-nav, .changelog-actions) { border-color: #2a4d61; background: #10283a; }
 .dark .changelog-version:hover { background: #17364b; }
 .dark .changelog-version.active { background: #1b3d53; box-shadow: inset 3px 0 0 #ffc75a; }

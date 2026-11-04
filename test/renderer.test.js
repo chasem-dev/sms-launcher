@@ -528,6 +528,25 @@ const notes = {
 
 const version = (ui, key) => ui.elements.get('changelog-nav').replaced.find(button => button.dataset.key === key);
 
+test('a hotfix shows its fix in a box, with the notes of the release it fixes in full below', async () => {
+  const hotfix = { current: '1.0.1', unseen: ['1.0.1'], releases: [
+    { version: '1.0.1', date: '2026-11-04', title: 'Co-op hotfix', hotfixFor: '1.0.0', launcher: [],
+      game: { version: '2026.11.04.2', commit: null, changes: ['The fix'] } },
+    { version: '1.0.0', date: '2026-11-04', title: '', hotfixFor: null, launcher: ['Big launcher change'],
+      game: { version: '2026.11.04.1', commit: null, changes: ['Big game change'] } }] };
+  const ui = await renderer(state(), null, hotfix);
+  const columns = ui.elements.get('changelog-columns');
+  assert.deepEqual(columns.replaced.map(node => node.className),
+    ['changelog-hotfix', 'changelog-base-head', 'changelog-column', 'changelog-column']);
+  assert.equal(columns.classList.contains('changelog-full'), true);
+  assert.equal(columns.replaced[0].children[0].textContent, 'Co-op hotfix');
+  assert.equal(columns.replaced[1].children[0].textContent, 'Everything new in v1.0.0');
+  // the release it fixes, on its own, goes back to its usual columns
+  version(ui, '1.0.0').click();
+  assert.deepEqual(columns.replaced.map(node => node.className), ['changelog-column', 'changelog-column']);
+  assert.equal(columns.classList.contains('changelog-full'), false);
+});
+
 test('the changelog opens once after an update on the newest release, with the others beside it', async () => {
   const ui = await renderer(state(), null, notes);
   assert.equal(ui.elements.get('changelog').hidden, false);

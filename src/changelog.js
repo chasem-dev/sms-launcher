@@ -49,6 +49,8 @@ function normalizeRelease(entry) {
   } : null;
   const release = { version: entry.version, date: DATE.test(entry.date) ? entry.date : null,
     title: typeof entry.title === 'string' ? entry.title.trim().slice(0, 120) : '',
+    // A hotfix names the release it fixes: What's new shows that release's notes in full under the fix.
+    hotfixFor: VERSION.test(entry.hotfixFor) ? entry.hotfixFor : null,
     launcher: changes(entry.launcher), game };
   return release.launcher.length || game?.changes.length ? release : null;
 }

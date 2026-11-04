@@ -6,6 +6,23 @@
   },
   "releases": [
     {
+      "version": "1.0.1",
+      "title": "Co-op hotfix",
+      "hotfixFor": "1.0.0",
+      "date": "2026-11-04",
+      "launcher": [
+        "What's new: a hotfix now shows the notes of the release it fixes in full, right below the fix."
+      ],
+      "game": {
+        "version": "2026.11.04.2",
+        "commit": "f9984d4c30f0726b4461974a1644c0a467977e24",
+        "changes": [
+          "Split-screen co-op: one player on keyboard and mouse with one on a controller works again. Once the keyboard has been used, a controller's START joins as player 2, whoever touched what first.",
+          "Split-screen co-op: if a controller is already player 1's, hold START on it to give player 1 to the keyboard and join as player 2. Playing alone after using the keyboard, hold START on a controller to make it player 1's."
+        ]
+      }
+    },
+    {
       "version": "1.0.0",
       "date": "2026-11-04",
       "launcher": [
@@ -37,7 +54,7 @@
           "Online, each player is drawn as the character they chose in the launcher, in its own colours and with its own moves and FLUDD. Players as Mario keep their own colours or their slot's, as before.",
           "Split-screen co-op is always on. In any game, a second player presses START on another controller to join, and holds START for a second and a half to leave, and the screen goes back to one. A card at the top of the screen says what to press. Until it joins, another controller no longer moves player 1.",
           "Split-screen co-op: a START pressed during a load, a cutscene or the pause menu joins as soon as play starts, so there is no need to press it over and over. If player 2's controller disconnects, their place waits 10 seconds for it to come back. To move player 1 to another controller, hold START on it.",
-          "Split-screen co-op: player 2 can play as any character from the Character tab, or as Mario in their own colours, instead of always being Luigi. Their name shows in the join and life messages. Player 2 still speaks with player 1's voice.",
+          "Split-screen co-op: player 2 can play as any character from the Character tab, or as Mario in their own colours, instead of always being Luigi. Player 2 still speaks with player 1's voice.",
           "Split-screen co-op: on Pinna Park's roller coaster (the Mecha-Bowser fight and the coaster balloons), player 2 now rides a car of their own right behind Mario's, instead of being left to walk around the park.",
           "Split-screen co-op: POINKs in Super Mario Eclipse (and the Puffers in Super Mario Sunshine) now stick to player 2's FLUDD too, and they can pump them up and fire them. Before, one that grabbed player 2 jumped over to player 1's nozzle. Each player can now carry one at the same time.",
           "Split-screen co-op: going into or out of a building in Delfino Plaza, like the raccoons' blue coin shop, no longer sends the other player straight back through the door. Before, the players could end up split between inside and outside, the camera showed empty sky or looked down at nothing, and Mario could be left high above the plaza.",

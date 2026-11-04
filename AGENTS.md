@@ -40,6 +40,8 @@ The release entry format:
 }
 ```
 
+A hotfix is a release with a `title` and `"hotfixFor": "<version it fixes>"`, whose lines are only the fix. What's new shows the fix in its own box with that release's notes in full below it, so don't copy them into the entry.
+
 ### How to write a line
 
 - One plain sentence for players, ending with a full stop. Say what they'll notice, and where to find it if it's a setting, e.g. "Show on Discord: while you play, your Discord profile shows where you are in the game. Turn it off under Manage game."

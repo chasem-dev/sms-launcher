@@ -69,6 +69,8 @@ contextBridge.exposeInMainWorld('sms', {
     return ipcRenderer.invoke('import-dolphin-save', filePaths);
   },
   restoreSaves: id => ipcRenderer.invoke('restore-saves', id),
+  eclipseCopyInfo: () => ipcRenderer.invoke('eclipse-copy-info'),
+  copyToEclipse: (from, to) => ipcRenderer.invoke('copy-to-eclipse', from, to),
   backupProgress: id => ipcRenderer.invoke('backup-progress', id),
   openBackups: () => ipcRenderer.invoke('open-backups'),
   showPathFolder: () => ipcRenderer.invoke('show-path-folder'),

@@ -597,16 +597,12 @@ function showWizardStep(data) {
 // A game not built for these settings yet (Super Mario Eclipse just switched on, say) can only Prepare &
 // play, so the menu offers Prepare only beside it, to get it ready and play later.
 // The menu also has Play co-op (split screen for two) for game versions without co-op always on, so it is there once the game is set up.
+// With nothing to offer beside Play itself, there is no ▾ at all.
 let playMenuOpen = false;
 function renderPlayMenu(data) {
   const prepare = !data.binaryReady, update = data.game.needsUpdate && !prepare, hd = needsTextureDownload(data) && !prepare;
   const auto = data.config.settings.autoUpdate, next = data.game.availableVersion ? ` ${data.game.availableVersion}` : '';
   const name = data.config.settings.eclipse ? 'Super Mario Eclipse' : 'the game';
-  const offered = data.romReady && wizardStep === 0;
-  $('play-more').hidden = !offered;
-  $('play').classList.toggle('has-more', offered);
-  $('play-more').disabled = Boolean(data.active) || setupPending;
-  if (playMenuOpen && (!offered || $('play-more').disabled)) $('play-menu').hidePopover();
   const [kind, label, detail] = prepare ? ['update', 'Prepare & play', `Set up ${name}, then start`]
     : hd ? ['hd', 'Finish HD setup', update && auto ? `Update to${next} and set up HD, then start` : 'Set up HD visuals, then start']
     : update && auto ? ['update', 'Update & play', `Install${next}, then start`]
@@ -633,6 +629,13 @@ function renderPlayMenu(data) {
     : 'Needs a newer game version: update the game first';
   const others = Object.entries({ 'menu-update-play': 'Update & play', 'menu-update-only': $('menu-update-only-label').textContent, 'menu-play-now': 'Play now', 'menu-coop': 'Play co-op' })
     .filter(([id]) => !$(id).hidden).map(([, item]) => item);
+  // ▾ only when the menu has more than Play itself (a game with co-op always on, current and with
+  // its HD visuals, has nothing else: the button is then Play alone)
+  const offered = data.romReady && wizardStep === 0 && others.length > 0;
+  $('play-more').hidden = !offered;
+  $('play').classList.toggle('has-more', offered);
+  $('play-more').disabled = Boolean(data.active) || setupPending;
+  if (playMenuOpen && (!offered || $('play-more').disabled)) $('play-menu').hidePopover();
   $('play-more-hint').hidden = !offered || Boolean(data.active);
   $('play-more-hint').textContent = `▾ for ${others.join(' or ')}`;
 }

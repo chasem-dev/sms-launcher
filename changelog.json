@@ -22,7 +22,7 @@
       "Fixed Download port source failing on drives that can't make hard links, such as an SD card or USB drive formatted exFAT (often D: on a handheld): unpacking the build tools stopped with thousands of \"Invalid argument\" errors. There, the build tools now unpack more slowly, with copies in place of links.",
       "Updates free more disk space: the game's first install folder is now removed once two updates have replaced it, like other old versions, with your HD packs kept, and so are game builds that a rebuild replaced or that didn't finish. Before, these stayed and could take several GB.",
       "Settings now use the game's own names for the options its settings menu also has, so they match: Resolution, Anisotropic filtering, Upscaler, Aspect ratio, V-Sync, Fullscreen, Shader warm-up and more, with their choices named as in the game.",
-      "Play co-op is gone from the menu beside Play: with the game update, a second player can join any game. The Characters page still picks who player 2 plays as."
+      "Play co-op is gone from the menu beside Play: with the game update, a second player can join any game. When there is nothing else to choose there (the game is up to date, with its HD visuals), the ▾ beside Play goes too. The Characters page still picks who player 2 plays as."
     ],
     "game": [
       "Fixed Goop sometimes not cleaning",

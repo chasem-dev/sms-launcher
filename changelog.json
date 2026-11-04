@@ -31,7 +31,7 @@
       ],
       "game": {
         "version": "2026.11.04.1",
-        "commit": "ea1f5469e37d49f522b71c08257123cc08ad530f",
+        "commit": "fed74093a9917c8f2f3aedfa8c3a093acf007013",
         "changes": [
           "Characters: play as anyone you choose on the launcher's Character tab, with their own model, voice and FLUDD. While you play alone, F4 switches to the next character.",
           "Online, each player is drawn as the character they chose in the launcher, in its own colours and with its own moves and FLUDD. Players as Mario keep their own colours or their slot's, as before.",

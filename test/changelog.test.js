@@ -91,3 +91,8 @@ test("this repository's changelog describes the current launcher release and its
     `changelog.json v${pkg.version} must list the game pinned in src/game-release.json`);
   assert.ok(pkg.build.files.includes(changelog.FILE), 'package the changelog for offline launchers');
 });
+
+test('a hotfix names the release it fixes', () => {
+  const { releases } = changelog.normalize({ releases: [release('1.0.1', { hotfixFor: '1.0.0' }), release('1.0.0'), release('0.9.0', { hotfixFor: 'soon' })] });
+  assert.deepEqual(releases.map(entry => entry.hotfixFor), ['1.0.0', null, null]);
+});

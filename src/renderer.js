@@ -1446,6 +1446,7 @@ function changelogColumn(heading, lines) {
 // Beta first when this build has its notes, then every release, newest first.
 function changelogEntries(data) {
   const entries = data.releases.map(release => ({ key: release.version, release,
+    hotfixOf: data.releases.find(other => other.version === release.hotfixFor) || null,
     badge: data.unseen.includes(release.version) ? ['New', 'badge good'] : release.version === data.current ? ['Installed', 'badge'] : null }));
   if (data.beta) entries.unshift({ key: 'beta', beta: data.beta, badge: data.beta.unseen ? ['New', 'badge good'] : ['Not released yet', 'badge warn'] });
   return entries;
@@ -1472,8 +1473,22 @@ function changelogShow(entry) {
   $('changelog-meta').textContent = entry.beta ? 'In this Beta build, not in a release yet. Beta uses the newest game from its main branch.'
     : [changelogDate(release.date), release.game?.version && `Game ${release.game.version}`, release.title].filter(Boolean).join(' · ');
   const launcher = entry.beta ? entry.beta.launcher : release.launcher, game = entry.beta ? entry.beta.game : release.game?.changes || [];
-  $('changelog-columns').replaceChildren(...[['Launcher', launcher], ['Game', game]]
-    .filter(([, lines]) => lines.length).map(([heading, lines]) => changelogColumn(heading, lines)));
+  const columns = (launcherLines, gameLines) => [['Launcher', launcherLines], ['Game', gameLines]]
+    .filter(([, lines]) => lines.length).map(([heading, lines]) => changelogColumn(heading, lines));
+  // A hotfix: the fix in its own box, then the release it fixes in full, so its notes stay in view.
+  const base = entry.hotfixOf;
+  $('changelog-columns').classList.toggle('changelog-full', Boolean(base));
+  if (base) {
+    const fix = changelogNode('div', 'changelog-hotfix');
+    fix.append(changelogNode('p', 'changelog-hotfix-label', release.title || 'Hotfix'),
+      ...[...game, ...launcher].map(line => changelogChange(line, false)));
+    const heading = changelogNode('div', 'changelog-base-head');
+    heading.append(changelogNode('h3', null, `Everything new in v${base.version}`),
+      changelogNode('p', null, [changelogDate(base.date), base.game?.version && `Game ${base.game.version}`].filter(Boolean).join(' · ')));
+    $('changelog-columns').replaceChildren(fix, heading, ...columns(base.launcher, base.game?.changes || []));
+  } else {
+    $('changelog-columns').replaceChildren(...columns(launcher, game));
+  }
   $('changelog-detail').scrollTop = 0;
   requestAnimationFrame(changelogClamps);
 }

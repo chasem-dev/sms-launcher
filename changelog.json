@@ -15,7 +15,7 @@
       ],
       "game": {
         "version": "2026.11.04.2",
-        "commit": "2ba195eff817eb47a165fa4c084d1220a569dc57",
+        "commit": "f9984d4c30f0726b4461974a1644c0a467977e24",
         "changes": [
           "Split-screen co-op: one player on keyboard and mouse with one on a controller works again. Once the keyboard has been used, a controller's START joins as player 2, whoever touched what first.",
           "Split-screen co-op: if a controller is already player 1's, hold START on it to give player 1 to the keyboard and join as player 2. Playing alone after using the keyboard, hold START on a controller to make it player 1's."

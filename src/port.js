@@ -473,6 +473,9 @@ function gameFeatures(root) {
     cutscenesWithoutTextures: mentions(path.join('platform', 'thp', 'hd_movie_pack.cpp'), 'without HD textures'),
     // split-screen co-op (SMS_COOP): a second player on this computer
     coop: has(path.join('ext', 'coop', 'game', 'coop.cpp')),
+    // ...in every game: a second player joins whenever they press Start on another controller, so there
+    // is no Play co-op (src/port_include/port_coop.h came with it)
+    coopAlways: has(path.join('src', 'port_include', 'port_coop.h')),
     // co-op's player 2 as an outfit of the Characters page (SMS_COOP_CHARACTER, SMS_COOP_LOOK)
     coopCharacter: has(path.join('ext', 'coop', 'game', 'coop_character.cpp')),
     // Eclipse's other characters keep their own textures, out of Customize Mario's look (ext/look)

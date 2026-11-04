@@ -2574,6 +2574,25 @@ function registerHandlers() {
     }
     return { imported, skipped };
   }));
+  // Sunshine's and Eclipse's files on the card, for Copy Sunshine progress to Eclipse (Saves).
+  ipcMain.handle('eclipse-copy-info', () => gciSave.eclipseCopyInfo(currentSaveDirectory()));
+  ipcMain.handle('copy-to-eclipse', (_event, from, to) => exclusive('Copy Sunshine progress to Eclipse', async () => {
+    const directory = currentSaveDirectory();
+    const copy = gciSave.sunshineToEclipse(directory, from, to);
+    const count = file => `${file.shines} Shine${file.shines === 1 ? '' : 's'} and ${file.blueCoins} blue coin${file.blueCoins === 1 ? '' : 's'}`;
+    const answer = await dialog.showMessageBox(window, {
+      type: copy.replaced ? 'warning' : 'question',
+      buttons: ['Cancel', copy.replaced ? 'Replace Eclipse file' : 'Copy to Eclipse'], defaultId: 0, cancelId: 0,
+      message: copy.replaced ? `Replace Super Mario Eclipse's file ${'ABC'[to]}?` : `Copy Sunshine's file ${'ABC'[from]} to Super Mario Eclipse?`,
+      detail: `Sunshine file ${'ABC'[from]} (${count(copy.copied)}) goes to Eclipse file ${'ABC'[to]}` +
+        (copy.replaced ? `, replacing its ${count(copy.replaced)}. Eclipse's own Shines in that file are lost.` : '.') +
+        "\n\nYour Sunshine save stays as it is, and your current memory card is backed up first."
+    });
+    if (answer.response !== 1) return { cancelled: true };
+    const result = gciSave.copyToEclipse(directory, from, to);
+    log(`Copied Sunshine file ${'ABC'[from]} to Super Mario Eclipse file ${'ABC'[to]}.${result.previous ? ` Previous saves: ${result.previous}` : ''}`);
+    return { from, to, copied: result.copied };
+  }));
   // The Shines and blue coins in each file of a backup's saves, for the Saves page's backup picker.
   ipcMain.handle('backup-progress', (_event, id) => gciSave.cardProgress(path.join(saves.backupFolder(id), 'files')));
   ipcMain.handle('restore-saves', async (_event, id) => {

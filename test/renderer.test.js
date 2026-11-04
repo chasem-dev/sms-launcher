@@ -272,6 +272,33 @@ test('Dolphin save import offers a chooser and drop of one or more saves, report
   assert.equal(ui.calls.length, 3);
 });
 
+test('Copy Sunshine progress to Eclipse lists the Sunshine files with progress and copies the chosen one', async () => {
+  const data = state(), ui = await renderer(data), copies = [];
+  let info = { sunshine: null, eclipse: null };
+  Object.assign(ui.window.sms, {
+    eclipseCopyInfo: async () => info,
+    copyToEclipse: async (from, to) => { copies.push([from, to]); return { from, to, copied: { shines: 11, blueCoins: 26 } }; }
+  });
+  await ui.run('loadEclipseCopy()');
+  assert.equal(ui.elements.get('eclipse-copy').hidden, true);
+  info = { sunshine: [null, { shines: 11, blueCoins: 26 }, { shines: 1, blueCoins: 1 }], eclipse: [{ shines: 130, blueCoins: 2 }, null, null] };
+  await ui.run('loadEclipseCopy()');
+  assert.equal(ui.elements.get('eclipse-copy').hidden, false);
+  assert.equal(ui.elements.get('eclipse-copy-from').textContent, 'File B · ★ 11 · 26 blue coinsFile C · ★ 1 · 1 blue coin');
+  assert.equal(ui.elements.get('eclipse-copy-to').textContent, 'File A · ★ 130 · 2 blue coinsFile B · EmptyFile C · Empty');
+  assert.equal(ui.elements.get('eclipse-copy-from').value, '1');
+  assert.equal(ui.elements.get('eclipse-copy-to').value, '1');
+  ui.elements.get('eclipse-copy-from').value = '2';
+  ui.elements.get('eclipse-copy-from').dispatch('change');
+  assert.equal(ui.elements.get('eclipse-copy-to').value, '2');
+  await ui.click('eclipse-copy-button');
+  assert.deepEqual(copies, [[2, 2]]);
+  assert.match(ui.elements.get('eclipse-copy-result').textContent, /Eclipse's file C now has Sunshine's 11 Shines\. Turn on Super Mario Eclipse under Gameplay/);
+  data.active = { label: 'Play Super Mario Sunshine' };
+  await ui.refresh();
+  assert.equal(ui.elements.get('eclipse-copy-button').disabled, true);
+});
+
 test('installed play is unavailable before setup, without a disc, or while busy', async () => {
   for (const patch of [{ binaryReady: false, config: { ...state().config, completedSetup: false } }, { romReady: false }]) {
     const ui = await renderer({ ...state(), ...patch });

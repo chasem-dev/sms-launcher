@@ -467,7 +467,7 @@ function renderPanel() {
     : mario ? '' : `${character.about} ${character.name}'s colours can't be changed yet.`;
 }
 
-// Player 2 in co-op (Play co-op, under ▾ beside Play): an outfit chosen here, or the game's own Luigi.
+// Player 2 in split-screen co-op (START on another controller): an outfit chosen here, or the game's own Luigi.
 // The open outfit is made player 2, or no longer is.
 function renderCoop(outfit) {
   const { slots, active, coop } = state.outfits, chosen = coop === active, other = coop !== null && !chosen ? slots[coop] : null;
@@ -479,7 +479,7 @@ function renderCoop(outfit) {
   $('outfit-coop').classList.toggle('on', chosen);
   const toggle = $('outfit-coop-toggle');
   toggle.textContent = chosen ? 'Not player 2' : 'Make player 2';
-  toggle.title = chosen ? `Player 2 is the game's own Luigi again, not ${outfit.name}` : `Player 2 plays as ${outfit.name} in Play co-op`;
+  toggle.title = chosen ? `Player 2 is the game's own Luigi again, not ${outfit.name}` : `Player 2 plays as ${outfit.name} in split-screen co-op`;
 }
 $('outfit-coop-toggle').addEventListener('click', () => {
   const { active, coop } = state.outfits;

@@ -168,8 +168,13 @@ function readGciFiles(files) {
 }
 
 function importGci(converted, saveDir, backups = saves.backupRoot()) {
+  return writeCardFile(converted, saveDir, backups, 'before-dolphin-import');
+}
+
+// A game save file (name, data, stat) put on the card, with its index entry, after a verified backup.
+function writeCardFile(converted, saveDir, backups, reason) {
   // Complete all validation and a verified backup before changing the card.
-  const previous = saves.backupSaves(saveDir, backups, 'before-dolphin-import');
+  const previous = saves.backupSaves(saveDir, backups, reason);
   const indexFile = path.join(saveDir, 'index.txt');
   const index = fs.existsSync(indexFile) ? fs.readFileSync(indexFile, 'utf8') : '';
   const entries = index ? index.split('\n') : [];
@@ -221,4 +226,68 @@ function importGci(converted, saveDir, backups = saves.backupRoot()) {
   return { name: converted.name, directory: saveDir, previous: previous.directory || null };
 }
 
-module.exports = { convertGci, readGci, readGciFiles, importGci, fileProgress, cardProgress };
+// Sets a block's two checksums (the game's TCardSector::setCheckSum, as checksumFailures reads them).
+function writeChecksum(block) {
+  let sum = 0, inverted = 0;
+  for (let offset = 0; offset < BLOCK - 4; offset += 2) {
+    const word = block.readUInt16BE(offset);
+    sum = (sum + word) & 0xffff;
+    inverted = (inverted + (word ^ 0xffff)) & 0xffff;
+  }
+  block.writeUInt16BE(sum, BLOCK - 4);
+  block.writeUInt16BE(inverted, BLOCK - 2);
+}
+
+function readCardSave(saveDir, game) {
+  const base = path.join(saveDir, game.file);
+  let data;
+  try { data = fs.readFileSync(`${base}.dat`); } catch (error) { if (error.code === 'ENOENT') return null; throw error; }
+  if (data.length !== SIZE) throw new Error(`Your ${game.title} save is not a ${SIZE / BLOCK}-block game save, so it was left as it is.`);
+  let stat;
+  try { stat = fs.readFileSync(`${base}.stat`); } catch (error) { if (error.code !== 'ENOENT') throw error; }
+  if (!stat || stat.length !== 0x6c) throw new Error(`Your ${game.title} save has no valid card status file, so it was left as it is.`);
+  return { data, stat, files: fileProgress(data) };
+}
+
+// Both games' saves on the card, for copying Sunshine progress into Eclipse: each one's three files
+// (fileProgress), or null for a game with no save there.
+function eclipseCopyInfo(saveDir) {
+  const sunshine = readCardSave(saveDir, GAMES.GMSE01), eclipse = readCardSave(saveDir, GAMES.GMSE04);
+  return { sunshine: sunshine && sunshine.files, eclipse: eclipse && eclipse.files };
+}
+
+// Super Mario Eclipse keeps Sunshine's save layout: Shines 0-119, the blue coins and the other flags mean the same in
+// both games, and Eclipse's own Shines are in bytes Sunshine leaves zero (BetterSMS extendcount.cpp). So Sunshine's file
+// `from` (0-2 for A-C) copies into Eclipse's file `to` whole: both sectors of the pair, as written, with their write counts.
+// Eclipse's other files and its options stay. Without an Eclipse save yet, one is made from Sunshine's: its options
+// sector (Eclipse writes its own banner over it with its next save), the copied file, and two empty files.
+function sunshineToEclipse(saveDir, from, to) {
+  if (![0, 1, 2].includes(from) || ![0, 1, 2].includes(to)) throw new Error('Choose files A, B or C.');
+  const sunshine = readCardSave(saveDir, GAMES.GMSE01);
+  if (!sunshine) throw new Error('There is no Super Mario Sunshine save on this memory card to copy.');
+  if (!sunshine.files[from]) throw new Error(`Super Mario Sunshine's file ${'ABC'[from]} has no saved progress to copy.`);
+  const eclipse = readCardSave(saveDir, GAMES.GMSE04);
+  let data, stat;
+  if (eclipse) {
+    data = Buffer.from(eclipse.data);
+    stat = eclipse.stat;
+  } else {
+    data = Buffer.alloc(SIZE);
+    sunshine.data.copy(data, 0, 0, BLOCK);
+    for (let sector = 1; sector < 7; sector++) writeChecksum(data.subarray(sector * BLOCK, (sector + 1) * BLOCK));
+    // The card file's owner (GMSE, maker 04) is what keeps Eclipse's save apart on the card.
+    stat = Buffer.from(sunshine.stat);
+    stat.write('04', 0x2c, 'latin1');
+  }
+  sunshine.data.copy(data, (1 + 2 * to) * BLOCK, (1 + 2 * from) * BLOCK, (3 + 2 * from) * BLOCK);
+  return { name: GAMES.GMSE04.file, game: 'eclipse', title: GAMES.GMSE04.title, data, stat,
+    copied: sunshine.files[from], replaced: eclipse ? eclipse.files[to] : null };
+}
+
+function copyToEclipse(saveDir, from, to, backups = saves.backupRoot()) {
+  const copy = sunshineToEclipse(saveDir, from, to);
+  const result = writeCardFile(copy, saveDir, backups, 'before-eclipse-copy');
+  return { ...result, copied: copy.copied, replaced: copy.replaced };
+}
+
+module.exports = { convertGci, readGci, readGciFiles, importGci, fileProgress, cardProgress, eclipseCopyInfo, sunshineToEclipse, copyToEclipse };

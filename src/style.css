@@ -547,6 +547,16 @@ pre { height: 120px; margin: 0; padding: 12px; overflow: auto; border-radius: 8p
 #pane-saves .dolphin-save-drop { margin: 0; }
 #pane-saves .dolphin-save-drop .helper { display: block; margin: 4px 0 10px; }
 #dolphin-import-result { margin-top: 8px; }
+.eclipse-copy { margin-top: 14px; padding: 16px; border: 1px solid #ddd3f3; border-radius: 14px; background: #f7f4fd; }
+.eclipse-copy > strong { color: #334b51; font-size: 13px; }
+.eclipse-copy > .helper { display: block; margin: 4px 0 10px; }
+.eclipse-copy-row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px 12px; }
+.eclipse-copy-row .backup-picker { flex: 1 1 220px; display: grid; gap: 4px; min-width: 0; margin: 0; }
+.eclipse-copy-row select { min-width: 0; width: 100%; }
+.eclipse-copy-arrow { padding-bottom: 9px; color: #7d6aa8; font-weight: 700; }
+.eclipse-copy-row > button { flex: none; }
+#eclipse-copy-result:empty { display: none; }
+#eclipse-copy-result { margin: 10px 0 0; }
 .dolphin-import-done { padding: 14px 16px; border: 1px solid #bfe3d5; border-radius: 12px; background: #f2fbf7; }
 .dolphin-import-head { display: flex; align-items: center; gap: 10px; }
 .dolphin-import-head > div { flex: 1; display: grid; gap: 2px; min-width: 0; }
@@ -641,6 +651,9 @@ pre { height: 120px; margin: 0; padding: 12px; overflow: auto; border-radius: 8p
 .dark .changelog-change:focus-visible { outline-color: #7fd3d6; }
 .dark .controls-note h2 { color: #f3e2a8; }
 .dark .dolphin-save-drop { border-color: #4f97a3; background: #10303f; }
+.dark .eclipse-copy { border-color: #4a3f73; background: #1b2240; }
+.dark .eclipse-copy > strong { color: #e6f2f4; }
+.dark .eclipse-copy-arrow { color: #b6a6e6; }
 .dark .dolphin-save-drop.drag-over { border-color: #7fd3d6; background: #15414f; }
 .dark .dolphin-import-done { border-color: #2b5a4c; background: #102c2a; }
 .dark .dolphin-import-head strong { color: #c9f0e0; }

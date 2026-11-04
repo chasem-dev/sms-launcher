@@ -81,7 +81,7 @@ onPage('settings', {
   },
   hide: () => stopCapture()
 });
-onPage('saves', { show: () => loadSaveStates() });
+onPage('saves', { show: () => { loadSaveStates(); loadEclipseCopy(); } });
 
 // --- Controls: key and controller bindings (src/bindings.js). keyBindings and padBindings hold only the
 // controls the player changed.
@@ -505,7 +505,7 @@ function taskName(label) {
 function backupReason(reason) {
   return ({ manual: 'Manual backup', 'before-play': 'Before playing', 'after-play': 'After playing',
     'before-restore': 'Before restoring', 'before-cleanup': 'Before cleanup',
-    'before-dolphin-import': 'Before Dolphin import',
+    'before-dolphin-import': 'Before Dolphin import', 'before-eclipse-copy': 'Before copying to Eclipse',
     'before-port-update': 'Before update', 'before-tools-change': 'Before changing build tools' })[reason] || 'Backup';
 }
 
@@ -802,6 +802,7 @@ function refresh(data) {
   $('import-dolphin-save').disabled = Boolean(data.active);
   $('dolphin-save-drop').setAttribute('aria-disabled', String(Boolean(data.active)));
   $('restore-saves').disabled = Boolean(data.active) || !data.backups.length;
+  $('eclipse-copy-button').disabled = Boolean(data.active) || $('eclipse-copy').hidden;
   const selectedBackup = $('backup-list').value;
   $('backup-list').replaceChildren(...data.backups.map(backup => {
     const option = document.createElement('option');
@@ -1861,6 +1862,7 @@ async function importDolphinSave(files) {
       note.textContent = result.skipped.length ? `Skipped ${result.skipped.map(save => `${save.file} (${save.reason})`).join(', ')}.` : '';
       resultText.replaceChildren(...result.imported.map(dolphinImportSummary), ...result.skipped.length ? [note] : []);
     }
+    await loadEclipseCopy();
     await sync();
   } catch (error) {
     const note = document.createElement('p'); note.className = 'dolphin-import-error'; note.textContent = errorText(error);
@@ -1868,6 +1870,42 @@ async function importDolphinSave(files) {
   }
 }
 $('import-dolphin-save').addEventListener('click', () => importDolphinSave());
+
+// Copy Sunshine progress to Eclipse (Saves): shown while the card has a Sunshine file with progress.
+let eclipseCopyTo = null;  // the Eclipse file picked, else the Sunshine file's letter
+async function loadEclipseCopy() {
+  let info;
+  try { info = await window.sms.eclipseCopyInfo(); } catch (_) { info = null; }
+  const files = info?.sunshine || [];
+  $('eclipse-copy').hidden = !files.some(Boolean);
+  const label = (file, i) => `File ${'ABC'[i]} · ${file ? `★ ${file.shines} · ${file.blueCoins} blue coin${file.blueCoins === 1 ? '' : 's'}` : 'Empty'}`;
+  const option = (value, text) => Object.assign(document.createElement('option'), { value, textContent: text });
+  const from = $('eclipse-copy-from').value;
+  const sources = files.flatMap((file, i) => file ? [String(i)] : []);
+  $('eclipse-copy-from').replaceChildren(...sources.map(i => option(i, label(files[i], i))));
+  $('eclipse-copy-to').replaceChildren(...[0, 1, 2].map(i => option(i, label(info?.eclipse?.[i] || null, i))));
+  $('eclipse-copy-from').value = sources.includes(from) ? from : sources[0] || '';
+  $('eclipse-copy-to').value = eclipseCopyTo ?? ($('eclipse-copy-from').value || '0');
+  $('eclipse-copy-button').disabled = Boolean(current?.active) || !sources.length;
+}
+$('eclipse-copy-from').addEventListener('change', () => { eclipseCopyTo = null; $('eclipse-copy-to').value = $('eclipse-copy-from').value; });
+$('eclipse-copy-to').addEventListener('change', () => { eclipseCopyTo = $('eclipse-copy-to').value; });
+$('eclipse-copy-button').addEventListener('click', async () => {
+  if (current?.active) return;
+  const result = $('eclipse-copy-result');
+  result.textContent = '';
+  try {
+    const done = await window.sms.copyToEclipse(Number($('eclipse-copy-from').value), Number($('eclipse-copy-to').value));
+    if (done.cancelled) result.textContent = 'Copy cancelled.';
+    else {
+      const eclipseOn = Boolean(current?.config?.settings?.eclipse);
+      result.textContent = `Copied: Eclipse's file ${'ABC'[done.to]} now has Sunshine's ${done.copied.shines} Shine${done.copied.shines === 1 ? '' : 's'}. ` +
+        (eclipseOn ? 'Start the game and choose that file.' : 'Turn on Super Mario Eclipse under Gameplay, then choose that file.');
+    }
+  } catch (error) { result.textContent = errorText(error); }
+  await loadEclipseCopy();
+  await sync();
+});
 // Steam, the banner on Play: Add to Steam while the launcher can add
 // itself and is not in the library yet, then a tick once it is there. Selecting
 // the tick updates the shortcut's artwork and Skip Launcher. A shortcut made by
@@ -2057,7 +2095,7 @@ $('backup-list').addEventListener('change', showBackupProgress);
 
 $('restore-saves').addEventListener('click', async () => {
   setMessage('');
-  try { await window.sms.restoreSaves($('backup-list').value); await sync(); }
+  try { await window.sms.restoreSaves($('backup-list').value); await loadEclipseCopy(); await sync(); }
   catch (error) { showError(error); await sync(); }
 });
 

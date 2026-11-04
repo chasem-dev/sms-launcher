@@ -291,3 +291,79 @@ test('a card\'s saves give each file\'s Shines and blue coins, from the copy the
     assert.deepEqual(cardProgress(dir), [{ game: 'eclipse', title: 'Super Mario Eclipse', files: fileProgress(data) }]);
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });
+
+test('copies a Sunshine file into Eclipse whole, making Eclipse\'s save when it has none', context => {
+  const { eclipseCopyInfo, copyToEclipse, fileProgress } = require('../src/gci-save');
+  const { card, backups } = temporary(context);
+  const sunshine = fixture();
+  // File B: 20 Shines, both copies intact (the newer one is the second)
+  setSector(sunshine, 3, sector => { sector.writeUInt32BE(5, 0); sector.writeUInt32BE(4, 4); sector.writeUInt16BE(19, 0x1c); });
+  setSector(sunshine, 4, sector => { sector.writeUInt32BE(6, 0); sector.writeUInt32BE(4, 4); sector.writeUInt16BE(20, 0x1c); });
+  importGci(convertGci(sunshine), card, backups);
+  const before = readCard(card);
+  assert.deepEqual(eclipseCopyInfo(card), { sunshine: [{ shines: 3, blueCoins: 0 }, { shines: 20, blueCoins: 0 }, null], eclipse: null });
+
+  const result = copyToEclipse(card, 1, 0, backups);
+  assert.deepEqual(result.copied, { shines: 20, blueCoins: 0 });
+  assert.equal(result.replaced, null);
+  const after = readCard(card);
+  const data = after['GMSE04_super_mario_sunshine.dat'], source = before['super_mario_sunshine.dat'];
+  assert.equal(data.length, 7 * 0x2000);
+  assert.deepEqual(data.subarray(0, 0x2000), source.subarray(0, 0x2000));  // Sunshine's options sector
+  assert.deepEqual(data.subarray(0x2000, 0x6000), source.subarray(0x6000, 0xa000));  // file B's pair, as written
+  // files B and C empty, as the game makes them: zeros and a valid checksum
+  for (let sector = 3; sector < 7; sector++) {
+    const block = data.subarray(sector * 0x2000, (sector + 1) * 0x2000);
+    assert.ok(block.subarray(0, 0x1ffc).every(byte => byte === 0));
+    assert.equal(block.readUInt32BE(0x1ffc), 0x0000f002);
+  }
+  assert.deepEqual(fileProgress(data), [{ shines: 20, blueCoins: 0 }, null, null]);
+  const stat = after['GMSE04_super_mario_sunshine.stat'];
+  assert.equal(stat.toString('latin1', 0x28, 0x2e), 'GMSE04');
+  assert.deepEqual(Buffer.concat([stat.subarray(0, 0x2c), stat.subarray(0x2e)]),
+    Buffer.concat([before['super_mario_sunshine.stat'].subarray(0, 0x2c), before['super_mario_sunshine.stat'].subarray(0x2e)]));
+  assert.equal(after['index.txt'].toString(), 'super_mario_sunshine\nGMSE04_super_mario_sunshine\n');
+  // Sunshine's save is untouched, and the card as it was is in a backup
+  assert.deepEqual(after['super_mario_sunshine.dat'], source);
+  const backup = saves.listBackups(backups).find(item => item.id === path.basename(result.previous));
+  assert.equal(backup.reason, 'before-eclipse-copy');
+});
+
+test('copying into an existing Eclipse save replaces only the chosen file', context => {
+  const { eclipseCopyInfo, copyToEclipse } = require('../src/gci-save');
+  const { card, backups } = temporary(context);
+  const ecl = eclipse();
+  setSector(ecl, 0, sector => sector.write('Eclipse options', 0));
+  setSector(ecl, 3, sector => { sector.writeUInt32BE(9, 0); sector.writeUInt32BE(4, 4); sector.writeUInt16BE(150, 0x1c); });
+  importGci(convertGci(ecl), card, backups);
+  importGci(convertGci(fixture()), card, backups);
+  const before = readCard(card);
+  assert.deepEqual(eclipseCopyInfo(card).eclipse, [{ shines: 3, blueCoins: 0 }, { shines: 150, blueCoins: 0 }, null]);
+
+  const result = copyToEclipse(card, 0, 2, backups);
+  assert.equal(result.replaced, null);
+  const after = readCard(card);
+  const data = after['GMSE04_super_mario_sunshine.dat'], old = before['GMSE04_super_mario_sunshine.dat'];
+  assert.deepEqual(data.subarray(0, 0xa000), old.subarray(0, 0xa000));  // options, files A and B kept
+  assert.deepEqual(data.subarray(0xa000), before['super_mario_sunshine.dat'].subarray(0x2000, 0x6000));
+  assert.deepEqual(after['GMSE04_super_mario_sunshine.stat'], before['GMSE04_super_mario_sunshine.stat']);
+  assert.deepEqual(after['index.txt'], before['index.txt']);
+  assert.deepEqual(eclipseCopyInfo(card).eclipse, [{ shines: 3, blueCoins: 0 }, { shines: 150, blueCoins: 0 }, { shines: 3, blueCoins: 0 }]);
+  assert.deepEqual(copyToEclipse(card, 0, 1, backups).replaced, { shines: 150, blueCoins: 0 });
+});
+
+test('copying to Eclipse needs a Sunshine file with progress and leaves the card alone otherwise', context => {
+  const { sunshineToEclipse, copyToEclipse } = require('../src/gci-save');
+  const { card, backups } = temporary(context);
+  fs.mkdirSync(card);
+  assert.throws(() => copyToEclipse(card, 0, 0, backups), /no Super Mario Sunshine save/);
+  importGci(convertGci(fixture()), card, backups);
+  const before = readCard(card);
+  assert.throws(() => copyToEclipse(card, 1, 1, backups), /file B has no saved progress/);
+  assert.throws(() => sunshineToEclipse(card, 3, 0), /A, B or C/);
+  assert.throws(() => sunshineToEclipse(card, 0, '0'), /A, B or C/);
+  fs.writeFileSync(path.join(card, 'GMSE04_super_mario_sunshine.dat'), Buffer.alloc(0x2000));
+  assert.throws(() => copyToEclipse(card, 0, 0, backups), /not a 7-block game save/);
+  fs.rmSync(path.join(card, 'GMSE04_super_mario_sunshine.dat'));
+  assert.deepEqual(readCard(card), before);
+});

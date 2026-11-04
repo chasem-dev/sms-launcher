@@ -1427,8 +1427,9 @@ async function play(installation = null, session = null) {
   // and draws them as the characters they play (Eclipse plays as its own)
   if (session && session.mode !== 'coop' && !settings.eclipse && port.gameFeatures(root).onlineCharacters)
     await makeCharactersForOnline(root, rom);
-  // Co-op: player 2 as the outfit chosen for them on the Characters page
-  if (session?.mode === 'coop') {
+  // Co-op: player 2 as the outfit chosen for them on the Characters page. A game with co-op always on
+  // (coopAlways) takes a second player in any game alone, not only from Play co-op.
+  if (session?.mode === 'coop' || (!session && port.gameFeatures(root).coopAlways)) {
     const playerTwo = await coopPlayerTwo(rom, disc, root, settings);
     Object.assign(env, playerTwo.env);
     log(`Co-op: player 2 presses START on another controller to join as ${playerTwo.name}, and holds START to leave.`);
@@ -2036,9 +2037,10 @@ async function playDirectly() {
   return true;
 }
 
-// Split-screen co-op: one game, two players on this computer. The game runs as ever with the first player
-// on the keyboard or a controller; a second player joins by pressing Start on another controller (SMS_COOP).
-// Plain Play never takes a second player, so a controller's Start there is only ever the pause menu.
+// Split-screen co-op from Play co-op, for game versions before co-op was always on (coopAlways): one game,
+// two players on this computer. The game runs as ever with the first player on the keyboard or a
+// controller; a second player joins by pressing Start on another controller (SMS_COOP). In those versions
+// plain Play never takes a second player. Newer games take one in every game, and the menu hides Play co-op.
 async function playCoop() {
   const root = requireRepo();
   if (fs.existsSync(port.binaryPath(root, config.settings)) && !port.gameFeatures(root).coop && !config.settings.autoUpdate)

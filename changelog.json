@@ -21,7 +21,8 @@
       "Maximizing the launcher now leaves the Windows taskbar in view: the button beside minimize maximizes and restores the window instead of making it full screen. F11 still switches full screen.",
       "Fixed Download port source failing on drives that can't make hard links, such as an SD card or USB drive formatted exFAT (often D: on a handheld): unpacking the build tools stopped with thousands of \"Invalid argument\" errors. There, the build tools now unpack more slowly, with copies in place of links.",
       "Updates free more disk space: the game's first install folder is now removed once two updates have replaced it, like other old versions, with your HD packs kept, and so are game builds that a rebuild replaced or that didn't finish. Before, these stayed and could take several GB.",
-      "Settings now use the game's own names for the options its settings menu also has, so they match: Resolution, Anisotropic filtering, Upscaler, Aspect ratio, V-Sync, Fullscreen, Shader warm-up and more, with their choices named as in the game."
+      "Settings now use the game's own names for the options its settings menu also has, so they match: Resolution, Anisotropic filtering, Upscaler, Aspect ratio, V-Sync, Fullscreen, Shader warm-up and more, with their choices named as in the game.",
+      "Play co-op is gone from the menu beside Play: with the game update, a second player can join any game. The Characters page still picks who player 2 plays as."
     ],
     "game": [
       "Fixed Goop sometimes not cleaning",
@@ -43,7 +44,8 @@
       "Super Mario Eclipse radar: the secret courses of Lancia Peaks and Erto Rock, and three in Peach's Castle, now show their own course on the radar and the full map instead of one of Super Mario Sunshine's secret courses.",
       "Pianta Village's Chain Chomplets: at 60 and 120 FPS, a Chomplet's tail pulled harder than it should while you held it (about 1.4 times as hard at 60 FPS and 2.3 times at 120). It now pulls the same as at 30 FPS at every frame rate.",
       "Split-screen co-op: going into or out of a building in Delfino Plaza, like the raccoons' blue coin shop, no longer sends the other player straight back through the door. Before, the players could end up split between inside and outside, the camera showed empty sky or looked down at nothing, and Mario could be left high above the plaza.",
-      "Precise Frame Timing in the game's settings menu (pause, then Y), under Display, on Windows: steadier frame times and less judder, for a little more CPU use. It's off by default."
+      "Precise Frame Timing in the game's settings menu (pause, then Y), under Display, on Windows: steadier frame times and less judder, for a little more CPU use. It's off by default.",
+      "Split-screen co-op is always on. In any game, a second player presses START on another controller to join, and holds START for a second and a half to leave, and the screen goes back to one. A card at the top of the screen says what to press. Until it joins, another controller no longer moves Mario. A START pressed during a load, a cutscene or the pause menu joins as soon as play starts, so there's no need to press it over and over. If player 2's controller disconnects, Luigi waits 10 seconds for it to come back. To move Mario to another controller, hold START on it."
     ]
   },
   "releases": [

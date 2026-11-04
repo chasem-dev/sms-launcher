@@ -223,6 +223,17 @@ test('Play co-op starts the game for two, once the game version has co-op', asyn
   assert.deepEqual(ui.calls, ['playCoop']);
 });
 
+test('a game with co-op always on has no Play co-op: a second player joins any game', async () => {
+  const data = state(); data.game.needsUpdate = false; data.features = { coop: true, coopAlways: true };
+  const ui = await renderer(data);
+  assert.equal(ui.elements.get('menu-coop').hidden, true);
+  assert.doesNotMatch(ui.elements.get('play-more-hint').textContent, /co-op/);
+  // an older game version still has it
+  data.features = { coop: true };
+  await ui.refresh();
+  assert.equal(ui.elements.get('menu-coop').hidden, false);
+});
+
 test('controller Back closes the menu before anything else', async () => {
   const ui = await renderer();
   ui.elements.get('play-menu').showPopover();

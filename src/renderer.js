@@ -596,7 +596,7 @@ function showWizardStep(data) {
 // the big button's marked Default. Pending HD setup offers Play now beside Finish HD setup the same way.
 // A game not built for these settings yet (Super Mario Eclipse just switched on, say) can only Prepare &
 // play, so the menu offers Prepare only beside it, to get it ready and play later.
-// The menu also always has Play co-op (split screen for two), so it is there once the game is set up.
+// The menu also has Play co-op (split screen for two) for game versions without co-op always on, so it is there once the game is set up.
 let playMenuOpen = false;
 function renderPlayMenu(data) {
   const prepare = !data.binaryReady, update = data.game.needsUpdate && !prepare, hd = needsTextureDownload(data) && !prepare;
@@ -625,6 +625,8 @@ function renderPlayMenu(data) {
   $('play-menu-note').hidden = !update;
   // co-op needs a game version that has it: Update & play brings one when there is one, and a game being set up is the newest
   const coop = Boolean(data.features?.coop), coopLater = !coop && (prepare || update && auto);
+  // a game with co-op always on takes a second player in any game: no Play co-op
+  $('menu-coop').hidden = Boolean(data.features?.coopAlways);
   $('menu-coop').disabled = !coop && !coopLater;
   $('menu-coop-detail').textContent = coop || coopLater
     ? `Split screen for two${coopLater ? prepare ? ' (sets up first)' : ` (updates to${next} first)` : ''}: player 2 presses START on a controller`

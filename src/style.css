@@ -859,6 +859,9 @@ pre { height: 120px; margin: 0; padding: 12px; overflow: auto; border-radius: 8p
 .outfit-picker[hidden] { display: none; }
 .outfit-picker > p { margin: 0 0 10px 4px; color: #17343d; font-size: 13px; font-weight: 700; }
 .outfit-picker-list { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; max-height: 330px; overflow: auto; }
+.outfit-picker-own { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 10px; padding: 10px 4px 0; border-top: 1px solid #e4eded; }
+.outfit-picker-own small { color: #5d7a81; font-size: 11px; line-height: 1.35; }
+.outfit-picker-own button { flex: none; }
 .outfit-pick { display: grid; justify-items: center; align-content: start; gap: 4px; min-width: 0; padding: 8px 4px; border: 1px solid #e4eded; border-radius: 10px; background: #fbfdfd; color: #2e4c53; font-size: 11px; font-weight: 650; white-space: normal; }
 .outfit-pick .outfit-icon { width: 40px; height: 40px; border-radius: 10px; }
 .outfit-pick:hover:not(:disabled), .outfit-pick:focus-visible { border-color: #158188; background: #e9f5f5; }
@@ -922,6 +925,8 @@ pre { height: 120px; margin: 0; padding: 12px; overflow: auto; border-radius: 8p
 .dark .outfit-p2 { background: #5c4a17; color: #f5d68a; }
 .dark .outfit-picker { border-color: #2f5468; background: #10283a; }
 .dark .outfit-picker > p { color: #e3eff2; }
+.dark .outfit-picker-own { border-color: #2a4d61; }
+.dark .outfit-picker-own small { color: #a9c3cc; }
 .dark .outfit-pick { border-color: #2a4d61; background: #132e40; color: #d7e9ee; }
 .dark .outfit-pick:hover:not(:disabled), .dark .outfit-pick:focus-visible { border-color: #1a9aa2; background: #1a4152; }
 .dark .outfit-pick small { color: #f5d68a; }

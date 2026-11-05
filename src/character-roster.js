@@ -5,6 +5,7 @@
 // model the game draws in place of the body). Nothing of the game ships with
 // the launcher: every file comes from the player's disc, or, for Luigi, from
 // the Super Mario Eclipse the launcher made from it once (port.ECLIPSE_ISO).
+// Packs the player put there themselves are offered beside them (ownPacks).
 const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
@@ -17,6 +18,7 @@ const { convert, convertSunshine } = require('./character-convert');
 const { writeFluddPlace } = require('./character-model');
 const { AAF, voiceFiles } = require('./character-voice');
 const { ECLIPSE_ISO } = require('./port');
+const { CHARACTER_ID } = require('./mario-colors');
 
 // A built character's version: made again when its builder changes.
 const STAMP = '.launcher.json';
@@ -220,16 +222,71 @@ function builtVersion(root, id) {
   try { return JSON.parse(fs.readFileSync(path.join(packsDirectory(root), id, STAMP), 'utf8')).version; } catch (_) { return null; }
 }
 
-// The roster with what is built: [{ id, name, about, ready, makeable }]. One made from Eclipse can be made
-// only once Eclipse is set up; one made stays made without it.
+const isFile = file => Boolean(fs.statSync(file, { throwIfNoEntry: false })?.isFile());
+
+// A pack's name as the game shows it: the first line of its name file, or the id with a capital.
+function packName(file, id) {
+  let line = '';
+  try { line = fs.readFileSync(file, 'utf8').replace(/^\uFEFF/, '').split(/\r?\n/, 1)[0].trim().slice(0, 63); } catch (_) {}
+  if (line) return line;
+  const name = id.replace(/[_-]/g, ' ');
+  return name.charAt(0).toUpperCase() + name.slice(1);
+}
+
+// The player's own packs in mods/characters, found as the game finds them: a folder <id>/ with model.szs and
+// name.txt, or a loose <id>.szs with <id>.txt beside it. The launcher's have its stamp and aren't theirs. The
+// game takes ids in any case and the first of them by name, so these are kept by id in lower case: a map of
+// { id, name, file }. Mario is the disc's. An id settings can't keep is left to F4 in the game.
+function ownPacks(root) {
+  const packs = new Map(), directory = root ? packsDirectory(root) : null;
+  let names;
+  try { names = fs.readdirSync(directory).sort(); } catch (_) { return packs; }
+  for (const entry of names) {
+    const folder = path.join(directory, entry);
+    let id, file, nameFile;
+    if (isFile(path.join(folder, 'model.szs'))) {
+      if (fs.existsSync(path.join(folder, STAMP))) continue;
+      [id, file, nameFile] = [entry, path.join(folder, 'model.szs'), path.join(folder, 'name.txt')];
+    } else if (entry.endsWith('.szs') && isFile(folder)) {
+      id = entry.slice(0, -4);
+      [file, nameFile] = [folder, path.join(directory, `${id}.txt`)];
+    } else continue;
+    const key = id.toLowerCase();
+    if (!CHARACTER_ID.test(id) || key === 'mario' || packs.has(key)) continue;
+    packs.set(key, { id, name: packName(nameFile, id), file });
+  }
+  return packs;
+}
+
+const OWN_ABOUT = 'Your own character pack, from the characters folder.';
+const ownEntry = ({ id, name }) => ({ id, name, about: OWN_ABOUT, ready: true, makeable: true, own: true });
+
+// The roster with what is built, then the player's own packs: [{ id, name, about, ready, makeable, own }]. One
+// made from Eclipse can be made only once Eclipse is set up; one made stays made without it. A pack of the
+// player's own in a character's place is what the game plays, so it is shown there.
 function list(root) {
-  return ROSTER.map(character => {
+  const own = ownPacks(root);
+  const offered = ROSTER.map(character => {
     const { id, name, about, version } = character;
+    if (own.has(id)) return ownEntry({ ...own.get(id), id });
     const ready = id === 'mario' || Boolean(root && builtVersion(root, id) === version && fs.existsSync(path.join(packsDirectory(root), id, 'model.szs')));
     // Eclipse's, which stays when Eclipse is turned off (every game version shares it)
     const makeable = character.from !== 'eclipse' || Boolean(root && fs.existsSync(path.join(root, ECLIPSE_ISO)));
     return { id, name, about, ready, makeable };
   });
+  return [...offered, ...[...own.values()].filter(pack => !ROSTER.some(c => c.id === pack.id.toLowerCase())).map(ownEntry)];
+}
+
+// Whether an outfit can stay `id`'s. With the packs out of reach (a game not set up, a link to a drive that
+// isn't there) the player's own can't be looked for, and an outfit isn't lost to that.
+function offers(root, id) {
+  if (ROSTER.some(c => c.id === id) || !root || !fs.existsSync(packsDirectory(root))) return true;
+  return list(root).some(c => c.id === id);
+}
+
+// The file a character's pack is read from.
+function modelFile(root, id) {
+  return ownPacks(root).get(id.toLowerCase())?.file || path.join(packsDirectory(root), id, 'model.szs');
 }
 
 // The packs the launcher made (its stamp) of characters it no longer offers, removed: the game would
@@ -249,8 +306,9 @@ function removeRetired(root) {
   return removed;
 }
 
-function find(id) {
-  const character = ROSTER.find(c => c.id === id);
+// A character of the launcher's, or with `root` a pack of the player's own (which has nothing to make).
+function find(id, root = null) {
+  const character = list(root).find(c => c.id === id && c.own) || ROSTER.find(c => c.id === id);
   if (!character) throw new Error(`There is no character ${id}.`);
   return character;
 }
@@ -258,7 +316,7 @@ function find(id) {
 // Makes a character from the disc (or Eclipse, for one from it) into mods/characters/<id>/, all at once
 // (a failed build leaves what was there).
 function build(root, rom, id, progress = () => {}) {
-  const character = find(id);
+  const character = find(id, root);
   if (!character.build) return;
   const eclipseIso = character.from === 'eclipse' ? root && path.join(root, ECLIPSE_ISO) : null;
   if (character.from === 'eclipse' && !(eclipseIso && fs.existsSync(eclipseIso)))
@@ -308,9 +366,7 @@ function archive(root, rom, id) {
     const disc = new Disc(rom);
     try { return disc.file('data/mario.szs'); } finally { disc.close(); }
   }
-  return fs.readFileSync(path.join(packsDirectory(root), id, 'model.szs'));
+  return fs.readFileSync(modelFile(root, id));
 }
 
-const ID = /^[a-z0-9][a-z0-9_-]{0,47}$/;
-
-module.exports = { ROSTER, list, build, install, archive, find, packsDirectory, ID, removeRetired, SET_ASIDE };
+module.exports = { ROSTER, list, offers, build, install, archive, find, modelFile, packsDirectory, removeRetired, SET_ASIDE };

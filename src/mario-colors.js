@@ -330,7 +330,8 @@
   // An outfit deleted leaves its place empty (null), so `active` and `coop` keep pointing at theirs.
   const MAX_OUTFITS = 100, SLOT_NAME_LENGTH = 24;
   const outfitName = index => `Outfit ${index + 1}`;
-  const CHARACTER_ID = /^[a-z0-9-]{1,48}$/;
+  // A pack's folder name, as settings keep it (port.js): capitals and spaces, not a path.
+  const CHARACTER_ID = /^(?!\.)[\w .()'-]{1,48}$/;
   function slotLook(look) {
     const { inGame: _, ...rest } = normalizeLook(look);
     return rest;
@@ -380,5 +381,5 @@
     return { ...outfits, slots: added, active: index };
   }
 
-  return { REGIONS, PARTS, PRESETS, FLUDD_REGIONS, FLUDD_PRESETS, NOZZLES, MAX_OUTFITS, SLOT_NAME_LENGTH, outfitName, freeSlot, uniqueName, wearCharacter, coverage, classify, lightness, references, blendEdges, ramp, recolor, normalize, normalizeLook, normalizeOutfits, slotLook, hex };
+  return { REGIONS, PARTS, PRESETS, FLUDD_REGIONS, FLUDD_PRESETS, NOZZLES, MAX_OUTFITS, SLOT_NAME_LENGTH, CHARACTER_ID, outfitName, freeSlot, uniqueName, wearCharacter, coverage, classify, lightness, references, blendEdges, ramp, recolor, normalize, normalizeLook, normalizeOutfits, slotLook, hex };
 });

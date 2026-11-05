@@ -96,7 +96,83 @@ test('a pack of the player\'s own is never replaced by a made character', () => 
     fs.writeFileSync(path.join(own, 'model.szs'), 'mine');
     assert.throws(() => roster.install(root, roster.find('shadow-mario'), { 'model.szs': Buffer.from('made') }), /of your own/);
     assert.equal(fs.readFileSync(path.join(own, 'model.szs'), 'utf8'), 'mine');
-    assert.equal(roster.list(root).find(c => c.id === 'shadow-mario').ready, false);
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
+});
+
+// A characters folder holding these files ({ 'waluigi/model.szs': text }), for `use`.
+function withPacks(files, use) {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'roster-'));
+  try {
+    for (const [name, text] of Object.entries(files)) {
+      const file = path.join(roster.packsDirectory(root), name);
+      fs.mkdirSync(path.dirname(file), { recursive: true });
+      fs.writeFileSync(file, text);
+    }
+    return use(root);
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
+}
+const own = root => roster.list(root).filter(c => c.own);
+
+test('the player\'s own packs are listed after the launcher\'s, as the game finds them', () => withPacks({
+  'waluigi/model.szs': 'pack', 'waluigi/name.txt': '\uFEFFWaluigi Deluxe  \r\nsecond line\n',
+  'Dry Bones/model.szs': 'pack',
+  'dark_mario-2.szs': 'loose',
+  'wario.szs': 'loose', 'wario.txt': 'Wario\n',
+}, root => {
+  const list = roster.list(root);
+  assert.deepEqual(list.slice(0, roster.ROSTER.length).map(c => c.id), roster.ROSTER.map(c => c.id));
+  assert.deepEqual(own(root).map(({ id, name }) => [id, name]), [
+    ['Dry Bones', 'Dry Bones'], ['dark_mario-2', 'Dark mario 2'], ['waluigi', 'Waluigi Deluxe'], ['wario', 'Wario']]);
+  assert.ok(own(root).every(c => c.ready && c.makeable && c.about));
+  assert.equal(roster.archive(root, null, 'waluigi').toString(), 'pack');
+  assert.equal(roster.archive(root, null, 'wario').toString(), 'loose');
+  assert.equal(roster.find('Dry Bones', root).name, 'Dry Bones');
+  assert.throws(() => roster.find('Dry Bones'), /no character/, 'without a game folder there are no packs');
+  assert.equal(roster.build(root, null, 'waluigi'), undefined, 'a pack has nothing to make');
+}));
+
+test('what isn\'t a pack of the player\'s own is left out', () => withPacks({
+  'empty/name.txt': 'No model',
+  '.staging-x/model.szs': 'being made',
+  '.hidden.szs': 'dot',
+  'mario/model.szs': 'the disc\'s', 'MARIO.szs': 'the disc\'s',
+  'notes.txt': 'not a pack',
+  'made/model.szs': 'launcher\'s', 'made/.launcher.json': '{"version":1}',
+  'bad[name]/model.szs': 'settings can\'t keep this id',
+}, root => assert.deepEqual(own(root), [])));
+
+test('a folder and a loose pack of one id, or two ids in different case, are one character', () => withPacks({
+  'twin/model.szs': 'folder', 'twin.szs': 'loose', 'Double/model.szs': 'first', 'double/model.szs': 'second',
+}, root => {
+  assert.deepEqual(own(root).map(c => c.id), ['Double', 'twin']);
+  assert.equal(roster.archive(root, null, 'twin').toString(), 'folder');
+  assert.equal(roster.archive(root, null, 'Double').toString(), 'first');
+}));
+
+test('a pack of the player\'s own in a character\'s place is shown there, with its name, and nothing is made', () => withPacks({
+  'luigi/model.szs': 'mine', 'luigi/name.txt': 'My Luigi', 'Shadow-Mario/model.szs': 'mine too',
+}, root => {
+  const list = roster.list(root), luigi = list.find(c => c.id === 'luigi');
+  assert.equal(list.length, roster.ROSTER.length);
+  assert.deepEqual([luigi.name, luigi.ready, luigi.makeable, luigi.own], ['My Luigi', true, true, true]);
+  assert.equal(list.find(c => c.id === 'shadow-mario').own, true, 'the game takes an id in any case');
+  assert.equal(roster.archive(root, null, 'shadow-mario').toString(), 'mine too');
+  assert.equal(roster.find('luigi', root).name, 'My Luigi');
+  assert.equal(roster.build(root, null, 'luigi'), undefined);
+  assert.equal(fs.readFileSync(path.join(roster.packsDirectory(root), 'luigi', 'model.szs'), 'utf8'), 'mine');
+}));
+
+test('a pack keeps its outfit, until it is gone from a folder that can be read', () => {
+  assert.equal(roster.offers(null, 'waluigi'), true, 'no game folder: it can\'t be looked for');
+  assert.equal(roster.offers(null, 'princess-peach'), true);
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'roster-'));
+  try {
+    assert.equal(roster.offers(root, 'waluigi'), true, 'no characters folder (a link to a drive that isn\'t there)');
+    fs.mkdirSync(path.join(roster.packsDirectory(root), 'waluigi'), { recursive: true });
+    assert.equal(roster.offers(root, 'waluigi'), false, 'its folder has no model');
+    assert.equal(roster.offers(root, 'mario'), true);
+    fs.writeFileSync(path.join(roster.packsDirectory(root), 'waluigi', 'model.szs'), 'pack');
+    assert.equal(roster.offers(root, 'waluigi'), true);
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });
 

@@ -232,9 +232,11 @@ function saveConfig() {
 
 // Outfits (mario-colors.js) are who the game starts as, in their colours. Outfits of characters the
 // launcher doesn't offer (any more) are Mario's.
+// The game folder characters are made into and packs are read from.
+function charactersRoot() { return config.repo && fs.existsSync(config.repo) ? config.repo : null; }
 function outfitsFrom(saved, look) {
-  const outfits = marioColors.normalizeOutfits(saved, look);
-  for (const slot of outfits.slots) if (slot && !characterRoster.ROSTER.some(c => c.id === slot.character)) slot.character = 'mario';
+  const outfits = marioColors.normalizeOutfits(saved, look), root = charactersRoot();
+  for (const slot of outfits.slots) if (slot && !characterRoster.offers(root, slot.character)) slot.character = 'mario';
   return outfits;
 }
 // An outfit of Mario's worn: his look is its look, with Use in the game.
@@ -252,7 +254,7 @@ function wearOutfit() {
 // Who to play as chosen in the game's own menu (by id or name), or before outfits: their outfit is worn.
 function followCharacter() {
   const chosen = String(config.settings.character || 'mario').toLowerCase();
-  const character = characterRoster.ROSTER.find(c => c.id === chosen || c.name.toLowerCase() === chosen);
+  const character = characterRoster.list(charactersRoot()).find(c => c.id.toLowerCase() === chosen || c.name.toLowerCase() === chosen);
   if (character) config.marioOutfits = marioColors.wearCharacter(config.marioOutfits, character.id, character.name, config.marioLook);
   keepMarioLook();
 }
@@ -305,10 +307,11 @@ function loadConfig() {
     // Customize Mario: the colours the player chose and the Shine shirt.
     marioLook: marioColors.normalizeLook(saved.marioLook),
     // The Character tab's outfits (up to six characters in their colours) and the one worn.
-    marioOutfits: outfitsFrom(saved.marioOutfits, saved.marioLook),
+    marioOutfits: marioColors.normalizeOutfits(saved.marioOutfits, saved.marioLook),
     // The Multiplayer window's fields, as last used.
     multiplayer: savedMultiplayer(saved.multiplayer)
   };
+  config.marioOutfits = outfitsFrom(config.marioOutfits, config.marioLook);
   followCharacter();
   if (config.installId !== saved.installId) {
     try { saveConfig(); } catch (error) { log(`Could not save preferences: ${error.message}`); }
@@ -2391,19 +2394,23 @@ function registerHandlers() {
   ipcMain.handle('mario-model', () => ({ model: marioFrom(port.validateRom(config.rom)), look: config.marioLook }));
   // The Characters page: the launcher's characters (character-roster.js), each made from the player's disc
   // the first time it is chosen, posed by its animations; the outfit worn is who the game starts as.
-  const charactersRoot = () => (config.repo && fs.existsSync(config.repo) ? config.repo : null);
   const characterData = id => {
-    const character = characterRoster.find(String(id)), root = charactersRoot(), rom = port.validateRom(config.rom);
+    const root = charactersRoot(), character = characterRoster.find(String(id), root), rom = port.validateRom(config.rom);
     if (id !== 'mario' && !characterRoster.list(root).find(c => c.id === id).ready) throw new Error(`${character.name} isn't made yet.`);
-    const stamp = id === 'mario' ? rom : fs.statSync(path.join(characterRoster.packsDirectory(root), id, 'model.szs')).mtimeMs;
-    return characterCache.get(character, stamp, () => characterRoster.archive(root, rom, id));
+    const stamp = id === 'mario' ? rom : fs.statSync(characterRoster.modelFile(root, id)).mtimeMs;
+    try { return characterCache.get(character, stamp, () => characterRoster.archive(root, rom, id)); }
+    catch (error) {
+      if (!character.own) throw error;
+      throw new Error(`${character.name}'s pack can't be read: ${error.message}`);
+    }
   };
   ipcMain.handle('characters', () => {
-    // a character no longer offered, played as: Mario again (its pack is gone)
-    const removed = charactersRoot() ? characterRoster.removeRetired(charactersRoot()) : [];
-    if (removed.length) {
-      config.marioOutfits = outfitsFrom(config.marioOutfits, config.marioLook);
-      if (removed.includes(config.settings.character)) wearOutfit();
+    // a character no longer offered, or a pack of the player's own taken out, played as: Mario again
+    if (charactersRoot()) characterRoster.removeRetired(charactersRoot());
+    const before = config.marioOutfits, outfits = outfitsFrom(before, config.marioLook);
+    if (outfits.slots.some((slot, index) => slot?.character !== before.slots[index]?.character)) {
+      config.marioOutfits = outfits;
+      wearOutfit();
       saveConfig();
     }
     return { characters: characterRoster.list(charactersRoot()).map(character => ({ ...character, stamp: characterStamp(character) })), outfits: config.marioOutfits,
@@ -2417,7 +2424,7 @@ function registerHandlers() {
     try {
       if (character.id === 'mario') { const stat = fs.statSync(config.rom); return `${stat.size}-${Math.round(stat.mtimeMs)}`; }
       if (!character.ready) return null;
-      return String(Math.round(fs.statSync(path.join(characterRoster.packsDirectory(charactersRoot()), character.id, 'model.szs')).mtimeMs));
+      return String(Math.round(fs.statSync(characterRoster.modelFile(charactersRoot(), character.id)).mtimeMs));
     } catch (_) { return null; }
   };
   const portraitsDirectory = () => path.join(app.getPath('userData'), 'outfit-portraits');
@@ -2426,7 +2433,7 @@ function registerHandlers() {
   ipcMain.handle('character-build', async (event, id) => {
     const root = charactersRoot();
     if (!root) throw new Error('Set up the game first: characters are made into its mods/characters folder.');
-    const character = characterRoster.find(String(id));
+    const character = characterRoster.find(String(id), root);
     const progress = text => { if (!event.sender.isDestroyed()) event.sender.send('character-build-progress', text); };
     await makeCharacter(root, port.validateRom(config.rom), character.id, progress);
     log(`Made ${character.name} from your disc.`);
@@ -2463,10 +2470,18 @@ function registerHandlers() {
     wearOutfit();
     saveConfig();
     if (config.settings.character !== before) {
-      const { name } = characterRoster.find(config.settings.character || 'mario');
-      log(`The game starts as ${name}.`);
+      const id = config.settings.character || 'mario';
+      // a pack out of reach has no name to go by
+      log(`The game starts as ${characterRoster.list(charactersRoot()).find(c => c.id === id)?.name || id}.`);
     }
     return config.marioOutfits;
+  });
+  // Where the player puts character packs of their own.
+  ipcMain.handle('open-characters-folder', () => {
+    const root = charactersRoot();
+    if (!root) throw new Error('Set up the game first: character packs go in its mods/characters folder.');
+    fs.mkdirSync(characterRoster.packsDirectory(root), { recursive: true });
+    return shell.openPath(characterRoster.packsDirectory(root));
   });
   ipcMain.handle('choose-repo', async () => {
     if (portableRoot) throw new Error('The portable launcher keeps its setup files in its own folder.');

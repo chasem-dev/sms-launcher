@@ -1,7 +1,8 @@
 // Characters: who the game starts as. The player's outfits (up to six) are tabs, each a character
 // in its colours; the open one is who the game starts as (F4 in the game switches between
 // characters). Each of the launcher's characters (character-roster.js) is made from the player's
-// own disc, then shown as the game draws it, standing; Mario is shown with his colours beside him
+// own disc, then shown as the game draws it, standing; packs of the player's own in the game's
+// mods/characters are offered with them; Mario is shown with his colours beside him
 // (mario-look.js). Animations shows any character in any of its animations, with the floor under
 // it and Mario beside it or over it.
 import * as THREE from '../node_modules/three/build/three.module.js';
@@ -155,8 +156,16 @@ async function choose(id) {
   renderList();
   showStage();
   // what is made now, not when the list was read (a character's builder may have changed since)
-  state.characters = (await window.sms.characters()).characters;
+  const { characters, outfits } = await window.sms.characters();
+  state.characters = characters;
   if (state.id !== id) return;
+  // a pack of the player's own taken out of the folder: its outfits are Mario's again
+  if (!characters.some(c => c.id === id)) {
+    state.outfits = outfits;
+    state.playing = worn().character;
+    renderOutfits();
+    return choose(worn().character === id ? 'mario' : worn().character);
+  }
   renderList();
   if (colouring()) return;
   const character = state.characters.find(c => c.id === id);
@@ -195,6 +204,8 @@ async function choose(id) {
 }
 
 async function loadClip() {
+  // a pack not on Mario's skeleton has none of his animations, and stands as it was modelled
+  if (!state.animation) return;
   const key = `${state.id}:${state.animation}`;
   if (!state.clips.has(key)) state.clips.set(key, await window.sms.characterAnimation(state.id, state.animation));
   if (comparing() && state.mario?.animations.includes(state.animation)) {
@@ -508,7 +519,9 @@ const PORTRAIT_DRAWING = 2;
 function portraitKey(id, look) {
   const { stamp } = characterOf(id);
   if (!stamp) return null;
-  return `${id}-${hash(`${PORTRAIT_DRAWING} ${stamp}`)}${id === 'mario' ? `-${hash(JSON.stringify(Colors.slotLook(look)))}` : ''}`;
+  // a pack of the player's own can be called anything: its key is kept to what a file name and a selector can hold
+  const name = /^[a-z0-9-]+$/.test(id) ? id : `pack-${hash(id)}`;
+  return `${name}-${hash(`${PORTRAIT_DRAWING} ${stamp}`)}${id === 'mario' ? `-${hash(JSON.stringify(Colors.slotLook(look)))}` : ''}`;
 }
 
 // Shows character `id` (in `look`) in an .outfit-icon; one still being drawn keeps the picture it had
@@ -600,7 +613,20 @@ function togglePicker(mode, anchor) {
   picker.style.left = `${Math.max(8, Math.min(at.left - box.left - 12, box.width - picker.offsetWidth - 8))}px`;
   anchor.classList.add('pressed');
   picker.querySelector('button:not(:disabled)')?.focus();
+  lookForPacks();
 }
+
+// A pack added since the list was read shows as the picker opens (and only then redraws it, as that loses the focus).
+async function lookForPacks() {
+  const before = JSON.stringify(state.characters.map(({ id, name }) => [id, name]));
+  const { characters } = await window.sms.characters().catch(() => ({}));
+  if (!characters || !picking || JSON.stringify(characters.map(({ id, name }) => [id, name])) === before) return;
+  state.characters = characters;
+  renderList();
+  renderPicker();
+  $('outfit-picker').querySelector('button:not(:disabled)')?.focus();
+}
+$('open-characters-folder').addEventListener('click', () => window.sms.openCharactersFolder().catch(error => setStatus(error.message || String(error))));
 
 function closePicker() {
   if (!picking) return;
@@ -620,7 +646,7 @@ function renderPicker() {
     button.type = 'button';
     button.className = 'outfit-pick';
     const note = building.has(character.id) ? 'Making…' : !character.ready && failed.has(character.id) ? 'Couldn\'t be made'
-      : waiting(character) ? 'Needs Eclipse' : picking === 'change' && character.id === current ? 'Wearing' : '';
+      : waiting(character) ? 'Needs Eclipse' : picking === 'change' && character.id === current ? 'Wearing' : character.own ? 'Your pack' : '';
     button.innerHTML = '<span class="outfit-icon"></span><span class="outfit-pick-name"></span><small></small>';
     portrait(button.querySelector('.outfit-icon'), character.id, character.id === 'mario' ? worn()?.look : null);
     button.querySelector('.outfit-pick-name').textContent = character.name;
@@ -707,7 +733,8 @@ for (const [view, [yaw, pitch]] of Object.entries(VIEWS))
 function setStatus(text, busy = false) {
   $('characters-status').hidden = !text;
   $('characters-status').classList.toggle('loading', busy);
-  $('characters-status-text').textContent = text;
+  // without the wrapper a message from main.js comes in
+  $('characters-status-text').textContent = String(text).replace(/^Error invoking remote method '[^']*': (?:\w*Error: )?/, '');
 }
 
 // --- Viewer --------------------------------------------------------------------

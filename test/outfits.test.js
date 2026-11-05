@@ -28,7 +28,9 @@ test('outfits keep their places, each empty or a named character and look withou
   assert.equal(slots[1], null);
   assert.equal(slots[2].name, 'Outfit 3');
   assert.equal(slots[2].character, 'princess-peach');
-  assert.equal(colors.normalizeOutfits({ slots: [{ look: {}, character: '../Luigi' }] }).slots[0].character, 'mario');
+  const character = id => colors.normalizeOutfits({ slots: [{ look: {}, character: id }] }).slots[0].character;
+  for (const path of ['../Luigi', '..', '.hidden', 'a/b', 'a\\\\b', 'x'.repeat(49)]) assert.equal(character(path), 'mario', path);
+  for (const pack of ['Dry Bones', 'wario_2', "Toad's (red)"]) assert.equal(character(pack), pack);
   assert.equal(slots[3].name.length, colors.SLOT_NAME_LENGTH);
   assert.equal(slots[4], null);
 });

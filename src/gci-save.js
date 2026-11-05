@@ -15,6 +15,12 @@ const GAMES = {
   GMSE04: { game: 'eclipse', title: 'Super Mario Eclipse', file: `GMSE04_${NAME}` },
 };
 
+// The European release. Its save is a North American one in every way the game reads (same file name, size, sectors,
+// checksums and flags), so it imports as GMSE01 once palToNorthAmerican has dealt with the one field that differs.
+const PAL = 'GMSP01';
+// Sector 0's options (TCardSector::mOptionBlock, 0x1844): the magic, one byte of option flags, then the language.
+const OPTION_LANGUAGE = 0x1849;
+
 // Eclipse's other card files, beside its game save.
 const SETTINGS = {
   super_mario_eclipse: "Super Mario Eclipse's settings",
@@ -87,7 +93,9 @@ function cardProgress(dir) {
 function convertGci(bytes) {
   const sizeError = () => new Error('Choose a Super Mario Sunshine .gci export (64-byte header and seven save blocks).');
   if (!Buffer.isBuffer(bytes) || bytes.length < HEADER) throw sizeError();
-  const game = GAMES[bytes.toString('latin1', 0, 6)];
+  const region = bytes.toString('latin1', 0, 6);
+  const id = region === PAL ? 'GMSE01' : region;
+  const game = GAMES[id];
   const filename = bytes.subarray(8, 40);
   const end = filename.indexOf(0);
   const name = filename.subarray(0, end < 0 ? 32 : end).toString('latin1');
@@ -97,7 +105,7 @@ function convertGci(bytes) {
     if (game && Object.hasOwn(SETTINGS, name))
       throw otherFile(`This file holds ${SETTINGS[name]}, not game progress. Super Mario Eclipse keeps its progress in 04-GMSE-super_mario_sunshine.gci.`, 'Eclipse settings, not a game save');
     if (!game)
-      throw otherFile('This importer supports North American Super Mario Sunshine (01-GMSE) and Super Mario Eclipse (04-GMSE) saves. Export the matching save from Dolphin.', 'not a Sunshine or Eclipse save');
+      throw otherFile('This importer supports North American and European Super Mario Sunshine (01-GMSE, 01-GMSP) and Super Mario Eclipse (04-GMSE) saves. Export the matching save from Dolphin.', 'not a Sunshine or Eclipse save');
     if (name !== NAME)
       throw otherFile('This is not the super_mario_sunshine save. Choose the Sunshine game save exported from Dolphin.', 'not a Sunshine or Eclipse game save');
   }
@@ -115,11 +123,12 @@ function convertGci(bytes) {
     throw Object.assign(new Error(`This ${game.title} save has no saved progress in any of its three files.` +
       (game === GAMES.GMSE01 ? ' If you play Super Mario Eclipse in Dolphin, choose its 04-GMSE-super_mario_sunshine.gci instead.' : '')),
     { code: 'NO_PROGRESS', reason: `${game.title} save with no saved progress` });
+  if (region === PAL) palToNorthAmerican(data, badBlocks);
   const stat = Buffer.alloc(0x6c);
   stat.write(NAME, 0);
   stat.writeUInt32LE(data.length, 0x20);
   stat.writeUInt32LE(bytes.readUInt32BE(0x28), 0x24);
-  bytes.copy(stat, 0x28, 0, 6);
+  stat.write(id, 0x28, 'latin1');
   stat[0x2e] = bytes[7];
   stat.writeUInt32LE(icon, 0x30);
   stat.writeUInt16LE(bytes.readUInt16BE(0x30), 0x34);
@@ -127,6 +136,15 @@ function convertGci(bytes) {
   stat.writeUInt32LE(comment, 0x38);
   // The host card backend leaves derived icon offsets zero when creating saves.
   return { name: game.file, game: game.game, title: game.title, data, stat, badBlocks, shines };
+}
+
+// A European save's language means something else in the North American game, which the port is built from: Europe
+// stores it plus one (0 is the console's language), and the game takes it unchecked as an index into its five save
+// comments, so Italian (5) reads past them when the game next saves. A hand-made save can hold any number there, which
+// is how the shinehax exploit runs code on a European console. The launcher's own setting picks the language, so clear it.
+function palToNorthAmerican(data, badBlocks) {
+  data.writeUInt32BE(0, OPTION_LANGUAGE);
+  if (!badBlocks.includes(1)) writeChecksum(data.subarray(0, BLOCK));
 }
 
 function readGci(file) {

@@ -344,11 +344,34 @@ function supersededBase(base, kept) {
     fs.existsSync(path.join(base, 'launcher-source.json')) && fs.lstatSync(base).isDirectory();
 }
 
+// Character packs a version being removed holds in a folder of its own go to the version played (`root`): a
+// player's can't be downloaded again. Packs are normally shared (carryUserFiles), but not when the kept version
+// had its own folder first. A made pack of a name already there is dropped (it is made again); another
+// keeps both, this one named after its version. A move that fails keeps the version for next time.
+function keepPacks(version, root) {
+  const from = path.join(version, 'mods', 'characters'), to = path.join(root, 'mods', 'characters');
+  if (!fs.lstatSync(from, { throwIfNoEntry: false })?.isDirectory()) return;
+  for (const entry of fs.readdirSync(from)) {
+    if (entry.startsWith('.')) continue;
+    const pack = path.join(from, entry);
+    let target = path.join(to, entry);
+    if (fs.lstatSync(target, { throwIfNoEntry: false })) {
+      if (fs.existsSync(path.join(pack, '.launcher.json'))) continue;
+      const { name, ext } = path.parse(entry);
+      target = path.join(to, `${name}-${path.basename(version)}${ext}`);
+      if (fs.lstatSync(target, { throwIfNoEntry: false })) continue;
+    }
+    fs.mkdirSync(to, { recursive: true });
+    fs.renameSync(pack, target);
+  }
+}
+
 // Each update checks the new game out beside the last one in <base>.releases.
 // Remove the versions `keep` doesn't name, and the first install once updates
 // replaced it (supersededBase), unless one holds a `protect` path (a memory
 // card or disc file). A kept version's HD packs may be linked from an old one
-// (carryUserFiles), so move those into the kept version first.
+// (carryUserFiles), so move those into the kept version first, and the first of
+// `keep` takes any character packs only the removed version has (keepPacks).
 // `shouldStop` ends it early, leaving the rest for next time.
 async function pruneSnapshots(base, keep, protect = [], onError = () => {}, shouldStop = () => false) {
   const releases = `${base}.releases`;
@@ -385,6 +408,7 @@ async function pruneSnapshots(base, keep, protect = [], onError = () => {}, shou
         const link = path.join(candidate, 'mods', folder);
         if (fs.lstatSync(link, { throwIfNoEntry: false })?.isSymbolicLink()) fs.unlinkSync(link);
       }
+      keepPacks(candidate, kept[0]);
       if (await removeTree(candidate, shouldStop)) removed.push(candidate);
     } catch (error) { onError(error, candidate); }
   }

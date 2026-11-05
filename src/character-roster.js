@@ -222,7 +222,8 @@ function builtVersion(root, id) {
   try { return JSON.parse(fs.readFileSync(path.join(packsDirectory(root), id, STAMP), 'utf8')).version; } catch (_) { return null; }
 }
 
-const isFile = file => Boolean(fs.statSync(file, { throwIfNoEntry: false })?.isFile());
+// existsSync first: a loose pack's <id>.szs/model.szs is ENOTDIR, which throwIfNoEntry doesn't cover on Node 18.
+const isFile = file => fs.existsSync(file) && fs.statSync(file).isFile();
 
 // A pack's name as the game shows it: the first line of its name file, or the id with a capital.
 function packName(file, id) {

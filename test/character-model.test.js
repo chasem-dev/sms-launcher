@@ -137,9 +137,21 @@ test('what isn\'t a pack of the player\'s own is left out', () => withPacks({
   '.hidden.szs': 'dot',
   'mario/model.szs': 'the disc\'s', 'MARIO.szs': 'the disc\'s',
   'notes.txt': 'not a pack',
-  'made/model.szs': 'launcher\'s', 'made/.launcher.json': '{"version":1}',
+  'roxxy/model.szs': 'launcher\'s', 'roxxy/.launcher.json': '{"version":1}',
+  'toadsworth/model.szs': 'set aside', 'toadsworth/.launcher.json': '{"version":1}',
+  'luigi.old-0a1b2c3d-1111-2222-3333-444455556666/model.szs': 'put aside', 'luigi.old-0a1b2c3d-1111-2222-3333-444455556666/.launcher.json': '{"version":1}',
   'bad[name]/model.szs': 'settings can\'t keep this id',
 }, root => assert.deepEqual(own(root), [])));
+
+test('a pack made from a copy of a launcher folder is the player\'s: listed, and never removed', () => withPacks({
+  'buzz-lightyear/model.szs': 'copied', 'buzz-lightyear/name.txt': 'Buzz Lightyear', 'buzz-lightyear/.launcher.json': '{"version":3}',
+  'Copied Pack/model.szs': 'copied', 'Copied Pack/.launcher.json': '{"version":3}',
+  'sunshine-toad/model.szs': 'made', 'sunshine-toad/.launcher.json': '{"version":4}',
+}, root => {
+  assert.deepEqual(roster.removeRetired(root), ['sunshine-toad']);
+  assert.deepEqual(fs.readdirSync(roster.packsDirectory(root)).sort(), ['Copied Pack', 'buzz-lightyear']);
+  assert.deepEqual(own(root).map(c => c.id), ['Copied Pack', 'buzz-lightyear']);
+}));
 
 test('a folder and a loose pack of one id, or two ids in different case, are one character', () => withPacks({
   'twin/model.szs': 'folder', 'twin.szs': 'loose', 'Double/model.szs': 'first', 'double/model.szs': 'second',

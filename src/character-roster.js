@@ -223,6 +223,13 @@ function builtVersion(root, id) {
 }
 
 // existsSync first: a loose pack's <id>.szs/model.szs is ENOTDIR, which throwIfNoEntry doesn't cover on Node 18.
+// A folder the launcher made: its stamp, in the place of a character of the launcher's. The stamp alone doesn't
+// say so: a pack made from a copy of one of its folders has the stamp too, and is the player's.
+const LAUNCHER_IDS = new Set([...ROSTER, ...SET_ASIDE].map(c => c.id));
+const launcherMade = (directory, id) => LAUNCHER_IDS.has(id) && fs.existsSync(path.join(directory, id, STAMP));
+// One put aside while it is replaced (install), left by a launcher closed then.
+const PUT_ASIDE = /\.old-[0-9a-f-]{36}$/;
+
 const isFile = file => fs.existsSync(file) && fs.statSync(file).isFile();
 
 // A pack's name as the game shows it: the first line of its name file, or the id with a capital.
@@ -235,7 +242,7 @@ function packName(file, id) {
 }
 
 // The player's own packs in mods/characters, found as the game finds them: a folder <id>/ with model.szs and
-// name.txt, or a loose <id>.szs with <id>.txt beside it. The launcher's have its stamp and aren't theirs. The
+// name.txt, or a loose <id>.szs with <id>.txt beside it. What the launcher made isn't theirs. The
 // game takes ids in any case and the first of them by name, so these are kept by id in lower case: a map of
 // { id, name, file }. Mario is the disc's. An id settings can't keep is left to F4 in the game.
 function ownPacks(root) {
@@ -243,10 +250,10 @@ function ownPacks(root) {
   let names;
   try { names = fs.readdirSync(directory).sort(); } catch (_) { return packs; }
   for (const entry of names) {
+    if (launcherMade(directory, entry) || PUT_ASIDE.test(entry)) continue;
     const folder = path.join(directory, entry);
     let id, file, nameFile;
     if (isFile(path.join(folder, 'model.szs'))) {
-      if (fs.existsSync(path.join(folder, STAMP))) continue;
       [id, file, nameFile] = [entry, path.join(folder, 'model.szs'), path.join(folder, 'name.txt')];
     } else if (entry.endsWith('.szs') && isFile(folder)) {
       id = entry.slice(0, -4);
@@ -290,19 +297,15 @@ function modelFile(root, id) {
   return ownPacks(root).get(id.toLowerCase())?.file || path.join(packsDirectory(root), id, 'model.szs');
 }
 
-// The packs the launcher made (its stamp) of characters it no longer offers, removed: the game would
-// still play them (F4 goes through every pack). A player's own packs have no stamp and stay.
-// Returns the ids removed.
+// The packs the launcher made of characters it no longer offers (SET_ASIDE: one taken off the roster goes
+// there), removed: the game would still play them (F4 goes through every pack). Only those by name: anything
+// else in the folder is the player's, stamped or not. Returns the ids removed.
 function removeRetired(root) {
   const directory = packsDirectory(root), removed = [];
-  let entries;
-  try { entries = fs.readdirSync(directory, { withFileTypes: true }); } catch (_) { return removed; }
-  for (const entry of entries) {
-    // not one being made (.staging-*) or put aside while it is replaced (*.old-*)
-    if (!entry.isDirectory() || !/^[a-z0-9-]+$/.test(entry.name) || ROSTER.some(c => c.id === entry.name)) continue;
-    if (!fs.existsSync(path.join(directory, entry.name, STAMP))) continue;
-    fs.rmSync(path.join(directory, entry.name), { recursive: true, force: true });
-    removed.push(entry.name);
+  for (const { id } of SET_ASIDE) {
+    if (!launcherMade(directory, id)) continue;
+    fs.rmSync(path.join(directory, id), { recursive: true, force: true });
+    removed.push(id);
   }
   return removed;
 }

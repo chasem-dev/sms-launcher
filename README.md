@@ -182,7 +182,7 @@ A state loads exactly, with everything where it was, in the game build that save
 
 States are `.smsstate` files in a **savestates** folder next to your memory card folder. The **Saves & states** tab lists them with their pictures. From there, **Import a state** adds states others send you, **Show file** finds one to share, **Delete** removes one, and **Open save states folder** opens the folder. Save states are not part of save backups.
 
-Export your North American Super Mario Sunshine save (`GMSE01`, `super_mario_sunshine`) from Dolphin's Memory Card Manager as a `.gci` file. The importer transfers the entire save, including all three slots. It installs the unchanged save data and the card metadata into the save folder shown in the launcher, including custom locations, on Windows, macOS, and Linux. A fresh card does not need to be created in-game first. Other games, regions, raw memory cards, and `.sav`/`.gcs` files are not supported.
+Export your North American (`GMSE01`) or European (`GMSP01`) Super Mario Sunshine save (`super_mario_sunshine`) from Dolphin's Memory Card Manager as a `.gci` file. A European save becomes a North American one as it is imported: your Shines, coins and other progress carry over unchanged, and the game plays in the language set in the launcher. The importer transfers the entire save, including all three slots. It installs the unchanged save data and the card metadata into the save folder shown in the launcher, including custom locations, on Windows, macOS, and Linux. A fresh card does not need to be created in-game first. Other games, the Japanese release, raw memory cards, and `.sav`/`.gcs` files are not supported.
 
 ### Add to Steam
 

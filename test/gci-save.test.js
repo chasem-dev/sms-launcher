@@ -5,7 +5,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-const { convertGci, readGci, readGciFiles, importGci } = require('../src/gci-save');
+const { convertGci, readGci, readGciFiles, importGci, cardProgress } = require('../src/gci-save');
 const saves = require('../src/saves');
 
 function fixture() {
@@ -41,6 +41,13 @@ function setSector(bytes, index, change) {
     inverted = (inverted + (~sector.readUInt16BE(offset) & 0xffff)) & 0xffff;
   }
   sector.writeUInt16BE(sum, 0x1ffc); sector.writeUInt16BE(inverted, 0x1ffe);
+}
+
+// A European export: its ID, and its language in sector 0's options (stored plus one; 5 is Italian).
+function pal(language = 5) {
+  const bytes = fixture(); bytes.write('GMSP01');
+  setSector(bytes, 0, sector => { sector.writeUInt32BE(2, 0x1844); sector[0x1848] = 0b101; sector.writeUInt32BE(language, 0x1849); });
+  return bytes;
 }
 
 function eclipse() {
@@ -113,6 +120,51 @@ test('Super Mario Eclipse saves (GMSE04) keep their ID and go to the port\'s GMS
   assert.deepEqual(fs.readFileSync(path.join(card, 'GMSE04_super_mario_sunshine.stat')), result.stat);
 });
 
+test('a European save (GMSP01) imports as the North American one, with its language cleared', () => {
+  const source = pal(), before = Buffer.from(source);
+  const result = convertGci(source);
+  assert.deepEqual(source, before);
+  assert.equal(result.name, 'super_mario_sunshine');
+  assert.equal(result.game, 'sunshine');
+  assert.equal(result.stat.toString('latin1', 0x28, 0x2e), 'GMSE01');
+  assert.deepEqual(result.badBlocks, []);
+  assert.deepEqual(result.shines, [3, null, null]);
+  // Exactly the language's four bytes and sector 0's checksum change, and the other options stay.
+  const sum = 0x1ffc;
+  const changed = [...result.data.keys()].filter(offset => result.data[offset] !== before[0x40 + offset]);
+  assert.ok(changed.every(offset => (offset >= 0x1849 && offset < 0x184d) || (offset >= sum && offset < sum + 4)), changed.join());
+  assert.equal(result.data.readUInt32BE(0x1849), 0);
+  assert.equal(result.data[0x1848], 0b101);
+});
+
+test('a European save converts to what the North American game would have written', () => {
+  const northAmerican = fixture();
+  setSector(northAmerican, 0, sector => { sector.writeUInt32BE(2, 0x1844); sector[0x1848] = 0b101; });
+  for (const language of [0, 1, 5, 0xd9e01]) // the console's language, English, Italian, and shinehax's value
+    assert.deepEqual(convertGci(pal(language)).data, convertGci(northAmerican).data);
+});
+
+test('a European save with a damaged options sector still warns', () => {
+  const bytes = pal(); bytes[0x40 + 10] ^= 1;
+  assert.deepEqual(convertGci(bytes).badBlocks, [1]);
+});
+
+test('a European save goes onto the card as Sunshine\'s save, and counts as the same game as a North American one', context => {
+  const { root, card, backups } = temporary(context);
+  importGci(convertGci(pal()), card, backups);
+  assert.deepEqual(cardProgress(card).map(save => [save.game, save.files[0].shines]), [['sunshine', 3]]);
+  assert.equal(fs.readFileSync(path.join(card, 'index.txt'), 'utf8'), 'super_mario_sunshine\n');
+  const european = path.join(root, '01-GMSP-super_mario_sunshine.gci'), american = path.join(root, '01-GMSE-super_mario_sunshine.gci');
+  fs.writeFileSync(european, pal()); fs.writeFileSync(american, fixture());
+  assert.throws(() => readGciFiles([european, american]), /two saves for the same game/);
+});
+
+test('a European save with nothing in it is not imported', () => {
+  const bytes = pal();
+  setSector(bytes, 1, () => {});
+  assert.throws(() => convertGci(bytes), error => error.code === 'NO_PROGRESS');
+});
+
 test('corrupt block checksums warn without changing or repairing save data', () => {
   const bytes = fixture(); bytes[0x40 + 2 * 0x2000 + 10] = 1;
   const result = convertGci(bytes);
@@ -124,7 +176,7 @@ test('rejects raw cards, truncated files, foreign games/regions, unsafe names an
   const bytes = fixture();
   for (const input of [Buffer.alloc(0), bytes.subarray(0x40), bytes.subarray(0, bytes.length - 1),
     Buffer.concat([bytes, Buffer.alloc(1)])]) assert.throws(() => convertGci(input), /seven save blocks/);
-  for (const [offset, value, message] of [[0, 'GZLE01', /North American/], [0, 'GMSP01', /North American/], [0, 'GMSE02', /North American/],
+  for (const [offset, value, message] of [[0, 'GZLE01', /North American/], [0, 'GMSJ01', /North American/], [0, 'GMSE02', /North American/],
     [8, '../../outside', /not the super/]]) {
     const input = Buffer.from(bytes); input.write(value, offset);
     assert.throws(() => convertGci(input), message);

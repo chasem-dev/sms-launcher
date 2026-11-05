@@ -634,3 +634,46 @@ test('game folders are named by a short commit and a hash of the rest, to keep W
   const custom = { ...game.release, custom: true, decomp: 'f'.repeat(40) };
   assert.notEqual(game.snapshotPath('/x/sms', { arch: '64', eclipse: false }, custom), snapshot);
 });
+
+test('the character packs of a version being removed go to the version played', async t => {
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'packs-'));
+  t.after(() => fs.rmSync(home, { recursive: true, force: true }));
+  const base = path.join(home, 'game'), releases = `${base}.releases`;
+  const current = path.join(releases, 'current'), previous = path.join(releases, 'previous'), old = path.join(releases, 'old');
+  const put = (root, name, text) => {
+    const file = path.join(root, 'mods', 'characters', name);
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(file, text);
+  };
+  fs.mkdirSync(previous, { recursive: true });
+  put(current, 'shared/model.szs', 'the one played');
+  put(current, 'roxxy/model.szs', 'newer');
+  put(old, 'buzz/model.szs', 'only here');
+  put(old, 'wario.szs', 'loose');
+  put(old, 'wario.txt', 'Wario');
+  put(old, 'shared/model.szs', 'another of that name');
+  put(old, 'roxxy/model.szs', 'older');
+  put(old, 'roxxy/.launcher.json', '{}');
+  put(old, '.staging-x/model.szs', 'unfinished');
+  assert.deepEqual(await game.pruneSnapshots(base, [current, previous]), [old]);
+  const packs = path.join(current, 'mods', 'characters'), read = file => fs.readFileSync(path.join(packs, file), 'utf8');
+  assert.deepEqual(fs.readdirSync(packs).sort(), ['buzz', 'roxxy', 'shared', 'shared-old', 'wario.szs', 'wario.txt']);
+  assert.equal(read('buzz/model.szs'), 'only here');
+  assert.equal(read('shared/model.szs'), 'the one played');
+  assert.equal(read('shared-old/model.szs'), 'another of that name');
+  assert.equal(read('roxxy/model.szs'), 'newer');
+});
+
+test('a version whose packs can\'t be moved stays for next time', async t => {
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'packs-'));
+  t.after(() => fs.rmSync(home, { recursive: true, force: true }));
+  const base = path.join(home, 'game'), current = path.join(`${base}.releases`, 'current'), old = path.join(`${base}.releases`, 'old');
+  fs.mkdirSync(path.join(old, 'mods', 'characters', 'buzz'), { recursive: true });
+  fs.writeFileSync(path.join(old, 'mods', 'characters', 'buzz', 'model.szs'), 'only here');
+  fs.mkdirSync(path.join(current, 'mods'), { recursive: true });
+  fs.writeFileSync(path.join(current, 'mods', 'characters'), 'a file where the folder should be');
+  const errors = [];
+  assert.deepEqual(await game.pruneSnapshots(base, [current], [], error => errors.push(error.code)), []);
+  assert.equal(errors.length, 1);
+  assert.ok(fs.existsSync(path.join(old, 'mods', 'characters', 'buzz', 'model.szs')));
+});

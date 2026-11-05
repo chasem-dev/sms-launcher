@@ -146,7 +146,8 @@ test('a folder and a loose pack of one id, or two ids in different case, are one
 }, root => {
   assert.deepEqual(own(root).map(c => c.id), ['Double', 'twin']);
   assert.equal(roster.archive(root, null, 'twin').toString(), 'folder');
-  assert.equal(roster.archive(root, null, 'Double').toString(), 'first');
+  // Windows and macOS hold those two as one folder, the second written over the first
+  if (fs.readdirSync(roster.packsDirectory(root)).includes('double')) assert.equal(roster.archive(root, null, 'Double').toString(), 'first');
 }));
 
 test('a pack of the player\'s own in a character\'s place is shown there, with its name, and nothing is made', () => withPacks({

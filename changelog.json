@@ -18,7 +18,7 @@
       ],
       "game": {
         "version": "2026.11.06.1",
-        "commit": "c84d3f411be28f0cbb838fb39a33646f64ece2e9",
+        "commit": "9e02225f2fc85bfaf961f593bfb3b680985e66f8",
         "changes": [
           "Fixed Quit Game missing from Super Mario Eclipse's pause menu: it is there now, as in Super Mario Sunshine, so you can quit with a controller too.",
           "Mods: the game has mod API 1.7. Mods can hold FLUDD in front of the view like a gun for first-person play, and fire its spray as a rifle, submachine gun or bazooka of water, in first or third person. Nothing changes unless you use a mod that does this."

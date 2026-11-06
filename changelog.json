@@ -10,6 +10,8 @@
       "date": "2026-11-06",
       "launcher": [
         "Character tab: character packs of your own now show with the launcher's, with their model and portrait, to wear as an outfit or preview in Animations. Open characters folder in the character picker shows where to put them. A pack named after one of the launcher's characters, such as luigi, takes its place.",
+        "Mods page: FLUDD Weapons by Allebale, where FLUDD fires a Rifle, a Submachine gun or a Bazooka. D-pad left and right choose, R fires, and it works with First Person too.",
+        "Mods page: a mod your game is too old for is now greyed out and can't be downloaded, and it says whether to update the game or the launcher.",
         "Import a Dolphin save: European Super Mario Sunshine saves now import too, with all your progress, under Saves.",
         "Fixed the launcher deleting a character pack made from a copy of one of its own character folders: it now stays, and shows on the Character tab.",
         "Fixed character packs being deleted with an old game version: they now move to your current version before the old one is removed."

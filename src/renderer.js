@@ -2135,8 +2135,7 @@ function newerVersion(a, b) {
 }
 
 function nativeModStatus(mod, release) {
-  if (mod.api && !mod.supported)
-    return `Needs a newer game (mod API ${mod.api}${mod.gameApi ? `; this one has ${mod.gameApi}` : ''}): update the game under Manage game.`;
+  if (mod.unavailable) return mod.unavailable;
   const latest = release && !release.error ? release.version : null;
   if (mod.installed) {
     const version = mod.installed.version ? `Version ${mod.installed.version}` : 'Downloaded';
@@ -2165,7 +2164,7 @@ function nativeModCredit(mod) {
   return credit;
 }
 
-function renderNativeMods({ mods, gameApi }) {
+function renderNativeMods({ mods }) {
   if (!mods.length) {
     const empty = document.createElement('p'); empty.className = 'save-state-empty'; empty.textContent = 'No mods to offer yet.';
     $('native-mod-list').replaceChildren(empty);
@@ -2174,16 +2173,18 @@ function renderNativeMods({ mods, gameApi }) {
   $('native-mod-list').replaceChildren(...mods.map(mod => {
     const release = nativeModReleases?.[mod.id];
     const row = document.createElement('div'); row.className = 'native-mod-row';
+    row.classList.toggle('unavailable', Boolean(mod.unavailable));
     const text = document.createElement('span'); text.className = 'save-state-text native-mod-text';
     const title = document.createElement('strong'); title.textContent = mod.name;
     const description = document.createElement('small'); description.className = 'native-mod-description'; description.textContent = mod.description || '';
-    const status = document.createElement('small'); status.textContent = nativeModStatus({ ...mod, gameApi }, release);
+    const status = document.createElement('small'); status.textContent = nativeModStatus(mod, release);
     text.append(title);
     if (mod.author || mod.repository) text.append(nativeModCredit(mod));
     text.append(description, status);
     const actions = document.createElement('span'); actions.className = 'binding-actions native-mod-actions';
-    const button = (label, onClick, solid = false) => {
+    const button = (label, onClick, solid = false, needsGame = false) => {
       const item = document.createElement('button'); item.className = solid ? 'solid' : 'subtle'; item.textContent = label;
+      if (needsGame && mod.unavailable) { item.disabled = true; item.title = mod.unavailable; }
       item.addEventListener('click', async () => {
         item.disabled = true;
         try { await onClick(); } catch (error) { showError(error); } finally { item.disabled = false; }
@@ -2201,20 +2202,20 @@ function renderNativeMods({ mods, gameApi }) {
       const toggle = document.createElement('label'); toggle.className = 'switch native-mod-switch';
       const input = document.createElement('input'); input.type = 'checkbox'; input.checked = mod.enabled;
       input.setAttribute('aria-label', `${mod.name} on`); toggle.title = mod.enabled ? 'On' : 'Off';
-      input.disabled = Boolean(mod.api && !mod.supported);
+      input.disabled = Boolean(mod.unavailable);
       input.addEventListener('change', async () => {
         try { renderNativeMods(await window.sms.enableNativeMod(mod.id, input.checked)); }
         catch (error) { input.checked = !input.checked; showError(error); }
       });
       toggle.append(input, document.createElement('i'));
       const latest = release && !release.error ? release.version : null;
-      if (mod.repository && latest && newerVersion(latest, mod.installed.version)) actions.append(button('Update', () => install('updated'), true));
+      if (mod.repository && latest && newerVersion(latest, mod.installed.version)) actions.append(button('Update', () => install('updated'), true, true));
       actions.append(button('Remove', async () => {
         renderNativeMods(await window.sms.removeNativeMod(mod.id));
         $('native-mod-result').textContent = `${mod.name} removed.`;
       }), toggle);
     } else if (mod.repository) {
-      actions.append(button('Download', () => install('downloaded'), true));
+      actions.append(button('Download', () => install('downloaded'), true, true));
     }
     row.append(text, actions);
     return row;

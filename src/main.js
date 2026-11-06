@@ -1312,7 +1312,8 @@ async function displayInfo() {
 // The Mods page: the launcher's mods, and whether this game can run them.
 function nativeModsState() {
   const root = config.repo && fs.existsSync(config.repo) ? config.repo : null;
-  return nativeMods.list(app.getPath('userData'), root);
+  const current = Boolean(root) && !config.gameSource && game.isCurrent(root, config.settings, currentSource());
+  return nativeMods.list(app.getPath('userData'), root, undefined, undefined, { current });
 }
 
 // The published list of mods, read from GitHub at launch and whenever the
@@ -1351,6 +1352,8 @@ async function nativeModsLatest() {
 async function installNativeMod(id) {
   const entry = nativeMods.catalog().find(item => item.id === id);
   if (!entry) throw new Error('That mod is not one the launcher offers.');
+  const problem = nativeModsState().mods.find(mod => mod.id === id)?.unavailable;
+  if (problem) throw new Error(problem);
   const done = await nativeMods.download(app.getPath('userData'), entry, (url, options) => net.fetch(url, options));
   log(`Installed ${entry.name} ${done.version} in ${done.dir}.`);
   return nativeModsState();

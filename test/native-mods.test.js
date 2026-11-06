@@ -226,6 +226,29 @@ test('a mod added to the published list is offered, downloaded and listed withou
   assert.equal(mods.catalogUrl({}), 'https://raw.githubusercontent.com/chasem-dev/sms-launcher/main/mods.json');
 });
 
+test('a mod the game is too old for says what to update: the game, or the launcher when the game is its newest', t => {
+  const userData = temporary(t);
+  const env = { SMS_NATIVE_MODS_DATA: temporary(t) };
+  const row = (root, current) => mods.list(userData, root, env, undefined, { current }).mods.find(mod => mod.id === 'seamless-episodes');
+  assert.equal(row(gameRoot(t, 4), true).unavailable, '', 'a game that can run it');
+  assert.equal(row(gameRoot(t, 3), false).unavailable, 'Needs a newer game (mod API 1.4; this game has 1.3): update the game under Manage game.');
+  assert.equal(row(gameRoot(t, 3), true).unavailable, 'Needs a newer launcher (mod API 1.4; this game has 1.3): update the launcher, then the game.');
+  assert.equal(row(null, false).unavailable, 'Needs a newer game (mod API 1.4): update the game under Manage game.', 'no game yet');
+  assert.equal(mods.unavailable({ major: 1, minor: 3 }, '', true), '', 'a mod that names no API');
+});
+
+test('FLUDD Weapons is offered only by launchers whose game has the mod API it needs', () => {
+  const raw = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'mods.json'), 'utf8'));
+  const offered = launcher => mods.normalizeCatalog(raw, launcher).some(entry => entry.id === 'fludd-weapons');
+  assert.equal(offered('1.0.1'), false);
+  assert.equal(offered('1.0.1-beta.356'), false);
+  assert.equal(offered('1.1.0'), true);
+  assert.equal(offered('1.1.0-beta.1'), true);
+  const entry = mods.normalizeCatalog(raw, '1.1.0').find(item => item.id === 'fludd-weapons');
+  assert.equal(mods.supports({ major: 1, minor: 6 }, entry.api), false);
+  assert.equal(mods.supports({ major: 1, minor: 7 }, entry.api), true);
+});
+
 test('the published list (mods.json) is valid, credits every mod and has every mod the launcher builds in', () => {
   const root = path.join(__dirname, '..');
   const raw = JSON.parse(fs.readFileSync(path.join(root, 'mods.json'), 'utf8'));

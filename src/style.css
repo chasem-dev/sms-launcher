@@ -594,6 +594,7 @@ pre { height: 120px; margin: 0; padding: 12px; overflow: auto; border-radius: 8p
 .native-mod-list { display: grid; gap: 4px; margin: 8px 0; }
 .native-mod-row { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid #e3eef0; }
 .native-mod-row:first-child { border-top: 0; }
+.native-mod-row.unavailable strong, .native-mod-row.unavailable .native-mod-credit, .native-mod-row.unavailable .native-mod-description { opacity: .55; }
 .native-mod-text small.native-mod-description { white-space: normal; line-height: 1.45; }
 .native-mod-text small.native-mod-credit .credit-link { margin-left: 0; }
 .native-mod-actions { flex: none; align-items: center; }

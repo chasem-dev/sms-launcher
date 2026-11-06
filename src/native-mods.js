@@ -175,6 +175,16 @@ function supports(have, need) {
   return Boolean(have) && have.major === want.major && have.minor >= want.minor;
 }
 
+// Why a game with mod API `have` can't run a mod that needs `need`, for the player,
+// or '' when it can. `current`: the game is already the one this launcher selects,
+// so updating the game changes nothing: only a newer launcher brings a newer game.
+function unavailable(have, need, current) {
+  if (!need || supports(have, need)) return '';
+  const detail = `mod API ${need}${have ? `; this game has ${have.major}.${have.minor}` : ''}`;
+  return current ? `Needs a newer launcher (${detail}): update the launcher, then the game.`
+    : `Needs a newer game (${detail}): update the game under Manage game.`;
+}
+
 // The mods in the launcher's folder: { id, name, version, dir, release }.
 function installed(userData) {
   const root = directory(userData);
@@ -310,8 +320,8 @@ function remove(userData, id) {
 }
 
 // What the Mods page shows: the launcher's mods and any other in its folder,
-// each with whether it is on and whether this game can run it.
-function list(userData, root, env = process.env, platform = process.platform) {
+// each with whether it is on and whether this game can run it (`current`: see unavailable).
+function list(userData, root, env = process.env, platform = process.platform, { current = false } = {}) {
   const have = root ? gameApi(root) : null;
   const off = offList(env, platform);
   const present = installed(userData);
@@ -321,8 +331,9 @@ function list(userData, root, env = process.env, platform = process.platform) {
     folder: directory(userData),
     gameApi: have ? `${have.major}.${have.minor}` : null,
     // Who made each mod: the list's credit, else its own mod.ini's author.
-    mods: rows.map(row => ({ ...row, author: row.author || row.installed?.author || '', enabled: !off.includes(row.id), supported: supports(have, row.api) }))
+    mods: rows.map(row => ({ ...row, author: row.author || row.installed?.author || '', enabled: !off.includes(row.id), supported: supports(have, row.api),
+      unavailable: unavailable(have, row.api, current) }))
   };
 }
 
-module.exports = { MAX_SIZE, catalogUrl, normalizeCatalog, mergeCatalog, refreshCatalog, loadSavedCatalog, listKey, listFile, catalog, directory, dataRoot, parseIni, offList, isEnabled, setEnabled, gameApi, supports, installed, environment, newer, latestRelease, unzip, installZip, download, pageUrl, remove, list };
+module.exports = { MAX_SIZE, catalogUrl, normalizeCatalog, mergeCatalog, refreshCatalog, loadSavedCatalog, listKey, listFile, catalog, directory, dataRoot, parseIni, offList, isEnabled, setEnabled, gameApi, supports, unavailable, installed, environment, newer, latestRelease, unzip, installZip, download, pageUrl, remove, list };

@@ -5,7 +5,9 @@
       "Fixed character packs being deleted with an old game version: they now move to your current version before the old one is removed.",
       "Character tab: character packs of your own now show with the launcher's, with their model and portrait, to wear as an outfit or preview in Animations. Open characters folder in the character picker shows where to put them. A pack named after one of the launcher's characters, such as luigi, takes its place.",
       "Fixed the launcher deleting a character pack made from a copy of one of its own character folders: it now stays, and shows on the Character tab.",
-      "Import a Dolphin save: European Super Mario Sunshine saves now import too, with all your progress, under Saves."
+      "Import a Dolphin save: European Super Mario Sunshine saves now import too, with all your progress, under Saves.",
+      "Eclipse now has a Quit Game button",
+      "Mod SDK Updates for Fludd hand held"
     ],
     "game": []
   },

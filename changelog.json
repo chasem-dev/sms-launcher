@@ -1,17 +1,30 @@
 {
   "_instructions": "Players see this file in the launcher. Add each player-visible change here in the same commit: launcher changes to beta.launcher, game changes Beta now builds to beta.game. Releases move beta into a new entry (npm run update:game does it). One plain sentence for players per line, no commit hashes or PR numbers. See AGENTS.md.",
   "beta": {
-    "launcher": [
-      "Fixed character packs being deleted with an old game version: they now move to your current version before the old one is removed.",
-      "Character tab: character packs of your own now show with the launcher's, with their model and portrait, to wear as an outfit or preview in Animations. Open characters folder in the character picker shows where to put them. A pack named after one of the launcher's characters, such as luigi, takes its place.",
-      "Fixed the launcher deleting a character pack made from a copy of one of its own character folders: it now stays, and shows on the Character tab.",
-      "Import a Dolphin save: European Super Mario Sunshine saves now import too, with all your progress, under Saves.",
-      "Eclipse now has a Quit Game button",
-      "Mod SDK Updates for Fludd hand held"
-    ],
+    "launcher": [],
     "game": []
   },
   "releases": [
+    {
+      "version": "1.1.0",
+      "date": "2026-11-06",
+      "launcher": [
+        "Character tab: character packs of your own now show with the launcher's, with their model and portrait, to wear as an outfit or preview in Animations. Open characters folder in the character picker shows where to put them. A pack named after one of the launcher's characters, such as luigi, takes its place.",
+        "Mods page: FLUDD Weapons by Allebale, where FLUDD fires a Rifle, a Submachine gun or a Bazooka. D-pad left and right choose, R fires, and it works with First Person too.",
+        "Mods page: a mod your game is too old for is now greyed out and can't be downloaded, and it says whether to update the game or the launcher.",
+        "Import a Dolphin save: European Super Mario Sunshine saves now import too, with all your progress, under Saves.",
+        "Fixed the launcher deleting a character pack made from a copy of one of its own character folders: it now stays, and shows on the Character tab.",
+        "Fixed character packs being deleted with an old game version: they now move to your current version before the old one is removed."
+      ],
+      "game": {
+        "version": "2026.11.06.1",
+        "commit": "9e02225f2fc85bfaf961f593bfb3b680985e66f8",
+        "changes": [
+          "Fixed Quit Game missing from Super Mario Eclipse's pause menu: it is there now, as in Super Mario Sunshine, so you can quit with a controller too.",
+          "Mods: the game has mod API 1.7. Mods can hold FLUDD in front of the view like a gun for first-person play, and fire its spray as a rifle, submachine gun or bazooka of water, in first or third person. Nothing changes unless you use a mod that does this."
+        ]
+      }
+    },
     {
       "version": "1.0.1",
       "title": "Co-op hotfix",

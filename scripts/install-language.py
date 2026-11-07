@@ -14,14 +14,23 @@ import os
 import shutil
 import sys
 import tempfile
+import urllib.parse
 import urllib.request
 import zipfile
+
+# The only source packs are downloaded from: an attacker who could point this
+# installer at a URL of their choosing could also supply the MD5 digest that
+# matches whatever file they host there, so the digest alone cannot be
+# trusted as an integrity check. Pinning the origin closes that hole.
+TRUSTED_RELEASE = 'https://github.com/chasem-dev/sms-hd-texture-extras/releases/download/'
 
 
 def main():
     code, name, url, md5, size = sys.argv[1:6]
     if not code.replace('-', '').replace('_', '').isalnum():
         sys.exit('error: bad language code %r' % code)
+    if not url.startswith(TRUSTED_RELEASE) or '..' in urllib.parse.urlparse(url).path.split('/'):
+        sys.exit('error: refusing to download a language pack from an untrusted source (%s)' % url)
     install = os.path.join('mods', 'languages', code)
     os.makedirs(os.path.dirname(install), exist_ok=True)
     print('Downloading Super Mario Sunshine language packs (%s)' % name, flush=True)

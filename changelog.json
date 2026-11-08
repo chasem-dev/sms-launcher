@@ -4,7 +4,8 @@
     "launcher": [],
     "game": [
       "Split-screen co-op: jumping while carrying the other player no longer pushes you sideways.",
-      "Split-screen co-op: talking to someone now stops only the player talking. Their camera goes in and their buttons read the text, while the other player keeps playing."
+      "Split-screen co-op: talking to someone now stops only the player talking. Their camera goes in and their buttons read the text, while the other player keeps playing.",
+      "Mods: the game has mod API 1.8 beta 1. Mods can tell which episode the episode select's cursor is on, and show more about it over the select; know which blue coin is which and give coins another coin's look or a model of their own; and colour a single object, such as one blue coin, without colouring every object that shares its model."
     ]
   },
   "releases": [

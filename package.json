@@ -27,6 +27,9 @@
       "!node_modules/three/{examples,src}/**",
       "!node_modules/three/build/three.{cjs,tsl.js,webgpu.js,webgpu.nodes.js}"
     ],
+    "extraFiles": [
+      "recomplauncher.json"
+    ],
     "extraResources": [
       {
         "from": "scripts",

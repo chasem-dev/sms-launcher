@@ -1,0 +1,15 @@
+{
+  "$schema": "https://recomplauncher.com/schema/recomplauncher.json",
+  "format": 1,
+  "name": "SMS Launcher",
+  "repo": "chasem-dev/sms-launcher",
+  "game": {
+    "kind": "iso",
+    "label": "Your own disc image of the North American Super Mario Sunshine (GMSE01, revision 0): an .iso, .gcm or Dolphin .ciso file.",
+    "check": { "ids": ["GMSE01"] }
+  },
+  "start": {
+    "program": ["SMS Launcher.exe", "sms-launcher", "SMS-Launcher.AppImage"],
+    "args": ["--game", "{game}", "--play"]
+  }
+}

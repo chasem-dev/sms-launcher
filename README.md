@@ -12,6 +12,8 @@
 
 # SMS Launcher
 
+<a href="https://recomplauncher.com/game/sms-launcher"><picture><source media="(prefers-color-scheme: dark)" srcset="https://recomplauncher.com/assets/press/launcher/badge-light.svg"><img alt="Get it on RecompLauncher" src="https://recomplauncher.com/assets/press/launcher/badge-dark.svg" height="48"></picture></a>
+
 ![SMS Launcher ready to play](docs/launcher-ready.png)
 
 Set up and play Super Mario Sunshine on **Windows, macOS, and Linux**. SMS Launcher guides you through setup, downloads the tools it needs, and gives you one big **Play** button when you're ready.

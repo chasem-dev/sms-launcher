@@ -248,10 +248,27 @@ async function checkout(root, { git = 'git', run, capture, env, source = release
 // mods/ folders every version shares: downloads, Eclipse, and character packs (the launcher's and the player's own).
 const USER_FOLDERS = ['textures', 'hd-cutscenes', 'eclipse', 'eclipse-textures', 'characters'];
 
+// Linking a folder fails this way on a drive without links: Windows reports
+// ERROR_INVALID_FUNCTION making a junction on exFAT or FAT32, which Node calls
+// EISDIR; Linux and macOS say EPERM or ENOTSUP on such a drive.
+const NO_LINKS = new Set(['EISDIR', 'EPERM', 'ENOTSUP', 'EOPNOTSUPP']);
+
+// The new version links to the previous version's mods/ folders. On a drive
+// that can't make links (an exFAT or FAT32 SD card or USB drive) each folder
+// moves into the new version instead. Returns the folders moved, as { from, to },
+// so a failed update can put them back (restoreUserFiles).
 function carryUserFiles(previous, next) {
-  if (previous === next) return;
+  const moved = [];
+  if (previous === next) return moved;
   const settings = path.join(previous, 'settings.txt');
   if (fs.existsSync(settings)) fs.copyFileSync(settings, path.join(next, 'settings.txt'));
+  try { linkUserFolders(previous, next, moved); }
+  catch (error) { restoreUserFiles(moved); throw error; }
+  carryPinnedDownloads(previous, next);
+  return moved;
+}
+
+function linkUserFolders(previous, next, moved) {
   for (const folder of USER_FOLDERS) {
     const origin = path.join(previous, 'mods', folder);
     const target = path.join(next, 'mods', folder);
@@ -264,10 +281,21 @@ function carryUserFiles(previous, next) {
       if (!existing.isSymbolicLink() || fs.existsSync(target)) continue;
       fs.unlinkSync(target);
     }
+    const real = fs.realpathSync(origin);
     // A Windows directory junction requires no administrator/developer mode.
-    fs.symlinkSync(fs.realpathSync(origin), target, process.platform === 'win32' ? 'junction' : 'dir');
+    try { fs.symlinkSync(real, target, process.platform === 'win32' ? 'junction' : 'dir'); }
+    catch (error) {
+      if (!NO_LINKS.has(error.code) || fs.lstatSync(target, { throwIfNoEntry: false })) throw error;
+      fs.renameSync(real, target);
+      moved.push({ from: real, to: target });
+    }
   }
-  carryPinnedDownloads(previous, next);
+}
+
+// Put back the folders carryUserFiles moved, so the version still in use keeps them.
+function restoreUserFiles(moved) {
+  for (const { from, to } of [...moved].reverse())
+    if (fs.existsSync(to) && !fs.existsSync(from)) fs.renameSync(to, from);
 }
 
 // Copy the radar maps, achievement icons and language packs the last version
@@ -489,4 +517,4 @@ function recoverBuild(root, settings) {
   return true;
 }
 
-module.exports = { release, gitRevision, matchesSource, identity, installed, compilerToolRoot, toolRoot, playsWithoutTools, vulkanBuiltIn, needsVulkanBuild, vulkanMissing, isCurrent, snapshotPath, eclipseSourcesPath, checkout, carryUserFiles, relinkUserFolders, pruneSnapshots, pruneBuildLeftovers, buildSafely, recoverBuild };
+module.exports = { release, gitRevision, matchesSource, identity, installed, compilerToolRoot, toolRoot, playsWithoutTools, vulkanBuiltIn, needsVulkanBuild, vulkanMissing, isCurrent, snapshotPath, eclipseSourcesPath, checkout, carryUserFiles, restoreUserFiles, relinkUserFolders, pruneSnapshots, pruneBuildLeftovers, buildSafely, recoverBuild };

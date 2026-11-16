@@ -211,6 +211,43 @@ test('a new version copies the radar maps and language packs it pins the same re
   assert.ok(!fs.readdirSync(path.join(next, 'mods', 'maps')).some(name => name.endsWith('.carry-part')));
 });
 
+test('on a drive without links the mod folders move to the new version, and back if the update fails', t => {
+  const { root } = fixture(t);
+  const next = path.join(root, 'next');
+  fs.mkdirSync(path.join(next, 'mods'), { recursive: true });
+  for (const folder of ['textures', 'characters']) {
+    fs.mkdirSync(path.join(root, 'mods', folder), { recursive: true });
+    fs.writeFileSync(path.join(root, 'mods', folder, 'file'), folder);
+  }
+  // Windows making a junction on exFAT or FAT32: ERROR_INVALID_FUNCTION, which Node reports as EISDIR.
+  t.mock.method(fs, 'symlinkSync', () => { throw Object.assign(new Error('EISDIR: illegal operation on a directory, symlink'), { code: 'EISDIR' }); });
+  const moved = game.carryUserFiles(root, next);
+  assert.equal(moved.length, 2);
+  for (const folder of ['textures', 'characters']) {
+    assert.equal(fs.readFileSync(path.join(next, 'mods', folder, 'file'), 'utf8'), folder);
+    assert.equal(fs.existsSync(path.join(root, 'mods', folder)), false);
+  }
+  game.restoreUserFiles(moved);
+  for (const folder of ['textures', 'characters']) {
+    assert.equal(fs.readFileSync(path.join(root, 'mods', folder, 'file'), 'utf8'), folder);
+    assert.equal(fs.existsSync(path.join(next, 'mods', folder)), false);
+  }
+});
+
+test('a folder that fails to link for another reason puts back the ones already moved', t => {
+  const { root } = fixture(t);
+  const next = path.join(root, 'next');
+  fs.mkdirSync(path.join(next, 'mods'), { recursive: true });
+  for (const folder of ['textures', 'characters']) fs.mkdirSync(path.join(root, 'mods', folder), { recursive: true });
+  const errors = [{ code: 'EISDIR' }, { code: 'ENOSPC' }];
+  t.mock.method(fs, 'symlinkSync', () => { throw Object.assign(new Error(errors[0].code), errors.shift()); });
+  assert.throws(() => game.carryUserFiles(root, next), { code: 'ENOSPC' });
+  for (const folder of ['textures', 'characters']) {
+    assert.equal(fs.existsSync(path.join(root, 'mods', folder)), true);
+    assert.equal(fs.existsSync(path.join(next, 'mods', folder)), false);
+  }
+});
+
 test('a mod folder link left pointing at a removed version is replaced, not tripped over', t => {
   const { root } = fixture(t);
   const next = path.join(root, 'next');

@@ -1082,6 +1082,7 @@ async function build(forceFresh = false) {
   await ensureBuildTools();
   const source = currentSource();
   let root = original;
+  let moved = [], result;
   const sourceMarker = path.join(root, 'launcher-source.json');
   const freshPinnedSource = fs.existsSync(sourceMarker) && !binaryReady(root, settings) && game.matchesSource(root, source);
   if (forceFresh || (!game.isCurrent(root, settings, source) && !freshPinnedSource)) {
@@ -1090,62 +1091,71 @@ async function build(forceFresh = false) {
     if (!fs.existsSync(root)) await game.checkout(root, { run: launch, capture, env: toolEnv(), reference: original, source, stopped: wasStopped });
     if (!game.matchesSource(root, source))
       throw new Error('The update folder has changed. Choose another setup location in Settings and try again.');
-    game.carryUserFiles(original, root);
+    moved = game.carryUserFiles(original, root);
+    if (moved.length) log('This drive cannot link folders (it is likely exFAT or FAT32, as SD cards and USB drives often are), ' +
+      'so your HD textures and other packs moved into the new game version instead of being shared with the one before.');
   }
-  if (settings.arch === 'arm64' && !port.gameFeatures(root).appleSilicon)
-    throw new Error('This game version has no Apple Silicon build. Turn off Apple Silicon build under Manage game, Files, or update the game.');
-  if (settings.arch === 'arm64' && settings.eclipse && !port.gameFeatures(root).eclipseAppleSilicon)
-    throw new Error('This game version plays Super Mario Eclipse through Rosetta only. Turn off Apple Silicon build under Manage game, Files, or update the game.');
-  // A fresh build's folder is longer than the one ensureBuildTools checked.
-  requireShortPaths(root, settings);
-  if (!port.hdVisualsInstalled(root, settings)) await installTextures(root);
-  else await updateTextureExtras(root, settings);
-  await updateLanguagePack(root, settings);
-  if (settings.eclipse && !fs.existsSync(path.join(root, port.ECLIPSE_ISO))) await installEclipse(root);
-  await updateEclipseMaps(root, settings);
-  await updateEclipseTextures(root, settings);
-  const disc = port.gameDisc(root, rom, settings.eclipse);
-  const env = await withBuildCaches(toolEnv(port.buildEnvironment(settings, disc, root)), root);
-  env.NINJA_STATUS = '[%f/%t] ';
-  const compile = buildEnv => {
-    const cmd = settings.eclipse
-      ? port.eclipseBuildCommand(root, settings, process.platform, buildEnv)
-      : port.commandFor(root, 'build', [disc], process.platform, buildEnv);
-    return game.buildSafely(root, settings, saveDirectory,
-      // A build that fails because antivirus deleted or blocked a tool says so instead of CMake's error.
-      () => launch(cmd.command, cmd.args, { cwd: cmd.cwd, env: cmd.env }, settings.eclipse ? 'Build Eclipse port' : 'Build Sunshine port')
-        .catch(error => {
-          const userData = app.getPath('userData');
-          throw hintedError(error) || buildTools.deletedToolsError(userData) || buildTools.blockedToolError(userData, error.output) || error;
-        }),
-      undefined, source);
-  };
-  const startedAt = Date.now();
-  let result;
-  try { result = await compile(env); }
-  catch (error) {
-    // A failed build through the compiler cache is tried once more without it,
-    // unless the player stopped it, the build tools lost files, or the drive is
-    // full or Windows won't let them fork (which fail the same way again).
-    if (!usesCompilerCache(env) || stoppedAt >= startedAt || error.blockedTool || error.buildHint || buildTools.missingTools(app.getPath('userData'))?.length) throw error;
-    log('The build failed with the compiler cache. Building again without it…');
-    result = await compile(Object.fromEntries(Object.entries(env).filter(([key]) => key !== 'SMS_COMPILER_CACHE' && !/^CCACHE_/i.test(key))));
+  // Until the new version is saved as the one to play, the one before still is: a
+  // failed update gives back the folders it moved (carryUserFiles).
+  try {
+    if (settings.arch === 'arm64' && !port.gameFeatures(root).appleSilicon)
+      throw new Error('This game version has no Apple Silicon build. Turn off Apple Silicon build under Manage game, Files, or update the game.');
+    if (settings.arch === 'arm64' && settings.eclipse && !port.gameFeatures(root).eclipseAppleSilicon)
+      throw new Error('This game version plays Super Mario Eclipse through Rosetta only. Turn off Apple Silicon build under Manage game, Files, or update the game.');
+    // A fresh build's folder is longer than the one ensureBuildTools checked.
+    requireShortPaths(root, settings);
+    if (!port.hdVisualsInstalled(root, settings)) await installTextures(root);
+    else await updateTextureExtras(root, settings);
+    await updateLanguagePack(root, settings);
+    if (settings.eclipse && !fs.existsSync(path.join(root, port.ECLIPSE_ISO))) await installEclipse(root);
+    await updateEclipseMaps(root, settings);
+    await updateEclipseTextures(root, settings);
+    const disc = port.gameDisc(root, rom, settings.eclipse);
+    const env = await withBuildCaches(toolEnv(port.buildEnvironment(settings, disc, root)), root);
+    env.NINJA_STATUS = '[%f/%t] ';
+    const compile = buildEnv => {
+      const cmd = settings.eclipse
+        ? port.eclipseBuildCommand(root, settings, process.platform, buildEnv)
+        : port.commandFor(root, 'build', [disc], process.platform, buildEnv);
+      return game.buildSafely(root, settings, saveDirectory,
+        // A build that fails because antivirus deleted or blocked a tool says so instead of CMake's error.
+        () => launch(cmd.command, cmd.args, { cwd: cmd.cwd, env: cmd.env }, settings.eclipse ? 'Build Eclipse port' : 'Build Sunshine port')
+          .catch(error => {
+            const userData = app.getPath('userData');
+            throw hintedError(error) || buildTools.deletedToolsError(userData) || buildTools.blockedToolError(userData, error.output) || error;
+          }),
+        undefined, source);
+    };
+    const startedAt = Date.now();
+    try { result = await compile(env); }
+    catch (error) {
+      // A failed build through the compiler cache is tried once more without it,
+      // unless the player stopped it, the build tools lost files, or the drive is
+      // full or Windows won't let them fork (which fail the same way again).
+      if (!usesCompilerCache(env) || stoppedAt >= startedAt || error.blockedTool || error.buildHint || buildTools.missingTools(app.getPath('userData'))?.length) throw error;
+      log('The build failed with the compiler cache. Building again without it…');
+      result = await compile(Object.fromEntries(Object.entries(env).filter(([key]) => key !== 'SMS_COMPILER_CACHE' && !/^CCACHE_/i.test(key))));
+    }
+    // Ready for sms-standalone.exe, which players can also start from Explorer.
+    shieldGame(root, settings, env);
+    if (settings.renderer === 'vulkan' && game.vulkanBuiltIn(root, settings) === false)
+      log('⚠ The game was built without Vulkan: its Vulkan downloads from github.com failed (the build\'s warnings above say which). '
+        + 'It will draw with OpenGL, which can be much slower. Check your internet connection, firewall or antivirus, '
+        + 'then choose Rebuild game under Settings → Manage game.');
+    // Preferences switch only after a successful build. Closing the app or a
+    // failed download/build leaves the last installation selected and playable.
+    const earlier = { ...config };
+    config = { ...config, repo: root, installRoot: config.installRoot || original,
+      saveDirectory, completedSetup: true,
+      previousInstall: root !== original && binaryReady(original, settings)
+        ? { repo: original, settings, rom, saveDirectory } : config.previousInstall };
+    try { saveConfig(); }
+    catch (error) { config = earlier; throw error; }
+  } catch (error) {
+    try { game.restoreUserFiles(moved); }
+    catch (restoreError) { log(`Could not move your packs back: ${restoreError.message}`); }
+    throw error;
   }
-  // Ready for sms-standalone.exe, which players can also start from Explorer.
-  shieldGame(root, settings, env);
-  if (settings.renderer === 'vulkan' && game.vulkanBuiltIn(root, settings) === false)
-    log('⚠ The game was built without Vulkan: its Vulkan downloads from github.com failed (the build\'s warnings above say which). '
-      + 'It will draw with OpenGL, which can be much slower. Check your internet connection, firewall or antivirus, '
-      + 'then choose Rebuild game under Settings → Manage game.');
-  // Preferences switch only after a successful build. Closing the app or a
-  // failed download/build leaves the last installation selected and playable.
-  const earlier = { ...config };
-  config = { ...config, repo: root, installRoot: config.installRoot || original,
-    saveDirectory, completedSetup: true,
-    previousInstall: root !== original && binaryReady(original, settings)
-      ? { repo: original, settings, rom, saveDirectory } : config.previousInstall };
-  try { saveConfig(); }
-  catch (error) { config = earlier; throw error; }
   log(`Game ${source.version} is ready. Your saved games stay in the same folder.`);
   await removeOldVersions();
   await removeOldBuildTools();

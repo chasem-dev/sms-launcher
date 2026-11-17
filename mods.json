@@ -23,5 +23,13 @@
     "repository": "Allebale/fludd-weapons",
     "api": "1.7",
     "minLauncher": "1.1.0"
+  },
+  {
+    "id": "map-teleport",
+    "name": "Map Teleport",
+    "author": "Allebale",
+    "description": "Open a map of Isle Delfino in any level and go straight to any level your save file has reached: N or D-pad up opens it, A teleports and B closes it. Works in Super Mario Sunshine and Super Mario Eclipse. Teleporting turns off achievements for that play, as the game's warp menu does.",
+    "repository": "Allebale/map-teleport",
+    "api": "1.5"
   }
 ]

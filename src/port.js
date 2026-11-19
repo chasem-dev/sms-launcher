@@ -111,6 +111,9 @@ function normalizeSettings(input = {}, platform = process.platform, hostArch = p
     display: /^monitor([2-9]|1[0-6])$/.test(String(input.display)) ? String(input.display)
       : choiceSetting(input.display, ['launcher', 'primary'], 'launcher'),
     vsync: choiceSetting(input.vsync, ['off', 'on', 'adaptive'], 'off'),
+    // Windows: wake for each frame within a fraction of a millisecond (steadier frame times, less judder)
+    // for a little CPU; off unless turned on, as it costs some on older PCs.
+    preciseTimer: input.preciseTimer === true,
     // Straight to the title screen, and the game's frame-time overlay at start.
     skipMovies: Boolean(input.skipMovies),
     // Who the game starts as: a character's id (mods/characters/<id>), or the name the game's own menu
@@ -590,6 +593,7 @@ function buildEnvironment(settings, disc, root, { customTextures = null, customC
     SMS_FRAME_RATE: String(normalizeSettings(settings).frameRate),
     SMS_FULLSCREEN: settings.fullscreen ? (settings.fullscreenMode === 'exclusive' ? 'exclusive' : '1') : '0',
     SMS_VSYNC: settings.vsync === 'adaptive' ? 'adaptive' : settings.vsync === 'on' ? '1' : '0',
+    SMS_PRECISE_TIMER: settings.preciseTimer ? '1' : '0',
     SMS_SKIP_MOVIES: settings.skipMovies ? '1' : '0',
     SMS_CHARACTER: settings.character || 'mario',
     SMS_SKIP_INTRO: settings.skipIntro ? '1' : '0',

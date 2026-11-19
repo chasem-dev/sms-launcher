@@ -1,0 +1,63 @@
+name: Retry jobs no runner took
+# GitHub sometimes has no hosted runner to give a job (macOS arm64 most of all:
+# "The job was not acquired by Runner of type hosted even after multiple
+# attempts"). The job is cancelled after about 15 minutes without running a
+# step, and a build that needs every platform, Refresh Beta's most of all,
+# fails although nothing in it is broken. When a run ends that way, this waits
+# a few minutes and runs its failed jobs again, up to three times. A job
+# cancelled for any other reason (a closed pull request's, a timeout) or one
+# that failed is left as it is.
+on:
+  workflow_run:
+    workflows: [Refresh Beta, Build launcher, Game build, Release launcher on version bump]
+    types: [completed]
+permissions:
+  actions: write
+  checks: read
+concurrency:
+  group: retry-runner-capacity-${{ github.event.workflow_run.id }}
+jobs:
+  retry:
+    if: github.event.workflow_run.conclusion == 'failure' || github.event.workflow_run.conclusion == 'cancelled'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Run again the jobs no runner took
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          RUN: ${{ github.event.workflow_run.id }}
+          ATTEMPT: ${{ github.event.workflow_run.run_attempt }}
+          NAME: ${{ github.event.workflow_run.name }}
+          MAX_ATTEMPTS: '4'
+          WAIT_SECONDS: '300'
+        run: |
+          set -euo pipefail
+          # this attempt's jobs that ended without succeeding
+          ids=$(gh api --paginate "repos/$REPO/actions/runs/$RUN/attempts/$ATTEMPT/jobs?per_page=100" \
+            --jq '.jobs[] | select(.conclusion == "cancelled" or .conclusion == "failure") | .id')
+          stranded=""
+          for id in $ids; do
+            if gh api "repos/$REPO/check-runs/$id/annotations" --jq '.[].message' | grep -q 'not acquired by Runner'; then
+              stranded="$stranded $id"
+            fi
+          done
+          if [[ -z "$stranded" ]]; then
+            echo "$NAME run $RUN attempt $ATTEMPT: every unfinished job ran; nothing to retry."
+            exit 0
+          fi
+          echo "$NAME run $RUN attempt $ATTEMPT: no runner took job(s)$stranded."
+          if (( ATTEMPT >= MAX_ATTEMPTS )); then
+            echo "::warning::$NAME run $RUN had no runner for a job in $ATTEMPT attempts; not retrying again. Re-run it once GitHub has runners."
+            exit 0
+          fi
+          sleep "$WAIT_SECONDS"
+          # a person may have run it again meanwhile
+          status=$(gh api "repos/$REPO/actions/runs/$RUN" --jq '.status')
+          latest=$(gh api "repos/$REPO/actions/runs/$RUN" --jq '.run_attempt')
+          if [[ "$status" != completed || "$latest" != "$ATTEMPT" ]]; then
+            echo "Run $RUN is running again already (attempt $latest, $status)."
+            exit 0
+          fi
+          echo "Running the failed jobs of $NAME run $RUN again (attempt $((ATTEMPT + 1)))."
+          gh run rerun "$RUN" --failed --repo "$REPO"

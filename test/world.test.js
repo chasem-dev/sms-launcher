@@ -89,6 +89,26 @@ test('things from another stage bring their manager and files, and managers grow
   assert.equal(sceneBin.parse(sceneBin.serialize(tree)).children.length, 2);
 });
 
+test('placed blue coins each get their own save flag, after the disc\'s own', () => {
+  // The stage keeps a blue coin with flag 2 and one with 30 (a modded disc).
+  const blue = (name, x, flag) => actor('CoinBlue', name, [x, 0, 0], Buffer.concat([str('coin_blue'), u32(flag)]));
+  const home = stage([node('MapObjManager', 'アイテムマネージャー', managerData('items', 4))], [blue('青コイン 0', 0, 2), blue('青コイン 1', 50, 30)]);
+  const base = library();
+  const lib = { ...base, sceneTree: scene => scene === 'home' ? home : base.sceneTree(scene),
+    context: scene => scene === 'home' ? { ...base.context(scene), tree: home } : base.context(scene) };
+  const flagOf = n => n.data.readInt32BE(n.data.length - 4);
+  // Placing the disc's flag-2 coin three times: each copy gets a free flag of 31-49, never 2 or 30.
+  const coin = uid => ({ uid, source: { scene: 'home', id: '1/0/0/0' }, type: 'CoinBlue', label: 'Blue coin', transform: t([uid.charCodeAt(0), 0, 0]) });
+  const { tree } = world.buildScene(lib, project({ added: [coin('a'), coin('b'), coin('c')] }));
+  assert.deepEqual(at(tree, '1/0/0').children.map(flagOf), [2, 30, 31, 32, 33]);
+  // The disc's own copy is untouched.
+  assert.equal(flagOf(at(home, '1/0/0/0')), 2);
+  // There's room for 19 more here (31-49); a 20th doesn't fit.
+  const many = n => project({ added: [...Array(n).keys()].map(i => coin(`c${i}`)) });
+  assert.doesNotThrow(() => world.buildScene(lib, many(19)));
+  assert.throws(() => world.buildScene(lib, many(20)), /20 blue coins of your own, but there is room for 19.*Remove 1/);
+});
+
 test('things that crash the game without another object of their stage need it there', () => {
   // Bowser looks up the bathtub as the stage loads; only his own stage has one.
   const boss = stage(

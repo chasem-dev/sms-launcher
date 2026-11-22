@@ -18,7 +18,7 @@
       ],
       "game": {
         "version": "2026.11.22.1",
-        "commit": "5390769214609e2264e2867fd5e3f2eeaee6f234",
+        "commit": "62c83558b22fe6d131e34c421ee8961838a424ed",
         "changes": [
           "Split-screen co-op: jumping while carrying the other player no longer pushes you sideways.",
           "Split-screen co-op: talking to someone now stops only the player talking. Their camera goes in and their buttons read the text, while the other player keeps playing.",

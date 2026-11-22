@@ -1163,6 +1163,7 @@ function buildScene(library, project) {
     parent?.children?.splice(index, 1);
   }
   const needs = new Map();  // scene -> Set of files to copy
+  const blueCoins = [];
   for (const added of project.added) {
     const bound = worldBound(added);
     if (bound && worldOf(project.base).id !== bound.world)
@@ -1176,6 +1177,7 @@ function buildScene(library, project) {
     const sourceParent = sceneBin.find(sourceTree, parentId);
     const parent = findGroup(tree, sourceParent) || findGroup(tree, null);
     parent.children.push(node);
+    if (node.type === 'CoinBlue') blueCoins.push(node);
     // Its manager, when the stage doesn't have one by that name.
     for (const name of describe(node).names) addManager(tree, sourceTree, name);
     const context = library.context(added.source.scene), files = context.files;
@@ -1187,6 +1189,7 @@ function buildScene(library, project) {
     const manager = managerOf(described);
     if (manager) addManager(tree, sourceTree, manager);
   }
+  numberBlueCoins(tree, blueCoins);
   const missing = missingNeed(tree, project.base);
   if (missing) {
     const { node, need } = missing, who = need.who || labelOf(node.type, describe(node).variant);
@@ -1196,6 +1199,32 @@ function buildScene(library, project) {
   }
   const raised = fitManagers(tree);
   return { tree, needs, raised };
+}
+
+// A blue coin's last number is its save flag (TCoinBlue::loadBeforeInit): one
+// of 50 per world, kept on the memory card once it's taken. A placed coin is a
+// copy of one on the disc, so it would share that coin's flag, and every coin
+// placed after it too: only the first one taken would count, and the rest
+// would act like plain coins. The disc's own coins use 0-29 in every world,
+// so placed ones get 30-49, each its own, skipping any the stage already uses.
+const BLUE_COIN_FLAGS = 50, FIRST_PLACED_BLUE_COIN = 30;
+const blueCoinFlagAt = data => { const at = actorNamesEnd(data, 2); return at >= 0 && at + 4 <= data.length ? at : -1; };
+function numberBlueCoins(tree, placed) {
+  if (!placed.length) return;
+  const own = new Set(placed), used = new Set();
+  sceneBin.walk(tree, node => {
+    if (node.type !== 'CoinBlue' || node.children || own.has(node)) return;
+    const at = blueCoinFlagAt(node.data);
+    if (at >= 0) used.add(node.data.readInt32BE(at));
+  });
+  const free = [];
+  for (let flag = FIRST_PLACED_BLUE_COIN; flag < BLUE_COIN_FLAGS; flag++) if (!used.has(flag)) free.push(flag);
+  if (placed.length > free.length)
+    throw new Error(`This level has ${placed.length} blue coins of your own, but there is room for ${free.length} (the memory card keeps 50 per world, and the disc's own use the first 30). Remove ${placed.length - free.length} to export or play this level.`);
+  placed.forEach((node, i) => {
+    const at = blueCoinFlagAt(node.data);
+    if (at >= 0) node.data.writeInt32BE(free[i], at);
+  });
 }
 
 function cloneNode(node) {

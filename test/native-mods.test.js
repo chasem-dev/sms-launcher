@@ -85,6 +85,20 @@ test('a release zip installs the mod\'s folder only, with its release noted', t 
   assert.deepEqual(fs.readdirSync(mods.directory(userData)), ['seamless-episodes']);
 });
 
+test('a zip made on Windows, with \\ in its paths and folders, installs too', t => {
+  const userData = temporary(t);
+  const windows = zip([
+    { name: 'seamless-episodes\\', data: Buffer.alloc(0) },
+    { name: 'seamless-episodes\\bin\\', data: Buffer.alloc(0) },
+    { name: 'seamless-episodes\\mod.ini', data: Buffer.from(MOD_INI), deflate: true },
+    { name: 'seamless-episodes\\bin\\linux-x86_64\\seamless_episodes.so', data: Buffer.from('ELF') },
+  ]);
+  mods.installZip(userData, ENTRY, windows, {});
+  const dir = path.join(mods.directory(userData), 'seamless-episodes');
+  assert.equal(fs.readFileSync(path.join(dir, 'bin', 'linux-x86_64', 'seamless_episodes.so'), 'utf8'), 'ELF');
+  assert.equal(mods.installed(userData)[0].version, '1.0.0');
+});
+
 test('a zip that is not the mod, or reaches outside its folder, leaves the installed one alone', t => {
   const userData = temporary(t);
   mods.installZip(userData, ENTRY, releaseZip(), {});
@@ -245,8 +259,9 @@ test('FLUDD Weapons is offered only by launchers whose game has the mod API it n
   assert.equal(offered('1.1.0'), true);
   assert.equal(offered('1.1.0-beta.1'), true);
   const entry = mods.normalizeCatalog(raw, '1.1.0').find(item => item.id === 'fludd-weapons');
-  assert.equal(mods.supports({ major: 1, minor: 6 }, entry.api), false);
-  assert.equal(mods.supports({ major: 1, minor: 7 }, entry.api), true);
+  // Its new versions are built on mod API 1.8 (the game's own weapons are gone there).
+  assert.equal(mods.supports({ major: 1, minor: 7 }, entry.api), false);
+  assert.equal(mods.supports({ major: 1, minor: 8 }, entry.api), true);
 });
 
 test('the published list (mods.json) is valid, credits every mod and has every mod the launcher builds in', () => {

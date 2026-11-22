@@ -251,7 +251,7 @@ function unzip(data) {
     const local = data.readUInt32LE(at + 42);
     const name = data.toString('utf8', at + 46, at + 46 + nameLength);
     at += 46 + nameLength + extra + comment;
-    if (name.endsWith('/')) continue;
+    if (/[\\/]$/.test(name)) continue; // a folder (zipped on Windows, some write \ for /)
     if (data.readUInt32LE(local) !== 0x04034b50) throw new Error('The zip file is damaged.');
     const start = local + 30 + data.readUInt16LE(local + 26) + data.readUInt16LE(local + 28);
     const stored = data.subarray(start, start + packed);

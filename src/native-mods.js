@@ -42,8 +42,9 @@ function normalizeCatalog(data, launcher) {
     if (entry.api !== undefined && !parseApi(entry.api)) continue;
     if (entry.minLauncher !== undefined && (!VERSION.test(entry.minLauncher) || (check && (!VERSION.test(launcher) || newer(entry.minLauncher, launcher))))) continue;
     seen.add(entry.id);
+    const releases = pinnedReleases(entry.releases);
     entries.push({ id: entry.id, name: text(entry.name, 80) || entry.id, author: text(entry.author, 60), description: text(entry.description, 600),
-      repository: entry.repository, api: entry.api === undefined ? '' : String(entry.api) });
+      repository: entry.repository, api: entry.api === undefined ? '' : String(entry.api), ...(releases ? { releases } : {}) });
     if (entries.length >= MAX_MODS) break;
   }
   return entries;
@@ -222,20 +223,67 @@ function newer(a, b) {
   return false;
 }
 
-// A mod's newest release: its tag, version and the zip to download.
-// Both ask GitHub again when the connection fails or it is briefly down.
-async function latestRelease(entry, fetch, { wait } = {}) {
-  const release = await retrying(async () => {
-    const response = await fetch(`https://api.github.com/repos/${entry.repository}/releases/latest`,
+// The mod API a release says it is made for: its zip named "<id>-1.3.2-api1.8.zip",
+// or a line of its own in its notes, "Mod API: 1.8". null when it doesn't say.
+function releaseApi(release) {
+  for (const asset of release.assets || []) {
+    const match = /[-_.]api[-_]?(\d+)\.(\d+)\.zip$/i.exec(asset.name || '');
+    if (match) return { major: Number(match[1]), minor: Number(match[2]) };
+  }
+  const line = /^[\s>*_`#-]*mod api\s*:\s*[*_`]*(\d+)\.(\d+)[*_`\s.]*$/im.exec(String(release.body || ''));
+  return line ? { major: Number(line[1]), minor: Number(line[2]) } : null;
+}
+
+const RELEASE_TAG = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
+function pinnedReleases(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const pins = {};
+  for (const [api, tag] of Object.entries(value)) if (parseApi(api) && typeof tag === 'string' && RELEASE_TAG.test(tag)) pins[api] = tag;
+  return Object.keys(pins).length ? pins : null;
+}
+
+function releaseDownload(entry, release) {
+  const zips = (release.assets || []).filter(asset => /\.zip$/i.test(asset.name));
+  const asset = zips.find(item => item.name.startsWith(`${entry.id}-`)) || zips[0];
+  if (!asset) throw new Error(`${entry.name}'s release ${release.tag_name} has no zip.`);
+  return { tag: release.tag_name, version: versionOf(release.tag_name), url: asset.browser_download_url, asset: asset.name, size: asset.size };
+}
+
+// The release of a mod to download: its tag, version and zip. Without the
+// game's mod API (`api`), the repository's Latest release, as GitHub marks it.
+// With it, the release made for the highest mod API this game has, newest first:
+// a release saying which (releaseApi), pre-releases too, else the one mods.json
+// pins for that API (`releases`: { "1.7": "v1.0.3", "1.8": "v1.3.2" }), else Latest.
+// The highest, not any it supports: a mod built for 1.7 may lean on what 1.8
+// took out (FLUDD Weapons on the game's own weapons).
+// Each asks GitHub again when the connection fails or it is briefly down.
+async function latestRelease(entry, fetch, { wait, api = null } = {}) {
+  const ask = path => retrying(async () => {
+    const response = await fetch(`https://api.github.com/repos/${entry.repository}/${path}`,
       { headers: { Accept: 'application/vnd.github+json' }, cache: 'no-store', signal: AbortSignal.timeout(15000) });
     if (response.status === 404) throw httpError(`${entry.name} has no release yet.`, 404);
     if (!response.ok) throw httpError(`GitHub did not answer about ${entry.name} (${response.status}).`, response.status);
     return response.json();
   }, { wait });
-  const zips = (release.assets || []).filter(asset => /\.zip$/i.test(asset.name));
-  const asset = zips.find(item => item.name.startsWith(`${entry.id}-`)) || zips[0];
-  if (!asset) throw new Error(`${entry.name}'s newest release has no zip.`);
-  return { tag: release.tag_name, version: versionOf(release.tag_name), url: asset.browser_download_url, asset: asset.name, size: asset.size };
+  if (api) {
+    const listed = (await ask('releases?per_page=30')).filter(release => release && !release.draft);
+    const candidates = [];
+    for (const release of listed) {
+      const made = releaseApi(release);
+      if (made && supports(api, made)) candidates.push({ made, release });
+    }
+    for (const [version, tag] of Object.entries(entry.releases || {})) {
+      const made = parseApi(version);
+      if (!supports(api, made) || candidates.some(c => c.release.tag_name === tag)) continue;
+      let release = listed.find(item => item.tag_name === tag);
+      if (!release) { try { release = await ask(`releases/tags/${encodeURIComponent(tag)}`); } catch (_) { continue; } }
+      if (release && !release.draft) candidates.push({ made, release });
+    }
+    const when = release => Date.parse(release.published_at || release.created_at || '') || 0;
+    candidates.sort((a, b) => b.made.minor - a.made.minor || when(b.release) - when(a.release));
+    for (const { release } of candidates) { try { return releaseDownload(entry, release); } catch (_) { /* no zip: the next */ } }
+  }
+  return releaseDownload(entry, await ask('releases/latest'));
 }
 
 // Every file of a zip archive: [{ name, data }], stored or deflated entries.
@@ -251,7 +299,7 @@ function unzip(data) {
     const local = data.readUInt32LE(at + 42);
     const name = data.toString('utf8', at + 46, at + 46 + nameLength);
     at += 46 + nameLength + extra + comment;
-    if (name.endsWith('/')) continue;
+    if (/[\\/]$/.test(name)) continue; // a folder (zipped on Windows, some write \ for /)
     if (data.readUInt32LE(local) !== 0x04034b50) throw new Error('The zip file is damaged.');
     const start = local + 30 + data.readUInt16LE(local + 26) + data.readUInt16LE(local + 28);
     const stored = data.subarray(start, start + packed);
@@ -296,8 +344,8 @@ function installZip(userData, entry, data, release = {}) {
   }
 }
 
-async function download(userData, entry, fetch, { wait } = {}) {
-  const release = await latestRelease(entry, fetch, { wait });
+async function download(userData, entry, fetch, { wait, api = null } = {}) {
+  const release = await latestRelease(entry, fetch, { wait, api });
   if (release.size > MAX_SIZE) throw new Error(`${entry.name}'s download is too large to be a mod.`);
   const data = await retrying(async () => {
     const response = await fetch(release.url, { cache: 'no-store', signal: AbortSignal.timeout(120000) });
@@ -336,4 +384,4 @@ function list(userData, root, env = process.env, platform = process.platform, { 
   };
 }
 
-module.exports = { MAX_SIZE, catalogUrl, normalizeCatalog, mergeCatalog, refreshCatalog, loadSavedCatalog, listKey, listFile, catalog, directory, dataRoot, parseIni, offList, isEnabled, setEnabled, gameApi, supports, unavailable, installed, environment, newer, latestRelease, unzip, installZip, download, pageUrl, remove, list };
+module.exports = { MAX_SIZE, catalogUrl, normalizeCatalog, mergeCatalog, refreshCatalog, loadSavedCatalog, listKey, listFile, catalog, directory, dataRoot, parseIni, offList, isEnabled, setEnabled, gameApi, supports, unavailable, installed, environment, newer, releaseApi, latestRelease, unzip, installZip, download, pageUrl, remove, list };

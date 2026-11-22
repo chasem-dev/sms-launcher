@@ -1,23 +1,33 @@
 {
   "_instructions": "Players see this file in the launcher. Add each player-visible change here in the same commit: launcher changes to beta.launcher, game changes Beta now builds to beta.game. Releases move beta into a new entry (npm run update:game does it). One plain sentence for players per line, no commit hashes or PR numbers. See AGENTS.md.",
   "beta": {
-    "launcher": [
-      "Mods page: Map Teleport by Allebale opens a map of Isle Delfino in any level (N or D-pad up) and takes Mario straight to any level your save file has reached, in Super Mario Sunshine and Super Mario Eclipse.",
-      "World editor (Beta): a new tab opens any stage on your disc in 3D, drawn the way the game draws it, with every NPC in their own colours and outfits. Place anything the game puts in any stage, from buildings and NPCs to enemies and coins, from a catalog you can search and filter by category and world; move, turn and remove what's there; paint the stage's ground with the game's own textures (grass to sand, plaza to paving) and ground types; build floors, walls, stairs, ramps, roofs and houses with grassy banks and grass fringes where ground meets, or copy whole buildings such as Delfino's bell tower; start from an empty stage to make a level of your own; walk around as Mario; save your level or export it as the game's own stage files; and Play in game starts the game straight in your level.",
-      "World editor: click anything to get red, green and blue arrows on it, like in Blender: drag an arrow to move it along that direction, a square between two arrows to slide it, or the yellow ring to turn it, with Ctrl to snap. Play in game also no longer makes Mario walk or jump by himself when your level starts.",
-      "World editor: things that crash the game away from their own stage, such as Bowser without his bathtub, now say what they need in the catalog, and Export and Play in game stop with a message saying what to remove instead of the game crashing.",
-      "World editor: Play in game now opens straight on your level, without the logos, title screen or file select, and the screen stays black until the level fades in.",
-      "World editor: blue coins you place now count as blue coins. Each one gets its own place on the memory card; before, they all shared one with a coin on the disc, so only the first one you took counted and the rest acted like plain coins."
-    ],
-    "game": [
-      "Split-screen co-op: jumping while carrying the other player no longer pushes you sideways.",
-      "Split-screen co-op: talking to someone now stops only the player talking. Their camera goes in and their buttons read the text, while the other player keeps playing.",
-      "Mods: the game has mod API 1.8 beta 1. Mods can tell which episode the episode select's cursor is on, and show more about it over the select; know which blue coin is which and give coins another coin's look or a model of their own; and colour a single object, such as one blue coin, without colouring every object that shares its model.",
-      "Mods: the game has mod API 1.8 beta 3. Mods can give a coin a model with moving parts, such as the game's own Shine, and add the game's sparkles and other effects to an object. Colouring a coin as it loads no longer crashes the game. A key you are holding when a mod's menu opens no longer keeps Mario walking after the menu closes.",
-      "Mods: the game has mod API 1.8 beta 4. Mods can give an episode a name of their own, shown on the episode select and in the pause menu, such as a randomizer naming the level an episode now leads to. An episode a mod links to a Shine the game has no name for now shows no name instead of another episode's."
-    ]
+    "launcher": [],
+    "game": []
   },
   "releases": [
+    {
+      "version": "1.2.0",
+      "date": "2026-11-22",
+      "launcher": [
+        "World editor (Beta): a new World tab opens any stage on your disc in 3D, drawn the way the game draws it, with every NPC in their own colours and outfits. Place anything the game puts in any stage, from buildings and NPCs to enemies, coins and blue coins, from a catalog you can search and filter by category and world; click anything to move it along red, green and blue arrows or turn it with a yellow ring, like in Blender; paint the stage's ground with the game's own textures (grass to sand, plaza to paving) and ground types; build floors, walls, stairs, ramps, roofs and houses, or copy whole buildings such as Delfino's bell tower; start from an empty stage to make a level of your own; walk around as Mario; and save your level or export it as the game's own stage files.",
+        "World editor: Play in game starts the game straight in your level, without the logos, title screen or file select. Things that crash the game away from their own stage, such as Bowser without his bathtub, say what they need in the catalog, and Export and Play in game tell you what to remove instead of the game crashing.",
+        "Mods page: Randomizer by mobby45. A new file starts with Mario's moves, FLUDD's nozzles, Yoshi and more locked, each found behind a Shine Sprite or a blue coin, and the levels' entrances can be shuffled too. Every seed can be finished, and a tracker on the pause menu shows what you can reach.",
+        "Mods page: a mod whose zip was made on Windows now installs, instead of stopping with an error.",
+        "Mods page: Map Teleport by Allebale opens a map of Isle Delfino in any level (N or D-pad up) and takes Mario straight to any level your save file has reached, in Super Mario Sunshine and Super Mario Eclipse.",
+        "Mods page: each mod now downloads in the version made for your game, a mod's beta versions included. On this release's game, FLUDD Weapons and First Person get their new versions; an older game keeps the ones that work on it."
+      ],
+      "game": {
+        "version": "2026.11.22.1",
+        "commit": "62c83558b22fe6d131e34c421ee8961838a424ed",
+        "changes": [
+          "Split-screen co-op: jumping while carrying the other player no longer pushes you sideways.",
+          "Split-screen co-op: talking to someone now stops only the player talking. Their camera goes in and their buttons read the text, while the other player keeps playing.",
+          "Split-screen co-op: player 2's spray now pushes enemies away from player 2, and enemies face the player they chase.",
+          "Mods: what mods draw, such as their menus, now shows with the Vulkan renderer too.",
+          "Mods: the game has mod API 1.8. Mods can make weapons, effects and models of their own (FLUDD Weapons is now built this way); give an episode a name of their own on the episode select and in the pause menu, and show more about the episode under the cursor; know which blue coin is which, and give a coin another coin's look, the game's Shine model or a model of their own, with the game's sparkles; and colour a single object, such as one blue coin. A key you are holding when a mod's menu opens no longer keeps Mario walking after the menu closes."
+        ]
+      }
+    },
     {
       "version": "1.1.0",
       "date": "2026-11-06",

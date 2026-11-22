@@ -2137,12 +2137,19 @@ function newerVersion(a, b) {
   return false;
 }
 
+// Whether `release` is newer than the installed copy: against the release the
+// launcher downloaded it from when it did (a mod.ini may lag behind its tag).
+function nativeModUpdate(mod, release) {
+  const latest = release && !release.error ? release.version : null;
+  return Boolean(latest && mod.installed && newerVersion(latest, mod.installed.release?.tag || mod.installed.version));
+}
+
 function nativeModStatus(mod, release) {
   if (mod.unavailable) return mod.unavailable;
   const latest = release && !release.error ? release.version : null;
   if (mod.installed) {
     const version = mod.installed.version ? `Version ${mod.installed.version}` : 'Downloaded';
-    return latest && newerVersion(latest, mod.installed.version) ? `${version} · ${latest} available` : `${version}${mod.enabled ? '' : ' · off'}`;
+    return nativeModUpdate(mod, release) ? `${version} · ${latest} available` : `${version}${mod.enabled ? '' : ' · off'}`;
   }
   if (release?.error) return release.error;
   return latest ? `Version ${latest} to download` : 'Not downloaded';
@@ -2211,8 +2218,7 @@ function renderNativeMods({ mods }) {
         catch (error) { input.checked = !input.checked; showError(error); }
       });
       toggle.append(input, document.createElement('i'));
-      const latest = release && !release.error ? release.version : null;
-      if (mod.repository && latest && newerVersion(latest, mod.installed.version)) actions.append(button('Update', () => install('updated'), true, true));
+      if (mod.repository && nativeModUpdate(mod, release)) actions.append(button('Update', () => install('updated'), true, true));
       actions.append(button('Remove', async () => {
         renderNativeMods(await window.sms.removeNativeMod(mod.id));
         $('native-mod-result').textContent = `${mod.name} removed.`;

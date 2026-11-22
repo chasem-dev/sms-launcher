@@ -1312,6 +1312,12 @@ async function displayInfo() {
 
 // `session`: a multiplayer game to host or join ({ mode: 'host' or 'join', env }: hostGame, joinGame), or null to play alone.
 // The Mods page: the launcher's mods, and whether this game can run them.
+// The mod API of the game the Mods page is for, or null: which release of a mod to fetch.
+function nativeModsApi() {
+  const root = config.repo && fs.existsSync(config.repo) ? config.repo : null;
+  return root ? nativeMods.gameApi(root) : null;
+}
+
 function nativeModsState() {
   const root = config.repo && fs.existsSync(config.repo) ? config.repo : null;
   const current = Boolean(root) && !config.gameSource && game.isCurrent(root, config.settings, currentSource());
@@ -1339,13 +1345,13 @@ function markModsSeen() {
   return modsNews();
 }
 
-// Each mod's newest release, for the page's Update buttons; a mod GitHub
+// Each mod's newest release for this game, for the page's Update buttons; a mod GitHub
 // cannot answer about just shows none. The list of mods is read again first.
 async function nativeModsLatest() {
   await refreshModList();
-  const latest = {};
+  const latest = {}, api = nativeModsApi();
   await Promise.all(nativeMods.catalog().map(async entry => {
-    try { latest[entry.id] = await nativeMods.latestRelease(entry, (url, options) => net.fetch(url, options)); }
+    try { latest[entry.id] = await nativeMods.latestRelease(entry, (url, options) => net.fetch(url, options), { api }); }
     catch (error) { latest[entry.id] = { error: error.message }; }
   }));
   return latest;
@@ -1356,7 +1362,7 @@ async function installNativeMod(id) {
   if (!entry) throw new Error('That mod is not one the launcher offers.');
   const problem = nativeModsState().mods.find(mod => mod.id === id)?.unavailable;
   if (problem) throw new Error(problem);
-  const done = await nativeMods.download(app.getPath('userData'), entry, (url, options) => net.fetch(url, options));
+  const done = await nativeMods.download(app.getPath('userData'), entry, (url, options) => net.fetch(url, options), { api: nativeModsApi() });
   log(`Installed ${entry.name} ${done.version} in ${done.dir}.`);
   return nativeModsState();
 }

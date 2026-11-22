@@ -12,7 +12,8 @@
       "Split-screen co-op: jumping while carrying the other player no longer pushes you sideways.",
       "Split-screen co-op: talking to someone now stops only the player talking. Their camera goes in and their buttons read the text, while the other player keeps playing.",
       "Mods: the game has mod API 1.8 beta 1. Mods can tell which episode the episode select's cursor is on, and show more about it over the select; know which blue coin is which and give coins another coin's look or a model of their own; and colour a single object, such as one blue coin, without colouring every object that shares its model.",
-      "Mods: the game has mod API 1.8 beta 3. Mods can give a coin a model with moving parts, such as the game's own Shine, and add the game's sparkles and other effects to an object. Colouring a coin as it loads no longer crashes the game. A key you are holding when a mod's menu opens no longer keeps Mario walking after the menu closes."
+      "Mods: the game has mod API 1.8 beta 3. Mods can give a coin a model with moving parts, such as the game's own Shine, and add the game's sparkles and other effects to an object. Colouring a coin as it loads no longer crashes the game. A key you are holding when a mod's menu opens no longer keeps Mario walking after the menu closes.",
+      "Mods: the game has mod API 1.8 beta 4. Mods can give an episode a name of their own, shown on the episode select and in the pause menu, such as a randomizer naming the level an episode now leads to. An episode a mod links to a Shine the game has no name for now shows no name instead of another episode's."
     ]
   },
   "releases": [

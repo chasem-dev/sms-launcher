@@ -14,7 +14,7 @@
         "Mods page: Randomizer by mobby45. A new file starts with Mario's moves, FLUDD's nozzles, Yoshi and more locked, each found behind a Shine Sprite or a blue coin, and the levels' entrances can be shuffled too. Every seed can be finished, and a tracker on the pause menu shows what you can reach.",
         "Mods page: a mod whose zip was made on Windows now installs, instead of stopping with an error.",
         "Mods page: Map Teleport by Allebale opens a map of Isle Delfino in any level (N or D-pad up) and takes Mario straight to any level your save file has reached, in Super Mario Sunshine and Super Mario Eclipse.",
-        "Mods page: FLUDD Weapons now asks for this release's game (mod API 1.8), which its new versions need."
+        "Mods page: each mod now downloads in the version made for your game, a mod's beta versions included. On this release's game, FLUDD Weapons and First Person get their new versions; an older game keeps the ones that work on it."
       ],
       "game": {
         "version": "2026.11.22.1",

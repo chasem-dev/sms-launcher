@@ -136,6 +136,66 @@ test('the newest release is downloaded from GitHub and installed', async t => {
   await assert.rejects(mods.latestRelease(ENTRY, async () => ({ ok: false, status: 404 })), /no release yet/);
 });
 
+test('a release says the mod API it is made for in its zip\'s name or a line of its notes', () => {
+  const zip = name => ({ assets: [{ name }] });
+  assert.deepEqual(mods.releaseApi(zip('fludd-weapons-1.3.2-api1.8.zip')), { major: 1, minor: 8 });
+  assert.deepEqual(mods.releaseApi(zip('first-person-1.3.0_API1.10.zip')), { major: 1, minor: 10 });
+  assert.deepEqual(mods.releaseApi({ assets: [], body: 'Rebuilt.\n\n**Mod API: 1.8**\n' }), { major: 1, minor: 8 });
+  assert.deepEqual(mods.releaseApi({ assets: [], body: '- Mod API: 1.7' }), { major: 1, minor: 7 });
+  // Mentions in a sentence are not a statement.
+  assert.equal(mods.releaseApi({ assets: [], body: 'Needs the Beta game (Mod API 1.8 beta 2 or newer). On the stable game (Mod API: 1.7), use v1.0.3.' }), null);
+  assert.equal(mods.releaseApi(zip('fludd-weapons-1.3.2.zip')), null);
+});
+
+test('mods.json may pin a release of a mod for each mod API; bad pins are dropped', () => {
+  const [entry] = mods.normalizeCatalog([{ id: 'w', repository: 'a/w', api: '1.7', releases: { '1.7': 'v1.0.3', '1.8': 'v1.3.2', 'x': 'v9', '1.9': '../evil', '2.0': 3 } }]);
+  assert.deepEqual(entry.releases, { '1.7': 'v1.0.3', '1.8': 'v1.3.2' });
+  assert.equal('releases' in mods.normalizeCatalog([{ id: 'w', repository: 'a/w', releases: ['v1'] }])[0], false);
+});
+
+test('the release downloaded is the one made for the highest mod API the game has', async () => {
+  const at = (tag, date, extra = {}) => ({ tag_name: tag, published_at: date, assets: [{ name: `w-${tag}.zip`, size: 1, browser_download_url: `https://example.invalid/${tag}.zip` }], ...extra });
+  const LIST = [
+    at('v1.4.0', '2026-11-20', { prerelease: true, assets: [{ name: 'w-1.4.0-api1.9.zip', size: 1, browser_download_url: 'https://example.invalid/v1.4.0.zip' }] }),
+    at('v1.3.2', '2026-11-16', { prerelease: true }),
+    at('v1.3.1', '2026-11-15', { prerelease: true, body: 'Mod API: 1.8' }),
+    at('v1.0.4', '2026-11-14', { draft: true, body: 'Mod API: 1.8' }),
+    at('v1.0.3', '2026-11-08'),
+  ];
+  const github = (list = LIST, latest = 'v1.0.3') => {
+    const asked = [];
+    const fetch = async url => {
+      asked.push(url.replace('https://api.github.com/repos/a/w/', ''));
+      const tag = /releases\/tags\/(.+)$/.exec(url)?.[1];
+      const body = url.includes('releases?') ? list : url.endsWith('/latest') ? list.find(r => r.tag_name === latest)
+        : tag ? (list.find(r => r.tag_name === tag) || at(tag, '2026-01-01')) : null;
+      return body ? { ok: true, status: 200, json: async () => body } : { ok: false, status: 404 };
+    };
+    return { fetch, asked };
+  };
+  const entry = (releases) => ({ id: 'w', name: 'W', repository: 'a/w', ...(releases ? { releases } : {}) });
+  const api = minor => ({ major: 1, minor });
+  // Without the game's API: Latest, as before.
+  let gh = github();
+  assert.equal((await mods.latestRelease(entry(), gh.fetch)).tag, 'v1.0.3');
+  assert.deepEqual(gh.asked, ['releases/latest']);
+  // A 1.8 game: the newest release saying 1.8 (not the draft, nor the 1.9 one).
+  gh = github();
+  assert.equal((await mods.latestRelease(entry(), gh.fetch, { api: api(8) })).tag, 'v1.3.1');
+  assert.equal((await mods.latestRelease(entry(), github().fetch, { api: api(9) })).tag, 'v1.4.0');
+  // A pin for 1.8 that is newer than what the releases say wins on the date; one for 1.7 does not on a 1.8 game.
+  assert.equal((await mods.latestRelease(entry({ '1.7': 'v1.0.3', '1.8': 'v1.3.2' }), github().fetch, { api: api(8) })).tag, 'v1.3.2');
+  assert.equal((await mods.latestRelease(entry({ '1.7': 'v1.0.3', '1.8': 'v1.3.2' }), github().fetch, { api: api(7) })).tag, 'v1.0.3');
+  // A pinned tag older than the list is asked for by name.
+  gh = github(LIST.slice(0, 1));
+  assert.equal((await mods.latestRelease(entry({ '1.8': 'v0.9.0' }), gh.fetch, { api: api(8) })).tag, 'v0.9.0');
+  assert.deepEqual(gh.asked, ['releases?per_page=30', 'releases/tags/v0.9.0']);
+  // Nothing says or pins one for this game: Latest.
+  gh = github(LIST.filter(r => !r.body && !r.assets[0].name.includes('api')));
+  assert.equal((await mods.latestRelease(entry(), gh.fetch, { api: api(8) })).tag, 'v1.0.3');
+  assert.deepEqual(gh.asked, ['releases?per_page=30', 'releases/latest']);
+});
+
 test('GitHub briefly down or a dropped download is asked again; a missing release is not', async t => {
   const userData = temporary(t);
   const asked = [];
@@ -259,9 +319,10 @@ test('FLUDD Weapons is offered only by launchers whose game has the mod API it n
   assert.equal(offered('1.1.0'), true);
   assert.equal(offered('1.1.0-beta.1'), true);
   const entry = mods.normalizeCatalog(raw, '1.1.0').find(item => item.id === 'fludd-weapons');
-  // Its new versions are built on mod API 1.8 (the game's own weapons are gone there).
-  assert.equal(mods.supports({ major: 1, minor: 7 }, entry.api), false);
-  assert.equal(mods.supports({ major: 1, minor: 8 }, entry.api), true);
+  assert.equal(mods.supports({ major: 1, minor: 6 }, entry.api), false);
+  assert.equal(mods.supports({ major: 1, minor: 7 }, entry.api), true);
+  // 1.8 took out the game's own weapons, which its 1.0 versions fire: a 1.8 game gets its 1.3 build.
+  assert.deepEqual(entry.releases, { '1.7': 'v1.0.3', '1.8': 'v1.3.2' });
 });
 
 test('the published list (mods.json) is valid, credits every mod and has every mod the launcher builds in', () => {

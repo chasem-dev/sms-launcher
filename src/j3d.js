@@ -353,7 +353,9 @@ function decodeCmprBlock(src, s, bx, by, put) {
     const a = rgb565(c0), b = rgb565(c1);
     const palette = c0 > c1
       ? [[...a, 255], [...b, 255], [...a.map((v, i) => (2 * v + b[i]) / 3 | 0), 255], [...a.map((v, i) => (v + 2 * b[i]) / 3 | 0), 255]]
-      : [[...a, 255], [...b, 255], [...a.map((v, i) => (v + b[i]) >> 1), 255], [0, 0, 0, 0]];
+      // the see-through colour keeps the third's colour, as the hardware (and the game, gx_texture.cpp) decodes it:
+      // a material that ignores the texture's alpha shows that colour, not black
+      : [[...a, 255], [...b, 255], [...a.map((v, i) => (v + b[i]) >> 1), 255], [...a.map((v, i) => (v + b[i]) >> 1), 0]];
     const ox = bx + (sub & 1) * 4, oy = by + (sub >> 1) * 4;
     for (let y = 0; y < 4; y++) {
       const row = src[s + 4 + y];
@@ -361,6 +363,15 @@ function decodeCmprBlock(src, s, bx, by, put) {
     }
   }
   return s;
+}
+
+// The alpha a texel needs to be drawn, from a material's alpha compare, for a viewer that cuts out below one
+// value (three.js alphaTest): its first compare, 'at least' or 'greater than' a reference, as cut-outs use it
+// (custom characters' converted models cut theirs out with 'greater than 0'); 0 draws every texel.
+function alphaCutoff(test) {
+  if (test?.comp0 === 6) return test.ref0 / 255;
+  if (test?.comp0 === 4) return Math.min(test.ref0 + 0.5, 255) / 255;
+  return 0;
 }
 
 // --- Model ------------------------------------------------------------------
@@ -484,4 +495,4 @@ function withJointKinds(data, kinds) {
   return out;
 }
 
-module.exports = { parseBmd, parseBmt, parseBck, parseBtk, sampleTrack, decodeTexture, decodeBti, jointKinds, withJointKinds };
+module.exports = { parseBmd, parseBmt, parseBck, parseBtk, sampleTrack, decodeTexture, decodeBti, jointKinds, withJointKinds, alphaCutoff };

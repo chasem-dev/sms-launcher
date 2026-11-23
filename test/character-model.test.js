@@ -262,8 +262,24 @@ test('the cap is the one the game draws: ma_cap1 on the head, in the body\'s tex
     const drawn = shapes.at(-1);
     assert.deepEqual([...drawn.drawIndex], [1, 1, 1]);
     assert.equal(textures[drawn.texture].name, 'H_ma_new_main');
+    // a custom character's cap painted with a texture of its own (not the stand-in) keeps it
+    cap.textures.push(texture('H_ma_polmask_cap_i4'));
+    cap.materials[0].textures = [1];
+    const own = loadCharacter({ id: 'pack', name: 'Pack' }, files);
+    assert.equal(own.textures[own.shapes.at(-1).texture].name, 'H_ma_polmask_cap_i4');
     // without ma_cap1, the body's own cap shape stays
     files.delete('bmd/ma_cap1.bmd');
     assert.deepEqual(loadCharacter({ id: 'luigi', name: 'Luigi' }, files).shapes.map(s => s.position[0]), [0, 1, 2, 3, 4]);
   } finally { j3d.parseBmd = parse; }
+});
+
+test('cut-outs draw as the game draws them: "greater than" and "at least" alpha compares cut out', () => {
+  const { alphaCutoff } = require('../src/j3d');
+  const test_ = (comp0, ref0) => ({ comp0, ref0, op: 0, comp1: 7, ref1: 0 });
+  assert.equal(alphaCutoff(test_(7, 0)), 0, 'always: every texel');
+  assert.equal(alphaCutoff(test_(6, 128)), 128 / 255);
+  // greater than 0 (custom characters' converted models): only fully see-through texels go
+  assert.ok(alphaCutoff(test_(4, 0)) > 0 && alphaCutoff(test_(4, 0)) < 1 / 255);
+  assert.ok(alphaCutoff(test_(4, 69)) > 69 / 255 && alphaCutoff(test_(4, 69)) < 70 / 255);
+  assert.equal(alphaCutoff(undefined), 0);
 });

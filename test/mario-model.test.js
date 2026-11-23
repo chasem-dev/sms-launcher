@@ -107,6 +107,13 @@ test('textures decode from the GameCube formats Mario uses', () => {
   assert.deepEqual([...pixels.subarray(0, 4)], [255, 0, 0, 255]);
   assert.deepEqual([...pixels.subarray(4, 8)], [0, 0, 255, 255]);
   assert.deepEqual([...pixels.subarray(8, 12)], [170, 0, 85, 255]);
+  // with its first colour not above its second, a block's fourth texel is see-through in the third's colour,
+  // as the hardware and the game decode it (not black)
+  const clear = Buffer.alloc(32);
+  clear.writeUInt16BE(0x001f, 0); clear.writeUInt16BE(0xf800, 2); clear[4] = 0b10110000;
+  const seeThrough = j3d.decodeTexture(clear, 14, 8, 8);
+  assert.deepEqual([...seeThrough.subarray(0, 4)], [127, 0, 127, 255]);
+  assert.deepEqual([...seeThrough.subarray(4, 8)], [127, 0, 127, 0]);
   // I4: two texels per byte, high nibble first.
   const i4 = j3d.decodeTexture(Buffer.from([0xf0, ...Array(31).fill(0)]), 0, 8, 8);
   assert.deepEqual([...i4.subarray(0, 8)], [255, 255, 255, 255, 0, 0, 0, 0]);

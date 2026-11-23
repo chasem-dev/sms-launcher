@@ -1,7 +1,9 @@
 {
   "_instructions": "Players see this file in the launcher. Add each player-visible change here in the same commit: launcher changes to beta.launcher, game changes Beta now builds to beta.game. Releases move beta into a new entry (npm run update:game does it). One plain sentence for players per line, no commit hashes or PR numbers. See AGENTS.md.",
   "beta": {
-    "launcher": [],
+    "launcher": [
+      "World editor: Yoshi eggs placed in a level no longer crash the game on a file that has Yoshi. The catalog says eggs only show up on such a file, and the egg from Delfino Plaza's Shadow Mario event, which never shows up in a level, is no longer in it."
+    ],
     "game": []
   },
   "releases": [

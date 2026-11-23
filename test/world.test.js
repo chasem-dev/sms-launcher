@@ -299,6 +299,13 @@ test('levels play in the game: the stage table finds each scene, and exports car
   const lamp = world.loadLevel(lib, 'bianco0').objects.find(o => o.variant?.toLowerCase() === 'lampbianco');
   const lit = world.cleanProject({ format: 'sms-world', base: 'dolpic0', added: [{ uid: 'l', key: lamp.key, source: { scene: 'bianco0', id: lamp.id }, type: lamp.type, variant: lamp.variant, label: 'Lamp', category: 'decorations', model: null, transform: lamp.transform }] }, lib.scenes());
   assert.throws(() => world.buildScene(lib, lit), /only works in Bianco Hills/);
+  // A Yoshi egg brings its speech bubble, which TEggYoshi::load opens by name
+  // (on a file with Yoshi; without it there the game crashes).
+  const egg = world.loadLevel(lib, 'bianco5').objects.find(o => o.type === 'EggYoshi');
+  const eggs = world.cleanProject({ format: 'sms-world', base: 'monte0', added: [{ uid: 'e', key: egg.key, source: { scene: 'bianco5', id: egg.id }, type: egg.type, variant: egg.variant, label: 'Yoshi egg', category: 'interactive', model: null, transform: egg.transform }] }, lib.scenes());
+  assert.ok(!lib.files('monte0').has('mapobj/eggyoshi_fukidashi.bmd'));
+  const hatchery = archive.rarc(archive.yaz0(world.buildArchive(lib, eggs).data));
+  for (const file of ['mapobj/eggyoshi_fukidashi.bmd', 'mapobj/eggyoshi_fukidashi.btp', 'mapobj/eggyoshi_fukidashi_wait.bck']) assert.ok(hatchery.has(file), file);
 });
 
 test('a message bank takes a new text for one message, or for all of them, and keeps the rest', () => {

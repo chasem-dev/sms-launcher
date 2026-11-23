@@ -16,7 +16,7 @@ const levelModel = require('./level-model');
 const stage = require('./world-stage');
 const DATA = require('./world-data.json');
 
-const CATALOG_VERSION = 10;
+const CATALOG_VERSION = 11;
 const PROJECT_FORMAT = 'sms-world';
 
 // Stage file prefixes -> the world they belong to.
@@ -763,6 +763,9 @@ const HELPERS = /^(reflect|seaindirect|indirect)/i;
 const STAGE_SHEETS = /pollution|river/i;
 const UNLISTED_TYPES = new Set(['Shimmer']);
 const UNLISTED_SCENES = new Set(['test11']);
+// The Yoshi egg of Delfino Plaza's Shadow Mario event: it's there only while
+// that event runs (flag 0x60003, TEggYoshi::load), so never in a level.
+const UNLISTED_VARIANTS = new Set(['eggyoshievent']);
 const MARKER_WHEN_EMPTY = new Set(['buildings', 'bosses', 'npcs', 'enemies', 'interactive', 'decorations', 'nature', 'vehicles']);
 
 function categoryOf(type, variant, info) {
@@ -882,6 +885,12 @@ const COMMON_FOLDERS = { NPCMonteM: ['montemcommon'], NPCMonteW: ['montewcommon'
 
 // Files a placed object needs from the stage it came from: its model and
 // everything named like it (animations, collision), or its whole folder.
+// Files a map object's own code loads by name, beyond the game's table: a
+// Yoshi egg's speech bubble (TEggYoshi::load), which the game stops on when
+// it's missing.
+const EGG_BUBBLE = ['mapobj/eggyoshi_fukidashi'];
+const OWN_FILES = { eggyoshi: EGG_BUBBLE, eggyoshievent: EGG_BUBBLE };
+
 function resourcesFor(files, modelFile, described) {
   if (!modelFile) return [];
   const { info, variant } = described;
@@ -889,6 +898,7 @@ function resourcesFor(files, modelFile, described) {
   if (info.family === 'mapobj' || info.family === 'static') {
     const entry = (info.family === 'mapobj' ? DATA.mapobj : DATA.static)[variant.toLowerCase()] || {};
     for (const file of [].concat(entry.m || [], entry.c || [], entry.a || [], modelFile)) if (files.has(file)) out.add(file);
+    for (const stem of OWN_FILES[variant.toLowerCase()] || []) for (const file of files.keys()) if (file.startsWith(stem)) out.add(file);
     // Files named after its model too: its animations, and parts' collision
     // the object loads by name (a tree's leaves, "palmnormalleaf01.col").
     const stems = [...out].map(file => file.replace(/\.[^./]+$/, ''));
@@ -923,6 +933,7 @@ async function buildCatalog(library) {
       const described = describe(node);
       // A stage has one Mario: his start point can be moved, not placed again.
       if (described.info.kind !== 'actor' || node.type === 'Mario') return;
+      if (UNLISTED_VARIANTS.has(described.variant.toLowerCase())) return;
       const category = categoryOf(node.type, described.variant, described.info);
       if (!category) return;
       const transform = readTransform(node.data);
@@ -1048,6 +1059,7 @@ function missingNeed(tree, scene) {
 function noteFor(item) {
   const bound = worldBound(item);
   if (bound) return `Only works in ${bound.name} stages: the game loads its materials there only.`;
+  if (item.type === 'EggYoshi') return 'The game puts eggs out only on a file that has Yoshi (in Delfino Plaza, once he has hatched there). Play in game starts a new file, so it isn\'t there.';
   const needs = needsNote(item.type);
   if (needs) return needs;
   if (item.category === 'npcs' || item.category === 'enemies' || item.category === 'bosses')

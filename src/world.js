@@ -16,7 +16,7 @@ const levelModel = require('./level-model');
 const stage = require('./world-stage');
 const DATA = require('./world-data.json');
 
-const CATALOG_VERSION = 11;
+const CATALOG_VERSION = 12;
 const PROJECT_FORMAT = 'sms-world';
 
 // Stage file prefixes -> the world they belong to.
@@ -920,13 +920,14 @@ function resourcesFor(files, modelFile, described) {
 
 // Reads a stage at a time, letting the launcher get on with other work in between.
 async function buildCatalog(library) {
-  const items = new Map();
+  const items = new Map(), nights = [];
   for (const scene of library.scenes()) {
     await new Promise(resolve => setImmediate(resolve));
     if (UNLISTED_SCENES.has(scene)) continue;
     let tree, context;
     try { context = library.context(scene); tree = context.tree; }
     catch (_) { continue; }  // a stage without a scene file (Eclipse keeps some elsewhere)
+    if (isNight(tree)) nights.push(scene);
     const world = worldOf(scene).id;
     sceneBin.walk(tree, (node, id) => {
       if (node.children) return;
@@ -974,7 +975,20 @@ async function buildCatalog(library) {
       search: [item.label, item.type, item.variant, categoryLabels[item.category], ...worlds.map(w => worldNames[w])].join(' ').toLowerCase(),
     };
   }).sort((a, b) => a.label.localeCompare(b.label));
-  return { version: CATALOG_VERSION, categories: CATEGORIES, items: list };
+  return { version: CATALOG_VERSION, categories: CATEGORIES, items: list, nights };
+}
+
+// A stage the game lights as night: its sun light on Mario is a dim blue
+// (Pianta Village's episodes 1, 3, 5 and 7), where day is grey or warm.
+// A level keeps its stage's lights, so it plays at night too.
+function isNight(tree) {
+  let night = false;
+  sceneBin.walk(tree, node => {
+    if (node.type !== 'AmbColor' || node.children || node.data.length < 4 || sceneBin.decodeName(node.nameBytes) !== '太陽アンビエント（プレイヤー）') return;
+    const [r, g, b] = node.data.subarray(node.data.length - 4);
+    night = b - r >= 0x40 && b > g && r < 0x30;
+  });
+  return night;
 }
 
 const worldOrder = id => { const i = WORLDS.findIndex(w => w.id === id); return i < 0 ? WORLDS.length : i; };
@@ -998,7 +1012,9 @@ function worldBound(item) {
 // their own map, whose pieces they move by number; `only` limits a need to
 // stages it applies in (a cannon looks for Pinna Beach's sea gate there, and
 // Gooper Blooper hands out a Shine only in Ricco Harbor).
-const BOSS_SHINE = { what: 'the Shine a boss leaves when beaten', where: 'boss stages such as Bianco Hills · 5', names: ['シャイン（ボス用）'] };
+// A missing boss Shine is copied in from the disc on export (bringBossShine),
+// so it's never the player's to place.
+const BOSS_SHINE = { what: 'the Shine a boss leaves when beaten', where: 'boss stages such as Bianco Hills · 5', names: ['シャイン（ボス用）'], auto: true };
 const BOWSER = { what: 'Bowser and his bathtub', where: 'Corona Mountain', names: ['クッパマネージャー', 'バスタブ'] };
 const count = (prefix, n) => [...Array(n).keys()].map(i => `${prefix} ${i}`);
 const NEEDS = {
@@ -1009,8 +1025,10 @@ const NEEDS = {
   KoopaJrSubmarine: [{ what: 'Bowser Jr.', where: 'Corona Mountain', types: ['KoopaJr'] }],
   LimitKoopaJr: [BOWSER],
   TinKoopa: [{ what: 'the roller coaster\'s Bullet Bills', where: 'Pinna Park', names: ['コースターキラーマネージャー'] }],
-  BossTelesa: [{ what: 'the ten chili peppers and coins of its room', where: 'Delfino Hotel\'s boss stage', names: [...count('唐辛子', 10), ...count('コイン', 10)] }, BOSS_SHINE],
-  BossMantaManager: [{ who: 'Phantamanta', what: 'Sirena Beach\'s fan palms', where: 'Sirena Beach', names: count('palmOugi', 7) }],
+  // Numbered names are filled from placed copies (nameForNeeds), so placing
+  // that many of the thing is enough.
+  BossTelesa: [{ what: 'ten red peppers (the kind that comes back) and ten coins', then: 'which it hides and hands out from its slot machine', placed: true, names: [...count('唐辛子', 10), ...count('コイン', 10)] }, BOSS_SHINE],
+  BossMantaManager: [{ who: 'Phantamanta', what: 'seven fan palms', placed: true, names: count('palmOugi', 7) }],
   MareCork: [{ what: 'its cannon', where: 'Noki Bay · 1', names: ['砲台'] }],
   Cannon: [{ what: 'the sea gate it opens', where: 'Pinna Park · Beach 2 to 5', names: ['efMareGate'], only: /^pinnabeach/, in: 'Pinna Beach' }],
   SandCastle: [{ what: 'the sand bomb and stage door', where: 'Gelato Beach · 1', names: ['砂の城爆発の芽', 'ステージ切替（砂の城）'] }],
@@ -1024,24 +1042,30 @@ const NEEDS = {
   HideObjInfo: [{ what: 'an object switch', where: 'Gelato Beach, Noki Bay and Pinna Park', types: ['MapObjSwitch'] }],
   MareEventBumpyWall: [{ where: 'Noki Bay', stage: /^mare\d$/ }],
   MareEventPoint: [{ where: 'Noki Bay', stage: /^mare\d$/ }],
-  BossPakkun: [BOSS_SHINE], BossGesso: [{ ...BOSS_SHINE, only: /^ricco/, in: 'Ricco Harbor' }], BossEel: [BOSS_SHINE], BossWanwan: [BOSS_SHINE],
+  // TBossWanwan::init starts at fixed spots of its stage and follows its
+  // "bwanwan" path, which only that stage's rails have: anywhere else it's
+  // nowhere near where it was placed.
+  BossWanwan: [{ where: 'Pianta Village · 2', stage: /^monte1$/, whole: true, why: 'it always starts at its own spot there and walks that stage\'s paths, so anywhere else it isn\'t where you put it' }, BOSS_SHINE],
+  BossPakkun: [BOSS_SHINE], BossGesso: [{ ...BOSS_SHINE, only: /^ricco/, in: 'Ricco Harbor' }], BossEel: [BOSS_SHINE],
   FireWanwan: [BOSS_SHINE], Hanachan: [BOSS_SHINE], SleepBossHanachan: [BOSS_SHINE],
   AmiKing: [{ what: 'the Ferris wheel and its Shine', where: 'Pinna Park · 3', names: ['FerrisWheel', 'シャイン（観覧車シャイン用）'] }],
 };
 
-const needPhrase = need => `${need.only ? `in ${need.in}, ` : ''}it needs ${need.what}, found in ${need.where}`;
+const STAGE_WHY = 'it moves parts of that stage, and the game crashes anywhere else';
+const needWhat = need => need.placed ? `${need.what} placed with it${need.then ? `, ${need.then}` : ''}` : `${need.what}, found in ${need.where}`;
+const needPhrase = need => `${need.only ? `in ${need.in}, ` : ''}it needs ${needWhat(need)}`;
 function needsNote(type) {
   // A character's manager comes along with it, needs and all.
-  const needs = NEEDS[type] || NEEDS[`${type}Manager`];
-  if (!needs) return '';
+  const needs = (NEEDS[type] || NEEDS[`${type}Manager`] || []).filter(need => !need.auto);
+  if (!needs.length) return '';
   const own = needs.find(need => need.stage);
-  if (own) return `Only works in ${own.where}: it moves parts of that stage, and the game crashes anywhere else.`;
+  if (own) return `Only works in ${own.where}${own.whole ? ', not emptied' : ''}: ${own.why || STAGE_WHY}.`;
   return `${needs.map(needPhrase).join('; ').replace(/^./, c => c.toUpperCase())}. The game crashes without ${needs.length > 1 || needs[0].names?.length > 1 ? 'them' : 'it'}.`;
 }
 
 // The first thing in a level that would crash the game for want of another
 // object, with what it needs, or null.
-function missingNeed(tree, scene) {
+function missingNeed(tree, scene, blank = false) {
   const names = new Set(), types = new Set(), needing = [];
   sceneBin.walk(tree, node => {
     names.add(sceneBin.decodeName(node.nameBytes));
@@ -1049,7 +1073,7 @@ function missingNeed(tree, scene) {
     if (!node.children && NEEDS[node.type]) needing.push(node);
   });
   for (const node of needing) {
-    const need = NEEDS[node.type].find(need => need.stage ? !need.stage.test(scene)
+    const need = NEEDS[node.type].find(need => need.stage ? !need.stage.test(scene) || (need.whole && blank)
       : (!need.only || need.only.test(scene)) && ((need.names || []).some(name => !names.has(name)) || (need.types || []).some(type => !types.has(type))));
     if (need) return { node, need };
   }
@@ -1175,39 +1199,45 @@ function buildScene(library, project) {
     parent?.children?.splice(index, 1);
   }
   const needs = new Map();  // scene -> Set of files to copy
-  const blueCoins = [];
+  // A copy of a disc object, with what it needs from its stage.
+  const place = (scene, id, transform, label) => {
+    const sourceTree = library.sceneTree(scene);
+    const source = sceneBin.find(sourceTree, id);
+    if (!source || source.children || classOf(source.type).kind !== 'actor') throw new Error(`Couldn't find ${label} on your disc any more.`);
+    const node = cloneNode(source);
+    writeTransform(node.data, transform);
+    const parentId = id.split('/').slice(0, -1).join('/');
+    const sourceParent = sceneBin.find(sourceTree, parentId);
+    const parent = findGroup(tree, sourceParent) || findGroup(tree, null);
+    parent.children.push(node);
+    // Its manager, when the stage doesn't have one by that name.
+    for (const name of describe(node).names) addManager(tree, sourceTree, name);
+    const context = library.context(scene), files = context.files;
+    const described = describe(source);
+    const model = modelPath(context, source, described);
+    if (!needs.has(scene)) needs.set(scene, new Set());
+    for (const file of resourcesFor(files, model, described)) needs.get(scene).add(file);
+    // A map object's manager is named by the game's table, not the object.
+    const manager = managerOf(described);
+    if (manager) addManager(tree, sourceTree, manager);
+    return node;
+  };
+  const placed = [];
   for (const added of project.added) {
     const bound = worldBound(added);
     if (bound && worldOf(project.base).id !== bound.world)
       throw new Error(`${added.label} only works in ${bound.name} stages (the game loads its materials there only). Remove it to export this level.`);
-    const sourceTree = library.sceneTree(added.source.scene);
-    const source = sceneBin.find(sourceTree, added.source.id);
-    if (!source || source.children || classOf(source.type).kind !== 'actor') throw new Error(`Couldn't find ${added.label} on your disc any more.`);
-    const node = cloneNode(source);
-    writeTransform(node.data, added.transform);
-    const parentId = added.source.id.split('/').slice(0, -1).join('/');
-    const sourceParent = sceneBin.find(sourceTree, parentId);
-    const parent = findGroup(tree, sourceParent) || findGroup(tree, null);
-    parent.children.push(node);
-    if (node.type === 'CoinBlue') blueCoins.push(node);
-    // Its manager, when the stage doesn't have one by that name.
-    for (const name of describe(node).names) addManager(tree, sourceTree, name);
-    const context = library.context(added.source.scene), files = context.files;
-    const described = describe(source);
-    const model = modelPath(context, source, described);
-    if (!needs.has(added.source.scene)) needs.set(added.source.scene, new Set());
-    for (const file of resourcesFor(files, model, described)) needs.get(added.source.scene).add(file);
-    // A map object's manager is named by the game's table, not the object.
-    const manager = managerOf(described);
-    if (manager) addManager(tree, sourceTree, manager);
+    placed.push(place(added.source.scene, added.source.id, added.transform, added.label));
   }
-  numberBlueCoins(tree, blueCoins);
-  const missing = missingNeed(tree, project.base);
+  numberBlueCoins(tree, placed.filter(node => node.type === 'CoinBlue'));
+  nameForNeeds(tree, placed);
+  bringBossShine(library, tree, project.base, place);
+  const missing = missingNeed(tree, project.base, project.blank);
   if (missing) {
     const { node, need } = missing, who = need.who || labelOf(node.type, describe(node).variant);
     throw new Error(need.stage
-      ? `${who} only works in ${need.where}: it moves parts of that stage, and the game crashes anywhere else. Remove it to export or play this level.`
-      : `${who} needs ${need.what}, found in ${need.where}, and the game crashes without ${need.names?.length > 1 ? 'them' : 'it'}. Remove it, or place ${need.names?.length > 1 ? 'them' : 'it'} too, to export or play this level.`);
+      ? `${who} only works in ${need.where}${need.whole ? ', not emptied' : ''}: ${need.why || STAGE_WHY}. Remove it to export or play this level.`
+      : `${who} needs ${needWhat(need)}, and the game crashes without ${need.names?.length > 1 ? 'them' : 'it'}. Remove it, or place ${need.names?.length > 1 ? 'them' : 'it'} too, to export or play this level.`);
   }
   const raised = fitManagers(tree);
   return { tree, needs, raised };
@@ -1237,6 +1267,64 @@ function numberBlueCoins(tree, placed) {
     const at = blueCoinFlagAt(node.data);
     if (at >= 0) node.data.writeInt32BE(free[i], at);
   });
+}
+
+// Things found by numbered names, such as King Boo's ten peppers ("唐辛子 0"
+// to "唐辛子 9", TBossTelesa) or Phantamanta's fan palms: every placed copy
+// carries the name of the one it was copied from, so the copies of one take
+// the numbers the stage is still missing.
+function nameForNeeds(tree, placed) {
+  const wanted = new Set();
+  sceneBin.walk(tree, node => {
+    if (!node.children) for (const need of NEEDS[node.type] || []) for (const name of need.names || []) if (/ \d+$/.test(name)) wanted.add(name);
+  });
+  if (!wanted.size) return;
+  const own = new Set(placed), taken = new Set(), spare = [];
+  sceneBin.walk(tree, node => { if (!node.children && !own.has(node)) taken.add(sceneBin.decodeName(node.nameBytes)); });
+  for (const node of placed) {
+    const name = sceneBin.decodeName(node.nameBytes);
+    if (wanted.has(name) && !taken.has(name)) taken.add(name);
+    else spare.push(node);
+  }
+  const stem = name => name.replace(/ \d+$/, '');
+  for (const name of wanted) {
+    if (taken.has(name)) continue;
+    const i = spare.findIndex(node => stem(sceneBin.decodeName(node.nameBytes)) === stem(name));
+    if (i < 0) continue;
+    const [node] = spare.splice(i, 1);
+    // The name's own bytes (Shift-JIS) without its number, then the new number.
+    let end = node.nameBytes.length;
+    while (end > 0 && node.nameBytes[end - 1] >= 0x30 && node.nameBytes[end - 1] <= 0x39) end--;
+    if (end > 0 && node.nameBytes[end - 1] === 0x20) end--;
+    node.nameBytes = Buffer.concat([node.nameBytes.subarray(0, end), Buffer.from(` ${name.match(/(\d+)$/)[1]}`, 'latin1')]);
+    node.nameKey = sceneBin.keyCode(node.nameBytes);
+    taken.add(name);
+  }
+}
+
+// A beaten boss hands out its stage's boss Shine (TItemManager, by name) and
+// the game crashes without one: a level without it gets the disc's, where the
+// boss is, from its own stage when that has one.
+const BOSS_SHINE_FROM = ['monte1', 'bianco4', 'biancoboss', 'delfinoboss', 'mareboss', 'ricco8', 'mamma1', 'mare0', 'ricco0'];
+function bringBossShine(library, tree, scene, place) {
+  const [name] = BOSS_SHINE.names;
+  let has = false, boss = null;
+  sceneBin.walk(tree, node => {
+    if (node.children) return;
+    if (sceneBin.decodeName(node.nameBytes) === name) has = true;
+    if (!boss && (NEEDS[node.type] || []).some(need => need.names === BOSS_SHINE.names && (!need.only || need.only.test(scene)))) boss = node;
+  });
+  if (has || !boss) return;
+  const scenes = library.scenes();
+  for (const from of [...BOSS_SHINE_FROM.filter(s => scenes.includes(s)), ...scenes]) {
+    let found = null;
+    try { sceneBin.walk(library.sceneTree(from), (node, id) => { if (!found && !node.children && node.type === 'Shine' && sceneBin.decodeName(node.nameBytes) === name) found = id; }); }
+    catch (_) { continue; }
+    if (!found) continue;
+    const { position, rotation, scale } = readTransform(boss.data);
+    place(from, found, { position, rotation, scale: scale.map(() => 1) }, 'the boss Shine');
+    return;
+  }
 }
 
 function cloneNode(node) {
@@ -1413,5 +1501,5 @@ function originalPath(tree, file) {
 module.exports = {
   Library, WORLDS, CATEGORIES, SURFACES, GROUND_TYPES, CAMERA_TYPES, CATALOG_VERSION, PROJECT_FORMAT, FLOOR_NORMAL, worldOf, sceneLabel, buildCatalog, loadLevel, cleanProject,
   buildScene, buildCollision, buildModel, buildArchive, stageTable, stageStart, playTexts, setMessages, readTransform, writeTransform, describe, categoryOf, labelOf, humanize, fitManagers,
-  paintNpc, parseNpcLook, NPC_TYPES,
+  paintNpc, parseNpcLook, NPC_TYPES, isNight,
 };

@@ -119,7 +119,7 @@ $('fluddTrigger').addEventListener('change', () => saveSettings());
 
 function bindingNote() {
   return bindingMode === 'controller'
-    ? 'Choose Change, then press a button on your controller, or hold two together, or pick the button from the list. Esc cancels. The sticks always move the sticks.'
+    ? 'Choose Change, then press a button on your controller, or hold two together, or pick the button from the list. Esc cancels. The left stick always moves Mario and the right stick the camera, so they need no binding.'
     : 'Choose Change, then press a key or click a mouse button. Esc cancels.';
 }
 
@@ -153,8 +153,21 @@ function heldPadButtons() {
 
 // Waits for newly pressed controller buttons (ones already held when capture began do not count): two held
 // together make a two-button binding (LB + LT), and one let go on its own is a binding by itself.
+// A stick is never a binding (the game always reads it as the stick, src/bindings.js): pushing one says so
+// instead of doing nothing.
+function pushedStick() {
+  for (const pad of (navigator.getGamepads ? navigator.getGamepads() : []))
+    if (pad?.mapping === 'standard' || pad?.axes?.length >= 4) {
+      const stick = SmsBindings.pushedStick(pad.axes);
+      if (stick) return stick;
+    }
+  return null;
+}
+
 function watchPad(baseline, chord = []) {
   if (!capture) return;
+  const stick = !chord.length && pushedStick();
+  if (stick) $('binding-note').textContent = SmsBindings.stickNote(capture.id, stick);
   const held = heldPadButtons();
   for (const entry of held) {
     if (baseline.has(entry) || chord.some(item => item.entry === entry)) continue;
@@ -323,10 +336,20 @@ function renderBindings() {
       keys.textContent = controller && !padsSeen() ? 'No controller seen yet: press a button on it…'
         : capture.add ? `Press ${press} to add…` : controller ? 'Press a button, or two together…' : `Press ${press}…`;
       if (controller) keys.append(padChoice());
-    } else if (!items.length) { keys.textContent = 'None'; keys.classList.add('binding-none'); }
-    else keys.replaceChildren(...items.map(text => {
-      const item = document.createElement('kbd'); item.textContent = text; return item;
-    }));
+    } else {
+      // The controller's sticks always do the stick controls, shown first and not removable.
+      const stick = controller && SmsBindings.PAD_STICKS[id];
+      if (!items.length && !stick) { keys.textContent = 'None'; keys.classList.add('binding-none'); }
+      const chips = items.map(text => {
+        const item = document.createElement('kbd'); item.textContent = text; return item;
+      });
+      if (stick) {
+        const item = document.createElement('kbd'); item.className = 'binding-fixed'; item.textContent = stick;
+        item.title = `The ${stick.toLowerCase()} always does this; buttons added here work as well`;
+        chips.unshift(item);
+      }
+      if (chips.length) keys.replaceChildren(...chips);
+    }
     const actions = document.createElement('span'); actions.className = 'binding-actions';
     const button = (text, onClick, title) => {
       const item = document.createElement('button'); item.className = 'subtle'; item.textContent = text; item.title = title;

@@ -261,6 +261,7 @@ pre { height: 120px; margin: 0; padding: 12px; overflow: auto; border-radius: 8p
 .binding-modes button { padding: 5px 16px; border: 0; border-radius: 7px; background: transparent; font-size: 12px; }
 .binding-modes button[aria-pressed="true"] { background: #fff; color: #17343d; font-weight: 650; box-shadow: 0 1px 3px #17343d1f; }
 .binding-keys.binding-none { color: #9aa8ab; }
+.binding-keys kbd.binding-fixed { border-style: dashed; border-bottom-width: 1px; background: transparent; color: #5d7378; font-weight: 500; }
 .prompt-preview { display: grid; gap: 6px; margin-top: 8px; padding: 10px; border-radius: 9px; background: #17343d; }
 .prompt-row { display: flex; align-items: center; gap: 10px; color: #dce9ea; font-size: 11px; }
 .prompt-row span { width: 132px; flex: none; }
@@ -629,6 +630,7 @@ pre { height: 120px; margin: 0; padding: 12px; overflow: auto; border-radius: 8p
 .dark :is(.settings-group > .row-note.lead, .binding-row, .source-grid label, .changelog-headline, .changelog-details, .changelog-version, .controls-note p, .field) { color: #c9dce1; }
 .dark :is(.group-title, .changelog-column h3, .text-button, .credit-link, .binding-row.capturing .binding-keys) { color: #7fd3d6; }
 .dark :is(select, .source-grid input, .binding-keys kbd, .mp-input) { border-color: #33566a; background: #0f2636; color: #e3eff2; }
+.dark .binding-keys kbd.binding-fixed { background: transparent; color: #9db6bd; }
 .dark .mp-section { border-color: #24465a; background: #12303f; }
 .dark .mp-field { color: #b8cdd2; }
 .dark .mp-result { color: #b8cdd2; }

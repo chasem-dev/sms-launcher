@@ -148,3 +148,19 @@ test('Switch controllers, and any with Nintendo button layout, read A and B, X a
   assert.deepEqual([0, 1, 2, 3, 4, 9].map(index => bindings.letterIndex(index, true)), [1, 0, 3, 2, 4, 9]);
   assert.deepEqual([0, 1, 2, 3].map(index => bindings.letterIndex(index, false)), [0, 1, 2, 3]);
 });
+
+test('the controller sticks are shown as the stick controls, not bindings, and pushing one is explained', () => {
+  for (const id of ['STICK_UP', 'STICK_DOWN', 'STICK_LEFT', 'STICK_RIGHT']) assert.equal(bindings.PAD_STICKS[id], 'Left stick');
+  for (const id of ['CSTICK_UP', 'CSTICK_DOWN', 'CSTICK_LEFT', 'CSTICK_RIGHT']) assert.equal(bindings.PAD_STICKS[id], 'Right stick');
+  assert.equal(bindings.PAD_STICKS.A, undefined);
+  assert.ok(bindings.CONTROLS.every(({ id }) => !(id in bindings.PAD_STICKS) || /STICK_/.test(id)));
+  // Stick controls take buttons as before: the stick never becomes a PAD_ binding the game can't read.
+  assert.deepEqual(bindings.normalizePads({ STICK_UP: ['PAD_DPUP'] }), { STICK_UP: ['PAD_DPUP'] });
+  assert.equal(bindings.pushedStick([0, -0.9, 0, 0]), 'Left stick');
+  assert.equal(bindings.pushedStick([0.1, 0.1, 0.8, 0]), 'Right stick');
+  assert.equal(bindings.pushedStick([0.2, -0.3, 0.1, 0]), null, 'a resting stick, even one that drifts a little');
+  assert.equal(bindings.pushedStick(), null);
+  assert.match(bindings.stickNote('STICK_UP', 'Left stick'), /^The left stick always does this already/);
+  assert.match(bindings.stickNote('A', 'Left stick'), /^The left stick can't be bound: it always moves the stick\./);
+  assert.match(bindings.stickNote('STICK_UP', 'Right stick'), /moves the camera/);
+});

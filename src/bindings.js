@@ -93,6 +93,27 @@
     DPAD_RIGHT: ['PAD_DPRIGHT'], SAVE_STATE: ['PAD_LB+PAD_RB'], MAP: ['PAD_BACK'], CAMERA_ZOOM: ['PAD_RSTICK']
   };
 
+  // The controller's sticks always move the GameCube sticks (the game reads its left stick as the stick and its
+  // right stick as the C-stick, platform/pad/pad.cpp), so they are not bindings: buttons only add to them.
+  const PAD_STICKS = {
+    STICK_UP: 'Left stick', STICK_DOWN: 'Left stick', STICK_LEFT: 'Left stick', STICK_RIGHT: 'Left stick',
+    CSTICK_UP: 'Right stick', CSTICK_DOWN: 'Right stick', CSTICK_LEFT: 'Right stick', CSTICK_RIGHT: 'Right stick'
+  };
+  // Which stick a standard-mapping Gamepad API pad has pushed past half way: 'Left stick', 'Right stick' or null.
+  function pushedStick(axes = []) {
+    const past = (x, y) => Math.hypot(Number(x) || 0, Number(y) || 0) > 0.5;
+    if (past(axes[0], axes[1])) return 'Left stick';
+    if (past(axes[2], axes[3])) return 'Right stick';
+    return null;
+  }
+  // What the Controls page says when a stick is pushed while it waits for a button for `id`.
+  function stickNote(id, stick) {
+    const fixed = PAD_STICKS[id];
+    if (fixed === stick)
+      return `The ${stick.toLowerCase()} always does this already, so it needs no binding. Press a button to do it as well, or Esc.`;
+    return `The ${stick.toLowerCase()} can't be bound: it always moves the ${stick === 'Left stick' ? 'stick' : 'camera'}. Press a button, or Esc.`;
+  }
+
   // The controller button for a standard-mapping Gamepad API button index, or null.
   function padFromIndex(index) { return PAD_BUTTONS[index]?.id || null; }
   // The game reads controller buttons by the letters printed on them (A is a Switch controller's right-hand
@@ -169,5 +190,5 @@
 
   return { CONTROLS, DEFAULTS, CLASSIC, fromClassic, PAD_BUTTONS, PAD_DEFAULTS, MOUSE_BUTTONS, keyFromCode, keyFromMouse, isMouse, keyLabel,
     normalize, keysFor, fileText,
-    padFromIndex, nintendoLetters, letterIndex, padLabel, padCombo, normalizePads, padsFor };
+    PAD_STICKS, pushedStick, stickNote, padFromIndex, nintendoLetters, letterIndex, padLabel, padCombo, normalizePads, padsFor };
 });

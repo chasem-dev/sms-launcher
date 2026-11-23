@@ -5,8 +5,10 @@
 // the DISCORD_BETA_WEBHOOK secret; without the secret it does nothing. The
 // message has the launcher and game versions and Beta's notes from
 // changelog.json, only those the last Beta did not already have when
-// PREVIOUS_CHANGELOG names its changelog.json. A failed post is a warning:
-// Beta is already published.
+// PREVIOUS_CHANGELOG names its changelog.json. Its changelog links open Beta's
+// own notes: the "beta" lines of changelog.json at the commit this Beta built,
+// not main's file, whose top is a release's notes once Beta's are released.
+// A failed post is a warning: Beta is already published.
 const fs = require('node:fs');
 const path = require('node:path');
 
@@ -29,14 +31,34 @@ function bullets(lines, more) {
   return kept.join('\n');
 }
 
+// The first and last line (1-based) of the "beta": { ... } block in
+// changelog.json's text, or null when it has none.
+function betaLines(text) {
+  const lines = String(text || '').split('\n');
+  const first = lines.findIndex(line => /^\s*"beta"\s*:\s*\{/.test(line));
+  if (first < 0) return null;
+  let depth = 0, quoted = false, escaped = false;
+  for (let index = first; index < lines.length; index++) {
+    for (const char of lines[index].slice(index === first ? lines[index].indexOf('{') : 0)) {
+      if (escaped) escaped = false;
+      else if (quoted) { if (char === '\\') escaped = true; else if (char === '"') quoted = false; }
+      else if (char === '"') quoted = true;
+      else if (char === '{') depth++;
+      else if (char === '}' && --depth === 0) return [first + 1, index + 1];
+    }
+  }
+  return null;
+}
+
 function strings(value) { return Array.isArray(value) ? value.filter(item => typeof item === 'string' && item.trim()).map(item => item.trim()) : []; }
 
 // The webhook body. `game` has the repository, version and commit Beta built;
 // `previous` is the last Beta's notes, left out so each post has only what is new.
-function message({ launcherVersion, launcherSha, game, repository, beta, previous, now = new Date() }) {
+// `lines` is where Beta's notes are in changelog.json (betaLines), to point the link at them.
+function message({ launcherVersion, launcherSha, game, repository, beta, previous, lines, now = new Date() }) {
   const repo = `https://github.com/${repository}`;
   const gameRepo = String(game.repository || '').replace(/\.git$/, '');
-  const changelog = `${repo}/blob/main/changelog.json`;
+  const changelog = `${repo}/blob/${launcherSha || 'main'}/changelog.json${lines ? `#L${lines[0]}-L${lines[1]}` : ''}`;
   const fields = [
     { name: 'Launcher', value: `[${launcherVersion}](${repo}/commit/${launcherSha})`, inline: true },
     { name: 'Game', value: gameRepo ? `[${game.version}](${gameRepo}/commit/${game.commit})` : game.version, inline: true }
@@ -77,8 +99,12 @@ async function main(env = process.env, root = path.join(__dirname, '..')) {
   const pinned = readJson(path.join(root, 'src', 'game-release.json'));
   if (!pinned) throw new Error('src/game-release.json is missing.');
   const game = { ...pinned, version: env.GAME_VERSION || pinned.version, commit: env.GAME_COMMIT || pinned.commit };
+  let text = '';
+  try { text = fs.readFileSync(path.join(root, 'changelog.json'), 'utf8'); } catch (_) { /* no notes */ }
+  let beta;
+  try { beta = JSON.parse(text).beta; } catch (_) { /* no notes */ }
   const body = message({ launcherVersion: env.LAUNCHER_VERSION, launcherSha: env.LAUNCHER_SHA, game,
-    repository: env.GITHUB_REPOSITORY, beta: readJson(path.join(root, 'changelog.json'))?.beta,
+    repository: env.GITHUB_REPOSITORY, beta, lines: betaLines(text),
     previous: env.PREVIOUS_CHANGELOG ? readJson(env.PREVIOUS_CHANGELOG)?.beta : undefined });
   try {
     const response = await fetch(env.DISCORD_BETA_WEBHOOK, { method: 'POST',
@@ -92,4 +118,4 @@ async function main(env = process.env, root = path.join(__dirname, '..')) {
 
 if (require.main === module) main().catch(error => { console.error(`::error::${error.message}`); process.exitCode = 1; });
 
-module.exports = { message, escape, main };
+module.exports = { message, escape, betaLines, main };

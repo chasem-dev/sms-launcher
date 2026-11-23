@@ -5,7 +5,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-const { message, escape, main } = require('../scripts/discord-beta');
+const { message, escape, betaLines, main } = require('../scripts/discord-beta');
 
 const game = { repository: 'https://github.com/chasem-dev/sms-pc-port.git', version: '2026.10.09-beta.0e104fa', commit: '0e104fa'.padEnd(40, '0') };
 const base = { launcherVersion: '0.1.55-beta.27', launcherSha: 'c244bba'.padEnd(40, '0'), game,
@@ -50,9 +50,26 @@ test('long notes are cut to fit Discord with a link to the changelog', () => {
   const lines = Array.from({ length: 30 }, (_, index) => `Change ${index} `.padEnd(100, 'x'));
   const value = message({ ...base, beta: { game: lines } }).embeds[0].fields[2].value;
   assert.ok(value.length <= 1024, `${value.length} characters`);
-  assert.match(value, /…and \d+ more in \[the changelog\]\(https:\/\/github\.com\/chasem-dev\/sms-launcher\/blob\/main\/changelog\.json\)$/);
+  assert.match(value, /…and \d+ more in \[the changelog\]\(https:\/\/github\.com\/chasem-dev\/sms-launcher\/blob\/c244bba0+\/changelog\.json\)$/);
   const shown = value.split('\n').filter(line => line.startsWith('• ')).length;
   assert.equal(Number(value.match(/and (\d+) more/)[1]), lines.length - shown);
+});
+
+test("the changelog link opens Beta's own notes at the commit it built, not main's file", () => {
+  const text = JSON.stringify({ _instructions: 'x', beta: { launcher: ['A {brace} and a "quote" }.'], game: [] },
+    releases: [{ version: '1.0.0', launcher: ['Stable note.'] }] }, null, 2);
+  const lines = betaLines(text);
+  assert.deepEqual(lines, [3, 8]);
+  assert.match(text.split('\n')[lines[1] - 1], /^  \},$/);
+  const beta = JSON.parse(text).beta;
+  const fields = message({ ...base, beta: { launcher: Array(30).fill('x'.padEnd(100, 'x')) }, lines }).embeds[0].fields;
+  assert.match(fields[2].value, new RegExp(`\\(https://github\\.com/chasem-dev/sms-launcher/blob/${base.launcherSha}/changelog\\.json#L3-L8\\)$`));
+  assert.match(message({ ...base, beta, previous: beta, lines }).embeds[0].fields[2].value, /blob\/c244bba0+\/changelog\.json#L3-L8\)/);
+  assert.equal(betaLines('{ "releases": [] }'), null);
+  assert.equal(betaLines(undefined), null);
+  // The real file has its Beta notes near the top.
+  const real = betaLines(fs.readFileSync(path.join(__dirname, '..', 'changelog.json'), 'utf8'));
+  assert.ok(real && real[0] < real[1], String(real));
 });
 
 test('formatting characters in notes show as written', () => {

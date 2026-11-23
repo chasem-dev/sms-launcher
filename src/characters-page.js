@@ -39,6 +39,8 @@ const colouring = () => state.id === 'mario' && !state.animations;
 const comparing = () => state.animations && state.compare !== 'off';
 const INTRO = {
   basic: 'Who you play as, in your colours, made on your computer from your own disc. In the game, F4 switches characters. Drag to turn, scroll to zoom.',
+  // Super Mario Eclipse plays as its own characters (the game leaves SMS_CHARACTER and packs alone): only Mario's outfits are worn.
+  eclipse: 'Super Mario Eclipse is on, so the game plays as Mario, in the colours of a Mario outfit. The other characters and your own packs are for Super Mario Sunshine: turn Eclipse off in Settings, Gameplay to play as them.',
   animations: 'Each character in any of its animations, with FLUDD, and Mario beside it or over it to compare. Drag to turn, scroll to zoom.',
 };
 let viewer = null, loading = null;
@@ -71,7 +73,8 @@ function setMode(animations) {
   state.animations = animations;
   page.classList.toggle('animations', animations);
   $('characters-title').textContent = animations ? 'Animations' : 'Character';
-  $('characters-intro').textContent = INTRO[animations ? 'animations' : 'basic'];
+  $('characters-intro').textContent = INTRO[animations ? 'animations' : state.eclipse ? 'eclipse' : 'basic'];
+  $('characters-intro').classList.toggle('eclipse-note', !animations && state.eclipse);
   $('characters-mode').textContent = animations ? '‹ Characters' : 'Animations';
 }
 $('characters-mode').addEventListener('click', () => {
@@ -143,8 +146,9 @@ async function refresh() {
   state.setUp = ready !== false;
   state.outfits = outfits;
   state.playing = worn().character;
-  state.eclipse = eclipse;
+  state.eclipse = Boolean(eclipse);
   state.coopOutfit = coopOutfit !== false;
+  setMode(state.animations);
   renderList();
   renderOutfits();
 }
@@ -156,8 +160,14 @@ async function choose(id) {
   renderList();
   showStage();
   // what is made now, not when the list was read (a character's builder may have changed since)
-  const { characters, outfits } = await window.sms.characters();
+  const { characters, outfits, eclipse } = await window.sms.characters();
   state.characters = characters;
+  // Eclipse turned on or off in Settings since the list was read
+  if (Boolean(eclipse) !== state.eclipse) {
+    state.eclipse = Boolean(eclipse);
+    setMode(state.animations);
+    renderOutfits();
+  }
   if (state.id !== id) return;
   // a pack of the player's own taken out of the folder: its outfits are Mario's again
   if (!characters.some(c => c.id === id)) {
@@ -333,6 +343,12 @@ function disarmDelete() {
   clearTimeout(deleting);
   deleting = null;
 }
+// With Eclipse on and another character's outfit open: back to a Mario outfit (a new one if there is none).
+$('outfit-eclipse-mario').addEventListener('click', () => {
+  const index = state.outfits.slots.findIndex(slot => slot?.character === 'mario');
+  if (index >= 0) wear(index);
+  else addOutfit(characterOf('mario'));
+});
 $('outfit-delete').addEventListener('click', () => {
   const { slots } = state.outfits;
   if (slots.filter(Boolean).length < 2) return;
@@ -383,6 +399,10 @@ function renderOutfits() {
     tab.querySelector('.outfit-name').textContent = outfit.name;
     const button = tab.querySelector('.outfit-wear');
     button.title = open ? `${outfit.name} (${character.name}): double-click to rename` : `Play as ${outfit.name} (${character.name})`;
+    // with Eclipse on, only Mario's outfits are worn in the game
+    const sunshineOnly = state.eclipse && character.id !== 'mario';
+    tab.classList.toggle('sunshine-only', sunshineOnly);
+    if (sunshineOnly) button.title += '. Not with Super Mario Eclipse on: it plays as Mario';
     if (index === state.outfits.coop) {
       const badge = document.createElement('span');
       badge.className = 'outfit-p2';
@@ -467,15 +487,18 @@ function renderPanel() {
   $('outfit-note-text').innerHTML = '';
   const name = document.createElement('strong');
   name.textContent = outfit.name;
-  $('outfit-note-text').append('You play as ', name, mario ? '. Changes save to it as you make them.' : '.');
+  const offWithEclipse = state.eclipse && !mario;
+  if (offWithEclipse) $('outfit-note-text').append('Super Mario Eclipse is on, so the game plays as Mario, not ', name, '.');
+  else $('outfit-note-text').append('You play as ', name, mario ? '. Changes save to it as you make them.' : '.');
+  $('outfit-note').classList.toggle('warn', offWithEclipse);
+  $('outfit-eclipse-mario').hidden = !offWithEclipse;
   const only = state.outfits.slots.filter(Boolean).length < 2;
   $('outfit-delete').hidden = only;
   $('outfit-delete').textContent = deleting ? `Delete ${outfit.name}?` : 'Delete';
   $('outfit-delete').classList.toggle('armed', Boolean(deleting));
   renderCoop(outfit);
-  $('outfit-about').textContent = state.eclipse && !mario
-    ? `With Super Mario Eclipse on, the game plays as its own characters: ${outfit.name} is for Super Mario Sunshine.`
-    : mario ? '' : `${character.about} ${character.name}'s colours can't be changed yet.`;
+  // (with Eclipse on, the note above says it plays as Mario)
+  $('outfit-about').textContent = mario ? '' : `${character.about} ${character.name}'s colours can't be changed yet.`;
 }
 
 // Player 2 in split-screen co-op (START on another controller): an outfit chosen here, or the game's own Luigi.

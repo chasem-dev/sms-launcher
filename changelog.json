@@ -1,7 +1,9 @@
 {
   "_instructions": "Players see this file in the launcher. Add each player-visible change here in the same commit: launcher changes to beta.launcher, game changes Beta now builds to beta.game. Releases move beta into a new entry (npm run update:game does it). One plain sentence for players per line, no commit hashes or PR numbers. See AGENTS.md.",
   "beta": {
-    "launcher": [],
+    "launcher": [
+      "Character tab: with Super Mario Eclipse on, the tab now says plainly that the game plays as Mario, greys out the other characters' outfits, and offers Wear Mario, instead of only a small note under the outfit."
+    ],
     "game": []
   },
   "releases": [

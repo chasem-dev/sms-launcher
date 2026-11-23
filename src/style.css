@@ -844,6 +844,12 @@ pre { height: 120px; margin: 0; padding: 12px; overflow: auto; border-radius: 8p
 .outfit-note .text-button { flex: none; padding: 0; border: 0; background: none; font-size: 12px; }
 .outfit-note .text-button[hidden] { display: none; }
 .outfit-note .text-button.armed { color: #b3261e; }
+/* Super Mario Eclipse on: it plays as Mario, whoever is chosen here. */
+.outfit-note.warn { background: #fdf3dc; color: #5e4510; }
+.outfit-note.warn > i { background: #d99a14; box-shadow: 0 0 0 3px #d99a1433; }
+.outfit-note.warn .text-button { color: #8a5a00; font-weight: 700; }
+.outfit-tab.sunshine-only .outfit-wear { opacity: .55; }
+.characters-page #characters-intro.eclipse-note { color: #7a5600; }
 /* Player 2 in co-op: this outfit, or who is. */
 .outfit-coop { display: flex; align-items: center; gap: 8px; margin: -4px 0 12px; padding: 6px 6px 6px 10px; border: 1px solid #e1e9e8; border-radius: 10px; background: #fff; color: #4d6a71; font-size: 12px; line-height: 1.4; }
 .outfit-coop svg { flex: none; width: 18px; height: 18px; fill: none; stroke: #6f888d; stroke-width: 1.6; stroke-linecap: round; }
@@ -917,6 +923,9 @@ pre { height: 120px; margin: 0; padding: 12px; overflow: auto; border-radius: 8p
 .dark .outfit-character strong { color: #e3eff2; }
 .dark .outfit-note { background: #133a3f; color: #c9dce1; }
 .dark .outfit-note .text-button.armed { color: #ffb4a3; }
+.dark .outfit-note.warn { background: #3a3117; color: #f1e3bf; }
+.dark .outfit-note.warn .text-button { color: #f5d68a; }
+.dark .characters-page #characters-intro.eclipse-note { color: #f1d38b; }
 .dark .outfit-about { color: #9fc3cb; }
 .dark .outfit-coop { border-color: #2a4d61; background: #132e40; color: #9fc3cb; }
 .dark .outfit-coop svg { stroke: #8fb0b8; }

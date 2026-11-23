@@ -2,7 +2,9 @@
   "_instructions": "Players see this file in the launcher. Add each player-visible change here in the same commit: launcher changes to beta.launcher, game changes Beta now builds to beta.game. Releases move beta into a new entry (npm run update:game does it). One plain sentence for players per line, no commit hashes or PR numbers. See AGENTS.md.",
   "beta": {
     "launcher": [],
-    "game": []
+    "game": [
+      "Character packs: Shadow Mario keeps Mario's own animations instead of taking the character's, which made him taller with some packs."
+    ]
   },
   "releases": [
     {

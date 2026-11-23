@@ -326,3 +326,52 @@ test('a message bank takes a new text for one message, or for all of them, and k
   assert.equal(renamed.readUInt32BE(8), renamed.length);
   assert.deepEqual(read(world.setMessages(file, {}, '')), ['', '', '']);
 });
+
+test('King Boo takes his peppers and coins from placed copies, and a boss gets its Shine', () => {
+  // His room's peppers and coins are found by numbered names; a placed copy carries its source's name.
+  const boo = stage(
+    [node('BossTelesaManager', 'ボステレサマネージャー', managerData('boss chara', 1))],
+    [actor('ResetFruit', '唐辛子 0', [0, 0, 0], str('RedPepper')), actor('Coin', 'コイン 0', [0, 0, 0], str('coin')), actor('Shine', 'シャイン（ボス用）', [0, 0, 0], Buffer.concat([str('shine'), str('demo')]))],
+    [actor('BossTelesa', 'ボステレサ', [0, 0, 0], Buffer.concat([str('ボステレサマネージャー'), str('(null)')]))]);
+  const base = library(), scenes = ['home', 'away', 'boo'];
+  const lib = { ...base, sceneTree: scene => scene === 'boo' ? boo : base.sceneTree(scene), files: scene => scene === 'boo' ? new Map() : base.files(scene),
+    context: scene => scene === 'boo' ? { files: new Map(), tree: boo, charas: new Map() } : base.context(scene), scenes: () => scenes };
+  const copy = (id, label, n) => [...Array(n).keys()].map(i => ({ uid: `${label}${i}`, source: { scene: 'boo', id }, type: '', label, transform: t([i, 0, 0]) }));
+  const king = { uid: 'k', source: { scene: 'boo', id: '1/0/1/0' }, type: 'BossTelesa', label: 'King Boo', transform: t([500, 0, 0]) };
+  const level = added => world.cleanProject({ format: 'sms-world', name: 'Test', base: 'home', edits: {}, added, paint: {} }, scenes);
+  assert.throws(() => world.buildScene(lib, level([king, ...copy('1/0/0/0', 'pepper', 10), ...copy('1/0/0/1', 'coin', 9)])), /King Boo needs ten red peppers \(the kind that comes back\) and ten coins placed with it, which it hides/);
+  const { tree } = world.buildScene(lib, level([king, ...copy('1/0/0/0', 'pepper', 12), ...copy('1/0/0/1', 'coin', 10)]));
+  const names = [];
+  sceneBin.walk(tree, n => { if (!n.children) names.push(sceneBin.decodeName(n.nameBytes)); });
+  for (let i = 0; i < 10; i++) assert.ok(names.includes(`唐辛子 ${i}`) && names.includes(`コイン ${i}`), `number ${i}`);
+  // The two spare peppers keep their name, and each new name's key is its own.
+  assert.equal(names.filter(name => name === '唐辛子 0').length, 3);
+  sceneBin.walk(tree, n => { if (!n.children) assert.equal(n.nameKey ?? sceneBin.keyCode(n.nameBytes), sceneBin.keyCode(n.nameBytes)); });
+  // The Shine he leaves wasn't placed: it came from his stage, where he is.
+  const shines = [];
+  sceneBin.walk(tree, n => { if (n.type === 'Shine') shines.push(n); });
+  assert.equal(shines.length, 1);
+  assert.deepEqual(world.readTransform(shines[0].data).position, [500, 0, 0]);
+  // And it writes out and reads back.
+  assert.ok(sceneBin.parse(sceneBin.serialize(tree)));
+});
+
+test('the Chain Chomp works only in its own stage, not emptied', () => {
+  const pianta = stage([node('BossWanwanManager', 'ボスワンワンマネージャー', managerData('boss chara', 1))], [actor('Shine', 'シャイン（ボス用）', [0, 0, 0], Buffer.concat([str('shine'), str('demo')]))],
+    [actor('BossWanwan', 'ボスワンワン', [0, 0, 0], Buffer.concat([str('ボスワンワンマネージャー'), str('(null)')]))]);
+  const base = library(), scenes = ['home', 'away', 'monte1'];
+  const lib = { ...base, sceneTree: scene => scene === 'monte1' ? pianta : base.sceneTree(scene), files: scene => scene === 'monte1' ? new Map() : base.files(scene),
+    context: scene => scene === 'monte1' ? { files: new Map(), tree: pianta, charas: new Map() } : base.context(scene), scenes: () => scenes };
+  const chomp = { uid: 'c', source: { scene: 'monte1', id: '1/0/1/0' }, type: 'BossWanwan', label: 'Chain Chomp', transform: t([0, 0, 0]) };
+  const level = changes => world.cleanProject({ format: 'sms-world', name: 'Test', base: 'home', edits: {}, added: [], paint: {}, ...changes }, scenes);
+  assert.throws(() => world.buildScene(lib, level({ added: [chomp] })), /Chain Chomp only works in Pianta Village · 2, not emptied: it always starts at its own spot/);
+  assert.doesNotThrow(() => world.buildScene(lib, level({ base: 'monte1' })));
+  assert.throws(() => world.buildScene(lib, level({ base: 'monte1', blank: true })), /not emptied/);
+});
+
+test('stages lit as night are told apart from day ones', () => {
+  const lit = rgba => sceneBin.parse(node('GroupObj', 'root', Buffer.alloc(0), [node('AmbColor', '太陽アンビエント（プレイヤー）', Buffer.from(rgba))]));
+  assert.equal(world.isNight(lit([0x19, 0x4b, 0x96, 0xff])), true);
+  assert.equal(world.isNight(lit([0x80, 0x80, 0x80, 0xff])), false);
+  assert.equal(world.isNight(lit([0x64, 0x50, 0x32, 0xff])), false);
+});

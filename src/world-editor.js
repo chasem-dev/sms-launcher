@@ -60,6 +60,7 @@ async function boot() {
     if (!catalog) {
       setStatus('Cataloguing everything placed in every stage… (only the first time)', true);
       catalog = withStagePieces(await window.sms.worldCatalog());
+      markNights();
       renderFilters();
       renderCatalog();
     }
@@ -107,6 +108,7 @@ function normalizeProject(saved, scene) {
 }
 
 const sceneLabel = scene => levels?.scenes?.[scene]?.label || scene;
+const stageName = scene => `${sceneLabel(scene)}${levels?.scenes?.[scene]?.night ? ' (night)' : ''}`;
 
 // A fresh 3D view on fresh canvases (a canvas whose context was let go can't
 // make another). Nothing of the editor stays on the GPU while another page shows.
@@ -237,9 +239,20 @@ function renderLevelPicker() {
   for (const world of levels.worlds) {
     const group = document.createElement('optgroup');
     group.label = world.name;
-    for (const scene of world.scenes) group.append(new Option(levels.scenes[scene].label, scene));
+    for (const scene of world.scenes) group.append(new Option(stageName(scene), scene));
     select.append(group);
   }
+}
+
+// Stages the game lights as night say so, since a level built on one plays
+// at night too (the editor draws every stage in daylight).
+function markNights() {
+  for (const scene of catalog.nights || []) {
+    const info = levels.scenes[scene];
+    if (info) info.night = true;
+  }
+  renderLevelPicker();
+  if (project) { $('world-level').value = project.base; renderInspector(); }
 }
 
 $('world-level').addEventListener('change', async event => {
@@ -697,7 +710,7 @@ function renderInspector() {
   $('world-inspector-empty').hidden = Boolean(object);
   $('world-inspector-body').hidden = !object;
   if (!object) {
-    if (level) $('world-level-info').textContent = `${sceneLabel(project.base)}${project.blank ? ' (emptied)' : ''} · ${level.objects.filter(o => o.transform).length} objects from the disc · ${project.added.length} added · ${Object.keys(project.edits).length} edited · ${project.pieces.length} pieces built or copied · ${Object.keys(project.texturePaint).length} faces retextured · ${Object.keys(project.paint).length} ground triangles painted`;
+    if (level) $('world-level-info').textContent = `${stageName(project.base)}${project.blank ? ' (emptied)' : ''} · ${level.objects.filter(o => o.transform).length} objects from the disc · ${project.added.length} added · ${Object.keys(project.edits).length} edited · ${project.pieces.length} pieces built or copied · ${Object.keys(project.texturePaint).length} faces retextured · ${Object.keys(project.paint).length} ground triangles painted`;
     return;
   }
   $('world-inspector-title').textContent = object.label;

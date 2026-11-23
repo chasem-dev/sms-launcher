@@ -2,7 +2,8 @@
   "_instructions": "Players see this file in the launcher. Add each player-visible change here in the same commit: launcher changes to beta.launcher, game changes Beta now builds to beta.game. Releases move beta into a new entry (npm run update:game does it). One plain sentence for players per line, no commit hashes or PR numbers. See AGENTS.md.",
   "beta": {
     "launcher": [
-      "World editor: Yoshi eggs placed in a level no longer crash the game on a file that has Yoshi. The catalog says eggs only show up on such a file, and the egg from Delfino Plaza's Shadow Mario event, which never shows up in a level, is no longer in it."
+      "World editor: Yoshi eggs placed in a level no longer crash the game on a file that has Yoshi. The catalog says eggs only show up on such a file, and the egg from Delfino Plaza's Shadow Mario event, which never shows up in a level, is no longer in it.",
+      "World editor: King Boo takes the red peppers and coins you place with him, and Phantamanta the fan palms, instead of asking for the ones from their own stages, and a boss you place brings the Shine it leaves when beaten. The Chain Chomp, which always starts at its own spot in its Pianta Village stage, now says it only works there instead of not showing up anywhere else. Stages the game lights as night, such as Pianta Village's episode 1, say so in the stage list, since a level built on one plays at night."
     ],
     "game": []
   },

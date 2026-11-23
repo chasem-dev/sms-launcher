@@ -104,17 +104,28 @@ function loadCharacter(character, files, look = null) {
       drawIndex: shape.drawIndex, index: shape.index, texture, doubleSided: material.cull === 0, translucent: !shadow && material.mode === 4,
       // Shadow Mario is lit only by his shine (his colours are his texture's, unlit)
       shine: shadow,
-      alphaTest: material.alphaTest?.comp0 === 6 ? material.alphaTest.ref0 / 255 : 0 });
+      alphaTest: j3d.alphaCutoff(material.alphaTest) });
   });
+  // the cap's own textures, kept apart from the body's
+  const capTexture = index => {
+    const source = cap.textures[index], key = `cap ${index}`;
+    if (!source) return -1;
+    if (!byIndex.has(key)) {
+      byIndex.set(key, textures.length);
+      textures.push({ name: source.name, width: source.width, height: source.height, rgba: source.rgba, wrapS: source.wrapS, wrapT: source.wrapT });
+    }
+    return byIndex.get(key);
+  };
   for (const shape of cap?.shapes || []) {
     if (!shape.index.length) continue;
     const material = cap.materials[shape.material] || {};
-    // its first texture is a stand-in for the body's
-    const texture = material.textures?.[0] === 0 ? textureFor(0) : -1;
+    // its first texture is a stand-in for the body's; a custom character's cap can paint itself with one of its own
+    const first = material.textures?.[0] ?? -1;
+    const texture = first === 0 ? textureFor(0) : first > 0 ? capTexture(first) : -1;
     shapes.push({ position: shape.position, normal: smoothFacets(shape), uv: shape.uv, color: texture < 0 && shape.hasColor ? shape.color : null,
       warp: -1, drawIndex: new Uint16Array(shape.drawIndex.length).fill(headDraw), index: shape.index, texture,
       doubleSided: material.cull === 0, translucent: material.mode === 4, shine: false,
-      alphaTest: material.alphaTest?.comp0 === 6 ? material.alphaTest.ref0 / 255 : 0 });
+      alphaTest: j3d.alphaCutoff(material.alphaTest) });
   }
   const toon = model.textures.find(t => /toon/i.test(t.name));
   // Mario's body animations: the ones for his 29 joints (not FLUDD's or the hands' own).

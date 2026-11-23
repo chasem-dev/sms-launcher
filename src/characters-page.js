@@ -514,8 +514,9 @@ const hash = text => {
 };
 // Mario's portraits differ by look, the others' only by their model (their colours can't change yet).
 // PORTRAIT_DRAWING goes up when the launcher draws models differently, so portraits drawn before are drawn
-// again (2: the cap the game draws, ma_cap1, and faceted gloves drawn smooth).
-const PORTRAIT_DRAWING = 2;
+// again (2: the cap the game draws, ma_cap1, and faceted gloves drawn smooth; 3: custom characters' cut-outs,
+// see-through texels and own cap textures as the game draws them).
+const PORTRAIT_DRAWING = 3;
 function portraitKey(id, look) {
   const { stamp } = characterOf(id);
   if (!stamp) return null;

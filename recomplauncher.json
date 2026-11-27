@@ -9,7 +9,8 @@
     "check": { "ids": ["GMSE01"] }
   },
   "start": {
-    "program": ["SMS Launcher.exe", "sms-launcher", "SMS-Launcher.AppImage"],
+    "program": ["SMS Launcher.exe", "SMS-Launcher.AppImage"],
     "args": ["--game", "{game}", "--play"]
-  }
+  },
+  "saves": ["{local}/sms-port/card-a", "{config}/sms-port/card-a"]
 }

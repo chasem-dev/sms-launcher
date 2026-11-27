@@ -49,6 +49,7 @@ const marioColors = require('./mario-colors');
 const marioPack = require('./mario-pack');
 const { relaunchOptions } = require('./relaunch');
 const { gameArgument } = require('./game-argument');
+const recompLauncher = require('./recomplauncher');
 const { retrying, httpError } = require('./retry');
 const vulkanStatus = require('./vulkan-status');
 
@@ -2477,6 +2478,12 @@ function setupTelemetry() {
 function setupAppUpdater() {
   const url = process.env.SMS_LAUNCHER_UPDATE_URL;
   const bundledFeed = fs.existsSync(path.join(process.resourcesPath, 'app-update.yml'));
+  const managed = recompLauncher.updateNotice();
+  if (managed) {
+    appUpdate = managed;
+    ipcMain.handle('check-app-update', () => appUpdate);
+    return;
+  }
   // The updater would replace a portable launcher with the installer build.
   if (portableRoot) {
     appUpdate = portable.updateNotice(app.getVersion(), null);

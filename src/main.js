@@ -48,6 +48,8 @@ const worldStage = require('./world-stage');
 const marioColors = require('./mario-colors');
 const marioPack = require('./mario-pack');
 const { relaunchOptions } = require('./relaunch');
+const { gameArgument } = require('./game-argument');
+const recompLauncher = require('./recomplauncher');
 const { retrying, httpError } = require('./retry');
 const vulkanStatus = require('./vulkan-status');
 
@@ -99,6 +101,8 @@ let launchedByDiscord = process.argv.some(arg => discord.isLaunchUrl(arg));
 // `--play` (for a Steam shortcut's launch options) starts the game without the
 // launcher's window and quits when the game closes.
 const playOnStart = process.argv.includes('--play');
+// `--game <disc>` (RecompLauncher passes it): use that disc image instead of asking for one.
+const gameDisc = gameArgument(process.argv);
 const ownsInstance = app.requestSingleInstanceLock();
 if (!ownsInstance) app.quit();
 else if (portableRoot && app.isPackaged)
@@ -222,6 +226,15 @@ function defaultRepo() {
   const sibling = path.resolve(__dirname, '..', '..', 'sms-port');
   return !app.isPackaged && port.isPort(sibling)
     ? sibling : path.join(app.getPath('userData'), 'sms-pc-port');
+}
+
+// A disc passed with --game replaces the saved one when it is the right game. A wrong one is
+// only logged, so the launcher still opens and the player can choose a disc there.
+function useGameDisc() {
+  if (!gameDisc) return;
+  try { config.rom = port.validateRom(gameDisc); }
+  catch (error) { return log(`Ignored --game: ${error.message}`); }
+  saveConfig();
 }
 
 function saveConfig() {
@@ -2465,6 +2478,12 @@ function setupTelemetry() {
 function setupAppUpdater() {
   const url = process.env.SMS_LAUNCHER_UPDATE_URL;
   const bundledFeed = fs.existsSync(path.join(process.resourcesPath, 'app-update.yml'));
+  const managed = recompLauncher.updateNotice();
+  if (managed) {
+    appUpdate = managed;
+    ipcMain.handle('check-app-update', () => appUpdate);
+    return;
+  }
   // The updater would replace a portable launcher with the installer build.
   if (portableRoot) {
     appUpdate = portable.updateNotice(app.getVersion(), null);
@@ -2990,6 +3009,7 @@ function createWindow() {
 
 if (ownsInstance) app.whenReady().then(async () => {
   loadConfig();
+  useGameDisc();
   tidySaveDirectory();
   if (remoteModList()) nativeMods.loadSavedCatalog(app.getPath('userData'), app.getVersion());
   registerHandlers();
